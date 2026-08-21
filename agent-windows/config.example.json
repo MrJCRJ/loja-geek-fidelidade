@@ -1,0 +1,7 @@
+{
+  "serverUrl": "http://192.168.3.90:8787",
+  "stationName": "PC-01",
+  "sharedSecret": "loja-geek-station-secret",
+  "staffPin": "2580",
+  "absentSecondsToLock": 60
+}

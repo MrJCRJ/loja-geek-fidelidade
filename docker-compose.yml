@@ -1,0 +1,55 @@
+services:
+  face-service:
+    build: ./face-service
+    volumes:
+      - face-models:/app/.models
+    environment:
+      FACE_MODE: opencv
+      MODEL_ROOT: /app/.models
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health')"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    volumes:
+      - ./data:/app/data
+    environment:
+      PORT: 8787
+      HOST: 0.0.0.0
+      DATABASE_PATH: /app/data/fidelidade.db
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      FACE_SERVICE_URL: http://face-service:8100
+      FACE_MATCH_THRESHOLD: "0.45"
+      POINTS_PER_REAL: "1"
+      STATION_SHARED_SECRET: ${STATION_SHARED_SECRET:-loja-geek-station-secret}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      STATIC_DIR: /app/public
+    depends_on:
+      face-service:
+        condition: service_started
+    restart: unless-stopped
+    # HTTP direto (opcional). Demo Windows deve usar HTTPS via nginx.
+    ports:
+      - "8787:8787"
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./deploy/certs:/etc/nginx/certs:ro
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  face-models:

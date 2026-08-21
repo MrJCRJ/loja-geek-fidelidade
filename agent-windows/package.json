@@ -1,0 +1,60 @@
+{
+  "name": "geeklock-agent",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GeekLock — trava VIP com reconhecimento facial e contagem de horas",
+  "main": "electron/main.cjs",
+  "author": "Loja Geek",
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5174 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5174 electron .\"",
+    "build:web": "vite build",
+    "build": "vite build && electron-builder --win dir --x64",
+    "pack:pendrive": "bash ../scripts/pack-pendrive.sh"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.4",
+    "@types/react-dom": "^19.1.5",
+    "@vitejs/plugin-react": "^4.4.1",
+    "concurrently": "^9.1.2",
+    "cross-env": "^7.0.3",
+    "electron": "^35.2.1",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "br.lojageek.geeklock",
+    "productName": "GeekLock",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "config.example.json"
+    ],
+    "extraResources": [
+      {
+        "from": "config.example.json",
+        "to": "config.example.json"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "GeekLock.exe"
+    },
+    "portable": {
+      "artifactName": "GeekLock.exe"
+    }
+  }
+}
