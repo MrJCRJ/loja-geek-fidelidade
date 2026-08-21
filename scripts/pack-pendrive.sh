@@ -18,18 +18,19 @@ cp -f "$AGENT/config.example.json" "$OUT/config.example.json"
 cp -f "$AGENT/config.example.json" "$OUT/config.json"
 
 cat > "$OUT/LEIA-ME.txt" << 'EOF'
-GeekLock — trava VIP (pendrive)
+GeekLock — trava VIP (estação / pendrive)
 
-1) PC controle: API na porta 8787 (docker compose up -d).
-2) Edite config.json:
+Pré-requisito: PC CONTROLE com GeekCentral.exe online (ou Docker na LAN).
+
+1) Edite config.json nesta pasta:
    - serverUrl: http://IP-DO-PC-CONTROLE:8787
    - stationName: PC-01 (único por máquina)
    - sharedSecret: loja-geek-station-secret
    - staffPin: PIN de emergência
    - absentSecondsToLock: 60
-3) No Windows, execute GeekLock.exe (mantenha config.json na mesma pasta).
-4) Permita a webcam. Sem conexão com o servidor = tela travada.
-5) Cadastre VIP + fotos: http://IP:8787/admin
+2) No Windows da estação, execute GeekLock.exe (config.json na mesma pasta).
+3) Permita a webcam. Sem conexão com o servidor = tela travada.
+4) Cadastre VIP + fotos no admin do GeekCentral.
 
 Fluxo: reconhece VIP -> libera PC -> conta horas -> sem rosto ~60s -> trava de novo.
 

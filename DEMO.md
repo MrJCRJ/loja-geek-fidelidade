@@ -1,49 +1,40 @@
-# Demo para o cliente — PC servidor (Linux/Docker) + estações Windows
+# Demo — PC servidor Windows (GeekCentral) + estações Windows (GeekLock)
 
-## Status nesta máquina
+## Pendrive
 
-Stack em Docker (api + face-service + nginx HTTPS):
+Pastas geradas (não vão para o Git; regenere com os scripts):
+
+| Pasta | Uso |
+|-------|-----|
+| `pendrive/GeekCentral/` | PC **controle** — rode `GeekCentral.exe` |
+| `pendrive/GeekLock/` | Cada **estação** — edite `config.json` e rode `GeekLock.exe` |
 
 ```bash
-cd /home/treegunn/loja-geek-fidelidade
-docker compose ps
-docker compose up -d   # se precisar subir de novo
+bash scripts/pack-pendrive-central.sh
+bash scripts/pack-pendrive.sh
 ```
 
-IP da LAN: **192.168.18.78**
+## No PC controle
 
-## URLs do teste
+1. Copie `GeekCentral` para o disco (ex. `C:\GeekCentral`).
+2. Execute `GeekCentral.exe` → espere **Online**.
+3. Anote o IP da LAN → **Abrir admin** (senha `admin123`).
+4. Cadastre VIP + enroll facial.
 
-| Uso | URL |
-|-----|-----|
-| Home | https://192.168.18.78/ |
-| Admin (PC controle) | https://192.168.18.78/admin |
-| Estação / webcam | https://192.168.18.78/station?name=PC-01 |
+## Nas estações
 
-Senha admin: `admin123`
+1. Em `GeekLock/config.json`: `"serverUrl": "http://IP-DO-CONTROLE:8787"`.
+2. `stationName` único por máquina.
+3. Execute `GeekLock.exe` e permita a webcam.
 
-No primeiro acesso HTTPS o navegador avisa certificado autoassinado → **Avançado → Continuar / Aceitar o risco**.
+## Alternativa Linux/Docker (dev)
 
-> Use sempre **https://** nas estações Windows — a webcam só libera em contexto seguro.
-
-## Nos PCs Windows
-
-1. Mesma rede Wi‑Fi/cabo do servidor.
-2. Chrome ou Edge: `https://192.168.18.78/station?name=NOME-DO-PC`
-3. Aceitar certificado + permitir câmera.
-4. Ativar estação (claim automático ou token do admin).
-
-Atalho kiosk:
-
-```text
-"C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk --ignore-certificate-errors https://192.168.18.78/station?name=PC-01
+```bash
+docker compose up -d --build
 ```
 
-(`--ignore-certificate-errors` só para demo; em produção use certificado válido.)
+URLs HTTPS: use o IP atual da máquina (`hostname -I`) e aceite o certificado autoassinado.
 
-## Roteiro da demonstração
+## Admin remoto (fase 2)
 
-1. Admin → cadastrar VIP + consentimento LGPD  
-2. Admin → ligar webcam → 3–5 amostras faciais  
-3. Estação → reconhecer VIP → somar pontos → resgatar  
-4. Admin → feed ao vivo + Lock/Msg nas estações  
+Ainda não implementado. Ver README → seção **Admin de qualquer lugar (fase 2)**.

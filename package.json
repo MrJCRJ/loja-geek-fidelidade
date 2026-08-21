@@ -9,6 +9,9 @@
     "dev:web": "npm run dev --prefix web",
     "dev:face": "cd face-service && python3 -m uvicorn main:app --host 0.0.0.0 --port 8100 --reload",
     "build": "npm run build --prefix server && npm run build --prefix web",
-    "start": "npm run start --prefix server"
+    "start": "npm run start --prefix server",
+    "pack:central": "bash scripts/pack-pendrive-central.sh",
+    "pack:lock": "bash scripts/pack-pendrive.sh",
+    "prepare:central-runtime": "bash scripts/prepare-central-runtime.sh"
   }
 }

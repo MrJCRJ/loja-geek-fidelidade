@@ -27,3 +27,4 @@ deploy/certs/*.key
 *.log
 *.zip
 .cache/
+agent-central-windows/data-dev/
