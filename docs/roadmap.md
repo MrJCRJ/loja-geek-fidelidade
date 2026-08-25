@@ -1,10 +1,13 @@
 # Roadmap — Loja Geek / Geeks
 
-Atualizado em 2026-08-24.  
+Atualizado em 2026-08-25.  
 Portal: https://loja-geek-portal.vercel.app  
 Projeto: `loja-geek-fidelidade`
 
-Este arquivo é a **fonte única de verdade** do planejamento. Planos Cursor antigos (GeekLock, portal, Melhorias Loja Geek, etc.) ficam supersedidos por este documento.
+**Backlog de melhorias priorizado:** [`MELHORIAS.md`](./MELHORIAS.md) (fonte para “o que fazer no código”).  
+Este arquivo resume arquitetura, o que já existe e prioridade de negócio/ops.
+
+Planos Cursor antigos (GeekLock, portal, Melhorias Loja Geek, etc.) ficam supersedidos por estes docs.
 
 ---
 
@@ -58,7 +61,11 @@ Portal (Vercel) ──HTTPS túnel──► API Fastify :8787 ──► face-ser
 - [ ] Catálogo games / agendamento INSS via WhatsApp
 - [ ] Multi-unidade GeekLock
 - [ ] Backup automatizado SQLite · CI GitHub Actions
-- [ ] LGPD exportação completa · service worker PWA
+- [ ] LGPD retenção fina · service worker PWA
+- [ ] Demais itens em [`MELHORIAS.md`](./MELHORIAS.md)
+
+### UI (2026-08-25)
+- Visual glass (formulários/painéis) no admin web, portal Vercel, GeekLock e GeekCentral
 
 ---
 

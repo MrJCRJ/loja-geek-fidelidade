@@ -154,4 +154,6 @@ GitHub (privado): https://github.com/MrJCRJ/loja-geek-fidelidade
 
 ## Continuar em outro PC
 
-Backlog de melhorias e o que dá para remover (sem perder função): ver **[AUDITORIA.md](./AUDITORIA.md)**.
+- **Lista de melhorias (atual):** [`docs/MELHORIAS.md`](./docs/MELHORIAS.md)
+- Roadmap: [`docs/roadmap.md`](./docs/roadmap.md)
+- Auditoria histórica: [`AUDITORIA.md`](./AUDITORIA.md)
