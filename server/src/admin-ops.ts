@@ -19,26 +19,37 @@ export function setUnitSettings(input: { unitName?: string; unitId?: string }) {
   return getUnitSettings();
 }
 
-export function createSqliteBackup() {
+export function createSqliteBackup(opts?: { keep?: number; reason?: string }) {
   const dbPath = config.databasePath;
   const backupDir = path.join(path.dirname(dbPath), "backups");
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const fileName = `fidelidade-${stamp}.db`;
+  const reason = opts?.reason === "scheduled" ? "auto" : "manual";
+  const fileName = `fidelidade-${reason}-${stamp}.db`;
   const dest = path.join(backupDir, fileName);
   // Checkpoint WAL then copy
   getDb().pragma("wal_checkpoint(TRUNCATE)");
   fs.copyFileSync(dbPath, dest);
+  const keep = Math.min(
+    50,
+    Math.max(3, opts?.keep ?? (Number(getSetting("backup_keep", "20")) || 20)),
+  );
   const files = listBackupFiles();
-  // keep last 20
-  for (const old of files.slice(20)) {
+  for (const old of files.slice(keep)) {
     try {
       fs.unlinkSync(path.join(backupDir, old.fileName));
     } catch {
       /* ignore */
     }
   }
-  return { ok: true as const, fileName, path: dest, createdAt: new Date().toISOString() };
+  return {
+    ok: true as const,
+    fileName,
+    path: dest,
+    createdAt: new Date().toISOString(),
+    reason,
+    keep,
+  };
 }
 
 export function listBackupFiles() {

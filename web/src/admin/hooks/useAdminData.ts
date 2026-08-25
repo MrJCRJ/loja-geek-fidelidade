@@ -17,6 +17,9 @@ const defaultSettings: AdminSettings = {
   subscriberHourDiscountPct: 20,
   unitName: "Unidade 1",
   unitId: "unit-1",
+  backupAutoEnabled: true,
+  backupIntervalHours: 24,
+  backupKeep: 20,
 };
 
 export function useAdminData(token: string | null) {
@@ -66,6 +69,9 @@ export function useAdminData(token: string | null) {
         subscriberHourDiscountPct: st.subscriberHourDiscountPct ?? 20,
         unitName: st.unitName || "Unidade 1",
         unitId: st.unitId || "unit-1",
+        backupAutoEnabled: st.backupAutoEnabled !== false,
+        backupIntervalHours: st.backupIntervalHours ?? 24,
+        backupKeep: st.backupKeep ?? 20,
       });
       setSessions(sess.sessions);
       setSessionStats(sess.stats);

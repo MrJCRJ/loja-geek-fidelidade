@@ -36,6 +36,9 @@ export type AdminSettings = {
   subscriberHourDiscountPct: number;
   unitName: string;
   unitId: string;
+  backupAutoEnabled: boolean;
+  backupIntervalHours: number;
+  backupKeep: number;
 };
 
 export type TimeLedgerRow = {

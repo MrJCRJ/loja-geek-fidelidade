@@ -3,6 +3,13 @@ import { api, getAdminToken } from "../../api";
 import type { AdminSettings } from "../types";
 
 type BackupRow = { fileName: string; size: number; createdAt: string };
+type BackupSchedule = {
+  enabled: boolean;
+  intervalHours: number;
+  keep: number;
+  lastBackupAt: string | null;
+  nextDueAt: string | null;
+};
 type Readiness = {
   faceService?: boolean;
   secretsOk: boolean;
@@ -23,16 +30,18 @@ type Props = {
 
 export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
   const [backups, setBackups] = useState<BackupRow[]>([]);
+  const [schedule, setSchedule] = useState<BackupSchedule | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
   const [busy, setBusy] = useState(false);
 
   const loadMeta = async () => {
     try {
       const [b, r] = await Promise.all([
-        api<{ backups: BackupRow[] }>("/api/admin/backups"),
+        api<{ backups: BackupRow[]; schedule?: BackupSchedule }>("/api/admin/backups"),
         api<Readiness>("/api/admin/readiness"),
       ]);
       setBackups(b.backups);
+      setSchedule(b.schedule || null);
       setReadiness(r);
     } catch {
       /* ignore */
@@ -140,8 +149,12 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
                   subscriberHourDiscountPct: s.subscriberHourDiscountPct ?? 20,
                   unitName: s.unitName || "Unidade 1",
                   unitId: s.unitId || "unit-1",
+                  backupAutoEnabled: s.backupAutoEnabled !== false,
+                  backupIntervalHours: s.backupIntervalHours ?? 24,
+                  backupKeep: s.backupKeep ?? 20,
                 });
                 onToast("Configurações salvas", "ok");
+                return loadMeta();
               })
               .catch((e) => onError(e.message))
           }
@@ -152,7 +165,53 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
         <h2>Backup SQLite</h2>
-        <p className="muted">Cópia do banco em data/backups (últimos 20 mantidos no servidor).</p>
+        <p className="muted">
+          Cópias em <span className="mono">data/backups</span>. Agendado ligado por padrão (checa a cada
+          15 min). Eventos aparecem na aba Saúde.
+        </p>
+        <label className="row" style={{ gap: "0.5rem", alignItems: "center", marginBottom: "0.75rem" }}>
+          <input
+            type="checkbox"
+            checked={settings.backupAutoEnabled}
+            onChange={(e) => setSettings({ ...settings, backupAutoEnabled: e.target.checked })}
+          />
+          Backup automático
+        </label>
+        <div className="row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>Intervalo (horas)</label>
+            <input
+              type="number"
+              min={1}
+              max={168}
+              value={settings.backupIntervalHours}
+              onChange={(e) =>
+                setSettings({ ...settings, backupIntervalHours: Number(e.target.value) || 24 })
+              }
+            />
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>Manter últimos</label>
+            <input
+              type="number"
+              min={3}
+              max={50}
+              value={settings.backupKeep}
+              onChange={(e) => setSettings({ ...settings, backupKeep: Number(e.target.value) || 20 })}
+            />
+          </div>
+        </div>
+        {schedule && (
+          <p className="muted" style={{ marginTop: 0 }}>
+            Último:{" "}
+            {schedule.lastBackupAt
+              ? new Date(schedule.lastBackupAt).toLocaleString("pt-BR")
+              : "nenhum"}
+            {schedule.enabled && schedule.nextDueAt
+              ? ` · próximo: ${new Date(schedule.nextDueAt).toLocaleString("pt-BR")}`
+              : ""}
+          </p>
+        )}
         <button
           className="btn"
           type="button"

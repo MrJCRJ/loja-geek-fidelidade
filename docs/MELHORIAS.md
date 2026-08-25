@@ -50,7 +50,7 @@ Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 |---|------|
 | 18 | Admin responsivo no celular |
 | 20 | Dashboard métricas no GeekCentral (além da aba Saúde) |
-| 23 | Backup automático SQLite (agendado) |
+| 23 | ~~Backup automático SQLite (agendado)~~ **feito** (Config → intervalo + retenção) |
 | 24 | CI GitHub Actions |
 | 25 | Multi-unidade GeekLock avançada (vários Centrals no mesmo portal) |
 | 28 | Retenção LGPD fina (apagar face sem apagar conta) |

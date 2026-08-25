@@ -13,6 +13,11 @@ import {
   setUnitSettings,
 } from "./admin-ops.js";
 import {
+  getBackupSchedule,
+  runScheduledBackupIfDue,
+  setBackupSchedule,
+} from "./backup-scheduler.js";
+import {
   addFaceEmbedding,
   addRecognitionEvent,
   adjustPoints,
@@ -135,6 +140,7 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/settings", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     const unit = getUnitSettings();
+    const backup = getBackupSchedule();
     return {
       faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
       pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
@@ -142,6 +148,9 @@ export async function registerRoutes(app: FastifyInstance) {
       subscriberHourDiscountPct: getSubscriberDiscountPct(),
       unitName: unit.unitName,
       unitId: unit.unitId,
+      backupAutoEnabled: backup.enabled,
+      backupIntervalHours: backup.intervalHours,
+      backupKeep: backup.keep,
     };
   });
 
@@ -155,6 +164,9 @@ export async function registerRoutes(app: FastifyInstance) {
         subscriberHourDiscountPct: z.number().min(0).max(90).optional(),
         unitName: z.string().min(1).max(80).optional(),
         unitId: z.string().min(1).max(64).optional(),
+        backupAutoEnabled: z.boolean().optional(),
+        backupIntervalHours: z.number().min(1).max(168).optional(),
+        backupKeep: z.number().min(3).max(50).optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -172,7 +184,19 @@ export async function registerRoutes(app: FastifyInstance) {
     if (body.unitName !== undefined || body.unitId !== undefined) {
       setUnitSettings({ unitName: body.unitName, unitId: body.unitId });
     }
+    if (
+      body.backupAutoEnabled !== undefined ||
+      body.backupIntervalHours !== undefined ||
+      body.backupKeep !== undefined
+    ) {
+      setBackupSchedule({
+        enabled: body.backupAutoEnabled,
+        intervalHours: body.backupIntervalHours,
+        keep: body.backupKeep,
+      });
+    }
     const unit = getUnitSettings();
+    const backup = getBackupSchedule();
     return {
       faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
       pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
@@ -180,6 +204,9 @@ export async function registerRoutes(app: FastifyInstance) {
       subscriberHourDiscountPct: getSubscriberDiscountPct(),
       unitName: unit.unitName,
       unitId: unit.unitId,
+      backupAutoEnabled: backup.enabled,
+      backupIntervalHours: backup.intervalHours,
+      backupKeep: backup.keep,
     };
   });
 
@@ -254,7 +281,8 @@ export async function registerRoutes(app: FastifyInstance) {
   app.post("/api/admin/backup", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     try {
-      return createSqliteBackup();
+      const out = runScheduledBackupIfDue(true);
+      return out.result || createSqliteBackup({ reason: "manual" });
     } catch (err) {
       return reply.code(500).send({ error: err instanceof Error ? err.message : "Falha no backup" });
     }
@@ -262,7 +290,10 @@ export async function registerRoutes(app: FastifyInstance) {
 
   app.get("/api/admin/backups", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
-    return { backups: listBackupFiles().map(({ fileName, size, createdAt }) => ({ fileName, size, createdAt })) };
+    return {
+      schedule: getBackupSchedule(),
+      backups: listBackupFiles().map(({ fileName, size, createdAt }) => ({ fileName, size, createdAt })),
+    };
   });
 
   app.get("/api/admin/backups/:fileName", async (req, reply) => {
