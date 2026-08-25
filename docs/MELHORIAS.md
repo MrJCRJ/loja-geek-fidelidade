@@ -46,6 +46,8 @@ Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 
 ## P2 / P3 — Próximas (código ou produto)
 
+Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
+
 | # | Item |
 |---|------|
 | 18 | Admin responsivo no celular |

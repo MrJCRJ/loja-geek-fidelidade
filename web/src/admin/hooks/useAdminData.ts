@@ -9,18 +9,9 @@ import {
   type Station,
 } from "../../api";
 import type { AdminSettings, LiveStationStatus, TimeLedgerRow, PointsLedgerRow } from "../types";
+import { defaultAdminSettings, normalizeAdminSettings } from "../normalizeSettings";
 
-const defaultSettings: AdminSettings = {
-  faceMatchThreshold: 0.38,
-  pointsPerReal: 1,
-  hourPriceReais: 10,
-  subscriberHourDiscountPct: 20,
-  unitName: "Unidade 1",
-  unitId: "unit-1",
-  backupAutoEnabled: true,
-  backupIntervalHours: 24,
-  backupKeep: 20,
-};
+const defaultSettings: AdminSettings = defaultAdminSettings;
 
 export function useAdminData(token: string | null) {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -62,17 +53,7 @@ export function useAdminData(token: string | null) {
       if (s.live) setLiveStatus(s.live);
       setRewards(r);
       setEvents(ev);
-      setSettings({
-        faceMatchThreshold: st.faceMatchThreshold,
-        pointsPerReal: st.pointsPerReal,
-        hourPriceReais: st.hourPriceReais ?? 10,
-        subscriberHourDiscountPct: st.subscriberHourDiscountPct ?? 20,
-        unitName: st.unitName || "Unidade 1",
-        unitId: st.unitId || "unit-1",
-        backupAutoEnabled: st.backupAutoEnabled !== false,
-        backupIntervalHours: st.backupIntervalHours ?? 24,
-        backupKeep: st.backupKeep ?? 20,
-      });
+      setSettings(normalizeAdminSettings(st));
       setSessions(sess.sessions);
       setSessionStats(sess.stats);
       if (h) setHealth(h);

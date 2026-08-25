@@ -93,6 +93,22 @@ setStationOfflineHook((stationId, stationName) => {
   });
 });
 
+function settingsPayload() {
+  const unit = getUnitSettings();
+  const backup = getBackupSchedule();
+  return {
+    faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
+    pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
+    hourPriceReais: getHourPriceReais(),
+    subscriberHourDiscountPct: getSubscriberDiscountPct(),
+    unitName: unit.unitName,
+    unitId: unit.unitId,
+    backupAutoEnabled: backup.enabled,
+    backupIntervalHours: backup.intervalHours,
+    backupKeep: backup.keep,
+  };
+}
+
 async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
   try {
     await req.jwtVerify();
@@ -139,19 +155,7 @@ export async function registerRoutes(app: FastifyInstance) {
 
   app.get("/api/settings", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
-    const unit = getUnitSettings();
-    const backup = getBackupSchedule();
-    return {
-      faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
-      pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
-      hourPriceReais: getHourPriceReais(),
-      subscriberHourDiscountPct: getSubscriberDiscountPct(),
-      unitName: unit.unitName,
-      unitId: unit.unitId,
-      backupAutoEnabled: backup.enabled,
-      backupIntervalHours: backup.intervalHours,
-      backupKeep: backup.keep,
-    };
+    return settingsPayload();
   });
 
   app.put("/api/settings", async (req, reply) => {
@@ -195,19 +199,7 @@ export async function registerRoutes(app: FastifyInstance) {
         keep: body.backupKeep,
       });
     }
-    const unit = getUnitSettings();
-    const backup = getBackupSchedule();
-    return {
-      faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
-      pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
-      hourPriceReais: getHourPriceReais(),
-      subscriberHourDiscountPct: getSubscriberDiscountPct(),
-      unitName: unit.unitName,
-      unitId: unit.unitId,
-      backupAutoEnabled: backup.enabled,
-      backupIntervalHours: backup.intervalHours,
-      backupKeep: backup.keep,
-    };
+    return settingsPayload();
   });
 
   app.get("/api/admin/readiness", async (req, reply) => {

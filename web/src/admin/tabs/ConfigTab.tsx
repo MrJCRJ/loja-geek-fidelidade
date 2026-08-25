@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, getAdminToken } from "../../api";
+import { normalizeAdminSettings } from "../normalizeSettings";
 import type { AdminSettings } from "../types";
 
 type BackupRow = { fileName: string; size: number; createdAt: string };
@@ -142,17 +143,7 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
               body: JSON.stringify(settings),
             })
               .then((s) => {
-                setSettings({
-                  faceMatchThreshold: s.faceMatchThreshold,
-                  pointsPerReal: s.pointsPerReal,
-                  hourPriceReais: s.hourPriceReais ?? 10,
-                  subscriberHourDiscountPct: s.subscriberHourDiscountPct ?? 20,
-                  unitName: s.unitName || "Unidade 1",
-                  unitId: s.unitId || "unit-1",
-                  backupAutoEnabled: s.backupAutoEnabled !== false,
-                  backupIntervalHours: s.backupIntervalHours ?? 24,
-                  backupKeep: s.backupKeep ?? 20,
-                });
+                setSettings(normalizeAdminSettings(s));
                 onToast("Configurações salvas", "ok");
                 return loadMeta();
               })
