@@ -1,0 +1,12 @@
+agent-windows/
+agent-central-windows/
+server/
+face-service/
+web/
+pendrive/
+**/node_modules/
+**/.venv/
+**/release/
+**/.git/
+*.db
+*.db-*
