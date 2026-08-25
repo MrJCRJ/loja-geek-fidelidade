@@ -1,3 +1,4 @@
+const { createElectronDebug } = require("./debug.cjs");
 const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, session } = require("electron");
 const path = require("node:path");
 const { OverlayLockController } = require("./lock-controller.cjs");
@@ -31,6 +32,7 @@ const lock = new OverlayLockController(() => mainWindow);
 const sessionHud = new SessionHud();
 
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
+const debug = createElectronDebug("geeklock", isDev);
 const isLinux = process.platform === "linux";
 const ICONS_DIR = path.join(__dirname, "icons");
 const DIST_INDEX = path.join(__dirname, "..", "dist", "index.html");
@@ -326,14 +328,14 @@ function registerShortcut(accelerators, handler, label) {
     try {
       const ok = globalShortcut.register(accel, handler);
       if (ok) {
-        console.log(`[geeklock] atalho ${label}: ${accel}`);
+        debug.log(`atalho ${label}: ${accel}`);
         return true;
       }
     } catch (err) {
-      console.warn(`[geeklock] falha ao registrar ${accel}:`, err);
+      debug.warn(`falha ao registrar ${accel}:`, err);
     }
   }
-  console.warn(`[geeklock] não foi possível registrar ${label} — use o menu da bandeja`);
+  debug.warn(`não foi possível registrar ${label} — use o menu da bandeja`);
   return false;
 }
 
@@ -373,7 +375,7 @@ app.whenReady().then(() => {
         args: isDev ? [] : [path.join(__dirname, "..")],
       });
     } catch (err) {
-      console.warn("[geeklock] setLoginItemSettings:", err);
+      debug.warn("setLoginItemSettings:", err);
     }
   }
 

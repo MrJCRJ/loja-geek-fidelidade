@@ -31,6 +31,7 @@
   "build": {
     "appId": "br.lojageek.geekcentral",
     "productName": "GeekCentral",
+    "icon": "../portal/public/brand/icon-256.png",
     "directories": {
       "output": "release"
     },
@@ -55,7 +56,8 @@
             "x64"
           ]
         }
-      ]
+      ],
+      "icon": "../portal/public/brand/icon-256.png"
     }
   }
 }

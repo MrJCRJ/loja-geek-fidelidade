@@ -1,3 +1,4 @@
+const { createElectronDebug } = require("./debug.cjs");
 const {
   app,
   BrowserWindow,
@@ -29,6 +30,7 @@ let isQuitting = false;
 
 const isWin = process.platform === "win32";
 const isLinux = process.platform === "linux";
+const debug = createElectronDebug("geekcentral", isDev());
 
 function trayIcon() {
   // Ícone mínimo 16x16 (laranja geek) — evita depender de arquivo no pack
@@ -48,7 +50,7 @@ function applyLoginItem(enabled) {
       args: isDev() ? [] : [],
     });
   } catch (err) {
-    console.warn("[geekcentral] setLoginItemSettings:", err);
+    debug.warn("setLoginItemSettings:", err);
   }
   try {
     return app.getLoginItemSettings();

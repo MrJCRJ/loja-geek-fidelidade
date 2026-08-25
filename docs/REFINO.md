@@ -36,6 +36,13 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Hooks `useDashboardData` + `useDashboardCheckout`
 - [x] `DashboardPage` ~470 → ~65 (orquestrador)
 
+## Feito (parte 12)
+
+- [x] R9: logs Electron gated (`GEEKLOCK_DEBUG` / dev)
+- [x] R10: `useAdminEnrollCamera` — AdminPage ~370 → ~260
+- [x] R11: tipagem `ZodError` + WS status + `db.ts` helpers
+- [x] R12: ícone marca `icon-256.png` no GeekLock e GeekCentral
+
 ---
 
 ## Backlog encontrado
@@ -63,10 +70,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 | # | Item | Onde | Nota |
 |---|------|------|------|
-| R9 | `console.log/warn` em atalhos Electron | GeekLock `main.cjs` | Só em dev / nível debug |
-| R10 | AdminPage ainda concentra enroll + tabs | `web/src/pages/AdminPage.tsx` | Já modular; dá para afinar |
-| R11 | Testes de tipagem `server` frouxos | `app.ts` / `db.ts` | Ajustar tipos sem mudar runtime |
-| R12 | Ícone default Electron | packs | Branding no builder |
+| R9 | ~~`console.log/warn` em atalhos Electron~~ | — | **feito parte 12** (`electron/debug.cjs`, só dev/DEBUG) |
+| R10 | ~~AdminPage enroll/câmera~~ | — | **feito parte 12** (`useAdminEnrollCamera`) |
+| R11 | ~~Tipagem frouxa server~~ | — | **feito parte 12** (`app.ts` ZodError, `db.ts`) |
+| R12 | ~~Ícone default Electron~~ | — | **feito parte 12** (`icon-256.png` + electron-builder) |
 
 ### Produto (não é só limpeza)
 
@@ -81,4 +88,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 11:** CI GitHub Actions (P2) **ou** cortar `DashboardPage` (portal front).
+**Parte 12:** CI GitHub Actions (P2) **ou** polimento R9–R12.

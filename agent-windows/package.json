@@ -33,6 +33,7 @@
   "build": {
     "appId": "br.lojageek.geeklock",
     "productName": "GeekLock",
+    "icon": "../portal/public/brand/icon-256.png",
     "directories": {
       "output": "release"
     },
@@ -54,6 +55,7 @@
           "arch": ["x64"]
         }
       ],
+      "icon": "../portal/public/brand/icon-256.png",
       "artifactName": "GeekLock.exe"
     },
     "linux": {
@@ -63,6 +65,7 @@
           "arch": ["x64"]
         }
       ],
+      "icon": "../portal/public/brand/icon-256.png",
       "category": "Utility",
       "artifactName": "GeekLock-${version}.AppImage"
     }

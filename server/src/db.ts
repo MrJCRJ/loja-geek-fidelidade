@@ -5,6 +5,9 @@ import { config } from "./config.js";
 
 export type CustomerLevel = "bronze" | "prata" | "ouro";
 
+type TableInfoRow = { name: string };
+type CountRow = { c: number };
+
 let db: Database.Database | undefined;
 
 export function getDb() {
@@ -132,9 +135,9 @@ export function initDb(databasePath?: string) {
   `);
 
   // Migrações leves (colunas novas em DBs já existentes)
-  const customerCols = (
-    db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>
-  ).map((c) => c.name);
+  const customerCols = (db.prepare("PRAGMA table_info(customers)").all() as TableInfoRow[]).map(
+    (c) => c.name,
+  );
   const ensureCol = (name: string, ddl: string) => {
     if (!customerCols.includes(name)) {
       db.exec(`ALTER TABLE customers ADD COLUMN ${ddl}`);
@@ -167,7 +170,7 @@ export function initDb(databasePath?: string) {
       ON customers(email) WHERE email IS NOT NULL AND email != '';
   `);
 
-  const countRewards = db.prepare("SELECT COUNT(*) AS c FROM rewards").get() as { c: number };
+  const countRewards = db.prepare("SELECT COUNT(*) AS c FROM rewards").get() as CountRow;
   if (countRewards.c === 0) {
     const now = new Date().toISOString();
     const insert = db.prepare(

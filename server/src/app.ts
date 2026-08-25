@@ -1,7 +1,8 @@
 import cors from "@fastify/cors";
 import fastifyJwt from "@fastify/jwt";
 import websocket from "@fastify/websocket";
-import Fastify, { type FastifyInstance } from "fastify";
+import Fastify, { type FastifyError, type FastifyInstance } from "fastify";
+import { ZodError } from "zod";
 import { config } from "./config.js";
 import { initDb } from "./db.js";
 import { addClient, broadcastAdmins, setStationStatus } from "./hub.js";
@@ -39,9 +40,9 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
   const { registerPortalRoutes } = await import("./portal-routes.js");
   await registerPortalRoutes(app);
 
-  app.setErrorHandler((error, _req, reply) => {
-    if (error?.name === "ZodError") {
-      return reply.code(400).send({ error: "Dados inválidos", details: (error as { issues?: unknown }).issues });
+  app.setErrorHandler((error: FastifyError, _req, reply) => {
+    if (error instanceof ZodError) {
+      return reply.code(400).send({ error: "Dados inválidos", details: error.issues });
     }
     const status = error.statusCode ?? 500;
     if (error.validation) {
@@ -94,7 +95,16 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
 
       socket.on("message", (raw) => {
         try {
-          const msg = JSON.parse(String(raw)) as Record<string, unknown>;
+          const msg = JSON.parse(String(raw)) as {
+            type?: string;
+            phase?: string;
+            mode?: string;
+            customerName?: string | null;
+            elapsed?: number;
+            present?: boolean;
+            absentLeft?: number | null;
+            at?: string;
+          };
           if (msg.type === "station_status") {
             const payload = {
               type: "station_status",
