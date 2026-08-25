@@ -6,5 +6,9 @@
   "unitId": "unit-1",
   "apiPort": 8787,
   "facePort": 8100,
-  "setupComplete": false
+  "setupComplete": false,
+  "openAtLogin": true,
+  "bootDelayMs": 15000,
+  "firewallRuleDone": false,
+  "portalOrigin": "https://loja-geek-portal.vercel.app"
 }

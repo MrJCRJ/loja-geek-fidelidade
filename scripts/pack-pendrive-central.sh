@@ -35,13 +35,15 @@ GeekCentral — PC CONTROLE Windows (pendrive)
 O que é
 - Sobe API (porta 8787), reconhecimento facial e o painel admin.
 - Não precisa Docker. Copie a PASTA inteira (não só o .exe).
+- Após o 1º setup, inicia com o Windows (bandeja). Fechar a janela NÃO para a API.
 
 Como usar no PC da loja
 1) Copie a pasta GeekCentral do pendrive para o disco (ex.: C:\GeekCentral).
 2) Execute GeekCentral.exe.
-3) Espere ficar "Online". Anote o IP da LAN mostrado na tela.
-4) Clique em "Abrir admin" (senha padrão: admin123).
-5) Cadastre VIP + enroll facial.
+3) Complete o wizard (senha admin + segredos).
+4) Espere ficar "Online". Anote o IP da LAN.
+5) Clique em "Abrir admin". Opcional: "Liberar firewall (8787)".
+6) Deixe "Iniciar com o Windows" marcado.
 
 Estações (outros PCs)
 1) Copie a pasta GeekLock do pendrive.
@@ -51,13 +53,13 @@ Estações (outros PCs)
 3) Execute GeekLock.exe e permita a webcam.
 
 Firewall Windows
-- Na primeira execução, permita GeekCentral / Node na rede privada (porta 8787).
+- Use o botão "Liberar firewall" no GeekCentral, ou permita na 1ª execução (rede privada).
 
 Dados
 - Banco e modelos ficam em GeekCentral\data\ (faça backup dessa pasta).
 
-Admin remoto (fase futura)
-- Ver README.md seção "Admin de qualquer lugar (fase 2)".
+Sair de verdade
+- Clique com o botão direito no ícone da bandeja → Sair.
 EOF
 
 echo "OK: $OUT"

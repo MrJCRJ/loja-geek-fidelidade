@@ -117,6 +117,10 @@ class ServiceManager {
     this.app = app;
     this.procs = [];
     this.startedAt = null;
+    /** @type {ReturnType<typeof setInterval> | null} */
+    this.watchdogTimer = null;
+    this._restarting = false;
+    this._restartAttempts = 0;
     this.status = {
       phase: "idle",
       api: false,
@@ -128,6 +132,10 @@ class ServiceManager {
       needsSetup: true,
       setupComplete: false,
       unitName: "Unidade 1",
+      openAtLogin: true,
+      bootDelayMs: 15_000,
+      firewallOk: false,
+      firewallError: "",
       startedAt: null,
       uptimeMs: 0,
       faceError: "",
@@ -167,9 +175,123 @@ class ServiceManager {
     this.status.unitName = String(cfg.unitName || "Unidade 1");
     this.status.adminPassword = this.status.setupComplete ? String(cfg.adminPassword || "") : "";
     this.status.lanIp = lanIPv4();
+    this.status.openAtLogin = cfg.openAtLogin !== false;
+    this.status.bootDelayMs = Number(cfg.bootDelayMs ?? 15_000);
+    this.status.firewallOk = Boolean(cfg.firewallRuleDone);
+    this.status.firewallError = String(cfg.firewallError || "");
     this.status.phase = this.status.needsSetup ? "setup" : this.status.phase;
     this.emit();
-    return { ...this.status, suggestedJwt: randomSecret(), suggestedStation: randomSecret() };
+    return {
+      ...this.status,
+      suggestedJwt: randomSecret(),
+      suggestedStation: randomSecret(),
+      firewallRuleDone: Boolean(cfg.firewallRuleDone),
+    };
+  }
+
+  getOpenAtLogin() {
+    const cfg = loadConfig(this.dataDir());
+    return cfg.openAtLogin !== false;
+  }
+
+  getBootDelayMs() {
+    const cfg = loadConfig(this.dataDir());
+    return Number(cfg.bootDelayMs ?? 15_000);
+  }
+
+  setOpenAtLogin(enabled) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    cfg.openAtLogin = Boolean(enabled);
+    saveConfig(dataDir, cfg);
+    this.status.openAtLogin = cfg.openAtLogin;
+    this.emit();
+  }
+
+  markFirewallAttempt(result) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    cfg.firewallRuleDone = Boolean(result?.ok);
+    cfg.firewallError = result?.ok ? "" : String(result?.error || "");
+    saveConfig(dataDir, cfg);
+    this.status.firewallOk = Boolean(result?.ok);
+    this.status.firewallError = cfg.firewallError;
+    if (result?.ok) this.log("[firewall] regra TCP liberada (rede privada)");
+    else this.log(`[firewall] ${cfg.firewallError || "falhou"}`);
+    this.emit();
+  }
+
+  stopWatchdog() {
+    if (this.watchdogTimer) {
+      clearInterval(this.watchdogTimer);
+      this.watchdogTimer = null;
+    }
+  }
+
+  startWatchdog() {
+    this.stopWatchdog();
+    this.watchdogTimer = setInterval(() => {
+      this.checkHealthAndRecover().catch(() => undefined);
+    }, 20_000);
+  }
+
+  async probeHealth(port, pathSuffix) {
+    return new Promise((resolve) => {
+      const req = http.get(`http://127.0.0.1:${port}${pathSuffix}`, { timeout: 4000 }, (res) => {
+        res.resume();
+        resolve(Boolean(res.statusCode && res.statusCode >= 200 && res.statusCode < 400));
+      });
+      req.on("error", () => resolve(false));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(false);
+      });
+    });
+  }
+
+  async checkHealthAndRecover() {
+    if (this._restarting) return;
+    if (this.status.phase === "setup" || this.status.needsSetup) return;
+    if (this.status.phase === "starting") return;
+
+    const apiOk = await this.probeHealth(this.status.apiPort, "/api/health");
+    const faceOk = await this.probeHealth(this.status.facePort, "/health");
+    this.status.api = apiOk;
+    this.status.face = faceOk;
+    this.status.lastFaceCheck = new Date().toISOString();
+    if (!faceOk && !this.status.faceError) this.status.faceError = "Face sem resposta";
+    if (faceOk) this.status.faceError = "";
+    this.emit();
+
+    if (apiOk) {
+      this._restartAttempts = 0;
+      if (this.status.phase !== "running") {
+        this.status.phase = "running";
+        this.status.error = "";
+        this.emit();
+      }
+      return;
+    }
+
+    // API caiu — reinicia com backoff
+    this._restartAttempts += 1;
+    const delay = Math.min(60_000, 5_000 * this._restartAttempts);
+    this.log(`[watchdog] API off — reinício #${this._restartAttempts} em ${Math.round(delay / 1000)}s`);
+    this.status.phase = "error";
+    this.status.error = "API parou — reiniciando automaticamente…";
+    this.emit();
+    this._restarting = true;
+    setTimeout(() => {
+      this.start({ skipBootDelay: true })
+        .catch((err) => {
+          this.status.phase = "error";
+          this.status.error = err instanceof Error ? err.message : String(err);
+          this.emit();
+        })
+        .finally(() => {
+          this._restarting = false;
+        });
+    }, delay);
   }
 
   /**
@@ -208,6 +330,7 @@ class ServiceManager {
   }
 
   stop() {
+    this.stopWatchdog();
     for (const p of this.procs) {
       try {
         if (process.platform === "win32") {
@@ -225,7 +348,11 @@ class ServiceManager {
     this.status.uptimeMs = 0;
   }
 
-  async start() {
+  /**
+   * @param {{ fromBoot?: boolean, skipBootDelay?: boolean }} [opts]
+   */
+  async start(opts = {}) {
+    this.stopWatchdog();
     this.stop();
     const dataDir = this.dataDir();
     fs.mkdirSync(dataDir, { recursive: true });
@@ -242,9 +369,19 @@ class ServiceManager {
       this.status.error = "";
       this.status.adminPassword = "";
       this.status.unitName = String(cfg.unitName || "Unidade 1");
+      this.status.openAtLogin = cfg.openAtLogin !== false;
       this.log("[setup] Configure a senha e os segredos antes de subir os serviços");
       this.emit();
       return;
+    }
+
+    const bootDelay = opts.skipBootDelay ? 0 : Number(cfg.bootDelayMs ?? 15_000);
+    if (opts.fromBoot && bootDelay > 0) {
+      this.status.phase = "starting";
+      this.status.error = "";
+      this.log(`[boot] aguardando ${Math.round(bootDelay / 1000)}s (rede/disco)…`);
+      this.emit();
+      await new Promise((r) => setTimeout(r, bootDelay));
     }
 
     this.status.phase = "starting";
@@ -255,6 +392,8 @@ class ServiceManager {
     this.status.needsSetup = false;
     this.status.setupComplete = true;
     this.status.lanIp = lanIPv4();
+    this.status.openAtLogin = cfg.openAtLogin !== false;
+    this.status.bootDelayMs = Number(cfg.bootDelayMs ?? 15_000);
     this.emit();
 
     const rt = runtimeRoot();
@@ -289,7 +428,6 @@ class ServiceManager {
     if (fs.existsSync(pyExe) && fs.existsSync(path.join(faceDir, "main.py"))) {
       const faceEnv = {
         ...commonEnv,
-        FACE_MODE: "opencv",
         MODEL_ROOT: path.join(dataDir, "models"),
         PYTHONPATH: [sitePackages, faceDir].join(process.platform === "win32" ? ";" : ":"),
       };
@@ -330,6 +468,7 @@ class ServiceManager {
       STRICT_SECRETS: "1",
       UNIT_NAME: String(cfg.unitName || "Unidade 1"),
       UNIT_ID: String(cfg.unitId || "unit-1"),
+      PORTAL_ORIGIN: String(cfg.portalOrigin || process.env.PORTAL_ORIGIN || ""),
     };
     const api = spawn(apiCmd, [serverEntry], {
       cwd: path.join(nodeDir, "server"),
@@ -367,10 +506,13 @@ class ServiceManager {
     await waitHttp(`http://127.0.0.1:${this.status.apiPort}/api/health`, 90_000);
     this.status.api = true;
     this.status.phase = "running";
+    this.status.error = "";
     this.startedAt = Date.now();
     this.status.startedAt = this.startedAt;
     this.status.uptimeMs = 0;
+    this._restartAttempts = 0;
     this.emit();
+    this.startWatchdog();
   }
 }
 

@@ -42,6 +42,8 @@ export default function App() {
   const [jwtSecret, setJwtSecret] = useState("");
   const [stationSecret, setStationSecret] = useState("");
   const [tick, setTick] = useState(0);
+  const [openAtLogin, setOpenAtLogin] = useState(true);
+  const [fwMsg, setFwMsg] = useState("");
 
   useEffect(() => {
     window.geekcentral.getStatus().then(setStatus).catch(() => undefined);
@@ -52,9 +54,17 @@ export default function App() {
         if (peek.suggestedJwt) setJwtSecret(peek.suggestedJwt);
         if (peek.suggestedStation) setStationSecret(peek.suggestedStation);
         if (peek.unitName) setUnitName(peek.unitName);
+        if (typeof peek.openAtLogin === "boolean") setOpenAtLogin(peek.openAtLogin);
       })
       .catch(() => undefined);
-    return window.geekcentral.onStatus(setStatus);
+    window.geekcentral
+      .getAutostart()
+      .then((a) => setOpenAtLogin(a.openAtLogin))
+      .catch(() => undefined);
+    return window.geekcentral.onStatus((s) => {
+      setStatus(s);
+      if (typeof s.openAtLogin === "boolean") setOpenAtLogin(s.openAtLogin);
+    });
   }, []);
 
   useEffect(() => {
@@ -246,6 +256,49 @@ export default function App() {
               Reiniciar serviços
             </button>
           </div>
+          <div className="row" style={{ marginTop: "0.85rem", alignItems: "center" }}>
+            <label className="row" style={{ gap: "0.45rem", cursor: "pointer" }}>
+              <input
+                type="checkbox"
+                checked={openAtLogin}
+                onChange={(e) => {
+                  const on = e.target.checked;
+                  setOpenAtLogin(on);
+                  window.geekcentral
+                    .setAutostart(on)
+                    .then((r) => setOpenAtLogin(r.openAtLogin))
+                    .catch(() => undefined);
+                }}
+              />
+              <span>Iniciar com o Windows</span>
+            </label>
+          </div>
+          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+            Fecha a janela → fica na bandeja (API continua). “Sair” só pelo menu da bandeja.
+            {status.bootDelayMs ? ` Delay no boot: ${Math.round(status.bootDelayMs / 1000)}s.` : ""}
+          </p>
+          <div className="row" style={{ marginTop: "0.65rem" }}>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setFwMsg("Aplicando…");
+                window.geekcentral
+                  .ensureFirewall()
+                  .then((r) => setFwMsg(r.ok ? "Firewall OK (rede privada)" : r.error || "Falhou"))
+                  .catch((e) => setFwMsg(e instanceof Error ? e.message : "Falhou"));
+              }}
+            >
+              Liberar firewall (8787)
+            </button>
+          </div>
+          {fwMsg && <p className="muted">{fwMsg}</p>}
+          {status.firewallError && !status.firewallOk && (
+            <p className="muted" style={{ color: "var(--warn)" }}>
+              Firewall: {status.firewallError}
+            </p>
+          )}
         </section>
 
         <section className="panel">

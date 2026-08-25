@@ -86,27 +86,28 @@ Windows login
 
 ## E — Ordem sugerida de implementação
 
-### Fase 1 — “liga sozinho” (maior impacto na loja)
-1. **B1–B4** — autostart + tray + single-instance no GeekCentral  
-2. **A3** — regra de firewall na 1ª execução  
-3. **B5–B6** — delay no boot + restart se face/API morrer  
+### Fase 1 — “liga sozinho” ✅ (2026-08-25)
+1. ~~**B1–B4** — autostart + tray + single-instance no GeekCentral~~ **feito**
+2. ~~**A3** — regra de firewall na 1ª execução~~ **feito** (botão + tentativa no setup)
+3. ~~**B5–B6** — delay no boot + restart se face/API morrer~~ **feito** (watchdog)
 
 ### Fase 2 — “portal sempre no ar”
-4. **C1–C5** — cloudflared no Central + UI túnel + config em `data\`  
-5. **C6–C8** — health público + PORTAL_ORIGIN + URL webhook  
+4. **C1–C5** — cloudflared no Central + UI túnel + config em `data\`
+5. **C6–C8** — health público + PORTAL_ORIGIN + URL webhook
 
 ### Fase 3 — “instalação zero fricção”
-6. **A1–A2, A5–A7** — wizard / atalhos / update / uninstall  
-7. **D1–D3** — descoberta LAN + QR + assistente GeekLock  
+6. **A1–A2, A5–A7** — wizard / atalhos / update / uninstall
+7. **D1–D3** — descoberta LAN + QR + assistente GeekLock
 
 ---
 
 ## Critérios de pronto (aceite na loja)
 
-- [ ] Reiniciar o **PC controle Windows** → sem clicar em nada, em ~1–2 min: API `:8787` responde, face healthy.  
-- [ ] Com túnel ligado: portal Vercel deixa de mostrar “lanhouse offline”.  
-- [ ] GeekLock nas estações acha a central (IP fixo ou descoberta) e autostart continua ok.  
-- [ ] Operador consegue copiar URL do túnel e URL do webhook Pix da própria tela do GeekCentral.  
+- [x] GeekCentral: autostart Windows, bandeja, single-instance, delay no boot, watchdog API
+- [ ] Reiniciar o **PC controle Windows** → sem clicar em nada, em ~1–2 min: API `:8787` responde, face healthy. *(validar após pack)*
+- [ ] Com túnel ligado: portal Vercel deixa de mostrar “lanhouse offline”.
+- [ ] GeekLock nas estações acha a central (IP fixo ou descoberta) e autostart continua ok.
+- [ ] Operador consegue copiar URL do túnel e URL do webhook Pix da própria tela do GeekCentral.
 
 ---
 

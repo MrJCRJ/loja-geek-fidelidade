@@ -33,9 +33,9 @@ Portal: https://loja-geek-portal.vercel.app
 
 ## Exe Windows — instalação / túnel / boot
 
-Lista dedicada (GeekCentral como GeekLock no login + túnel + API automática):
+Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 
-→ **[`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)**
+**Fase 1 feita:** GeekCentral com autostart Windows, bandeja, single-instance, delay no boot, watchdog da API e botão de firewall.
 
 ---
 

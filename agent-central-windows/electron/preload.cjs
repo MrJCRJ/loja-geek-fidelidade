@@ -7,6 +7,9 @@ contextBridge.exposeInMainWorld("geekcentral", {
   restart: () => ipcRenderer.invoke("central:restart"),
   openAdmin: () => ipcRenderer.invoke("central:open-admin"),
   openUrl: (url) => ipcRenderer.invoke("central:open-url", url),
+  getAutostart: () => ipcRenderer.invoke("central:get-autostart"),
+  setAutostart: (enabled) => ipcRenderer.invoke("central:set-autostart", enabled),
+  ensureFirewall: () => ipcRenderer.invoke("central:ensure-firewall"),
   onStatus: (cb) => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on("central:status", handler);

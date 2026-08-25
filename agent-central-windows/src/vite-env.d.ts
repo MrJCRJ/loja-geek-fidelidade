@@ -9,6 +9,10 @@ export type CentralStatus = {
   needsSetup?: boolean;
   setupComplete?: boolean;
   unitName?: string;
+  openAtLogin?: boolean;
+  bootDelayMs?: number;
+  firewallOk?: boolean;
+  firewallError?: string;
   startedAt?: number | null;
   uptimeMs?: number;
   faceError?: string;
@@ -20,6 +24,7 @@ export type CentralStatus = {
 export type SetupPeek = CentralStatus & {
   suggestedJwt?: string;
   suggestedStation?: string;
+  firewallRuleDone?: boolean;
 };
 
 export type GeekCentralApi = {
@@ -34,6 +39,9 @@ export type GeekCentralApi = {
   restart: () => Promise<{ ok: boolean; error?: string; status?: CentralStatus }>;
   openAdmin: () => Promise<{ ok: boolean; url: string }>;
   openUrl: (url: string) => Promise<{ ok: boolean }>;
+  getAutostart: () => Promise<{ openAtLogin: boolean; bootDelayMs: number }>;
+  setAutostart: (enabled: boolean) => Promise<{ ok: boolean; openAtLogin: boolean; bootDelayMs: number }>;
+  ensureFirewall: () => Promise<{ ok: boolean; error?: string }>;
   onStatus: (cb: (s: CentralStatus) => void) => () => void;
 };
 
