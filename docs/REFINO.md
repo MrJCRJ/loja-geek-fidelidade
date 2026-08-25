@@ -88,4 +88,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 12:** CI GitHub Actions (P2) **ou** polimento R9–R12.
+**Parte 13:** CI GitHub Actions (P2) **ou** melhorias de produto (P1 admin mobile, P3 LGPD).
