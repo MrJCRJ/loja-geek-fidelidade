@@ -9,10 +9,11 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Normalizar `AdminSettings` num único helper no admin web
 - [x] Abrir esta lista a partir da auditoria
 
-## Feito (parte 3)
+## Feito (parte 4)
 
-- [x] `shared/format-time.ts` — `formatDuration`, `formatHours`, `formatHoursPortal`
-- [x] web / portal / GeekLock reexportam o shared
+- [x] `http-guards.ts` — `adminGuard` + `stationFromHeader`
+- [x] `station-routes.ts` — CRUD, heartbeat, claim, commands
+- [x] `routes.ts` enxugado (~110 linhas a menos nesta fatia)
 
 ---
 
@@ -22,7 +23,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 | # | Item | Onde | Nota |
 |---|------|------|------|
-| R1 | `routes.ts` ~1060 linhas | `server/src/routes.ts` | Partir em stations / customers / sessions / admin |
+| R1 | `routes.ts` ainda grande | `server/src/routes.ts` | Parte 4 tirou stations; faltam customers / face / sessions |
 | R2 | `App.tsx` GeekLock ~1100 linhas | `agent-windows/src/App.tsx` | Separar scan/sessão/UI/WS |
 | R3 | `ClientesTab` ~560 linhas | `web/src/admin/tabs/ClientesTab.tsx` | Extrair enroll + tabela |
 
@@ -58,4 +59,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 4:** extrair um primeiro pedaço de `server/src/routes.ts` (ex.: rotas de stations + commands) — maior impacto em manutenibilidade.
+**Parte 5:** extrair rotas de sessions (+ recognize/presence) ou customers de `routes.ts`.
