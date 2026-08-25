@@ -228,12 +228,14 @@ function showLoadErrorPage(win) {
   <title>GeekLock</title>
   <style>
     body { margin:0; min-height:100vh; display:grid; place-items:center;
-      font-family:system-ui,sans-serif; background:#1a1f2b; color:#f4f1ea; }
-    .box { max-width:480px; padding:2rem; border:1px solid #2a3344; border-radius:12px;
-      background:#0f1115; text-align:center; }
+      font-family:system-ui,sans-serif; color:#eef2f8;
+      background:linear-gradient(160deg,#060f1f,#0c1e3d); }
+    .box { max-width:480px; padding:2rem; border:1px solid rgba(255,255,255,.1);
+      border-radius:14px; background:rgba(12,30,61,.45); backdrop-filter:blur(12px);
+      text-align:center; box-shadow:0 12px 40px rgba(0,0,0,.28); }
     h1 { margin:0 0 0.5rem; color:#2dd4bf; }
-    p { color:#9aa3b5; line-height:1.5; }
-    kbd { background:#243041; padding:0.15rem 0.4rem; border-radius:4px; }
+    p { color:#8fa4c4; line-height:1.5; }
+    kbd { background:rgba(255,255,255,.08); padding:0.15rem 0.4rem; border-radius:4px; }
   </style>
 </head>
 <body>
@@ -278,7 +280,7 @@ function createWindow() {
     fullscreen: true,
     alwaysOnTop: true,
     skipTaskbar: true,
-    backgroundColor: "#1a1f2b",
+    backgroundColor: "#060f1f",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
