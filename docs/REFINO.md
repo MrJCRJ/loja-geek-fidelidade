@@ -25,6 +25,11 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] `ClientesTab` ~560 → ~180 (orquestrador)
 - [x] `shared/api-error.ts` — `ApiError` unificado (web, portal, GeekLock)
 
+## Feito (parte 10)
+
+- [x] Server: `portal-routes.ts` partido em public, account, checkout, enroll + catalog/guards
+- [x] `portal-routes.ts` ~500 → ~12 (orquestrador)
+
 ---
 
 ## Backlog encontrado
@@ -44,7 +49,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | R4 | ~~`cameraErrorMessage` triplicado~~ | — | **feito parte 2** |
 | R5 | ~~Portal não usa `shared/camera.ts`~~ | — | **feito parte 2** |
 | R6 | ~~`formatDuration` / `formatHours` parecidos~~ | — | **feito parte 3** |
-| R7 | `DashboardPage` / `payments` / `portal-routes` ~500 linhas | portal + server | Cortar em pedaços quando tocar |
+| R7 | ~~`portal-routes` monolito~~ | — | **feito parte 10** (public/account/checkout/enroll) |
 | R8 | ~~`ApiError` duplicado~~ | — | **feito parte 9** (`shared/api-error.ts`) |
 
 ### Baixo (polimento)
@@ -69,4 +74,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 10:** CI GitHub Actions (P2) **ou** cortar `DashboardPage` / portal-routes (R7).
+**Parte 11:** CI GitHub Actions (P2) **ou** cortar `DashboardPage` (portal front).
