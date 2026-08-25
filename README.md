@@ -151,3 +151,7 @@ npm run loja:ready
 ## Repositório
 
 GitHub (privado): https://github.com/MrJCRJ/loja-geek-fidelidade
+
+## Continuar em outro PC
+
+Backlog de melhorias e o que dá para remover (sem perder função): ver **[AUDITORIA.md](./AUDITORIA.md)**.
