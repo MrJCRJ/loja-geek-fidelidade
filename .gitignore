@@ -33,3 +33,13 @@ deploy/certs/*.key
 *.zip
 .cache/
 agent-central-windows/data-dev/
+
+# runtime local
+data/*.pid
+data/*.lock
+data/*.pids
+data/*.db
+data/*.db-*
+*.db
+*.db-wal
+*.db-shm
