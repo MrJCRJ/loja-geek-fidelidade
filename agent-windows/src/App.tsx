@@ -1,16 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   attachCameraStream,
-  captureFrame,
   checkHealth,
   claimStation,
   endSession,
   heartbeat,
   openUserCamera,
-  checkPresence,
-  recognize,
-  sessionHeartbeat,
-  startSession,
 } from "./api";
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
@@ -18,18 +13,9 @@ import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
 import { OfflineScreen } from "./OfflineScreen";
 import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
-import {
-  DEFAULT_ABSENT_SEC,
-  KEEP_STREAK_MIN_SCORE,
-  PRESENCE_MS,
-  SESSION_HB_MS,
-  STRONG_MATCH_SCORE,
-  playUnlockChime,
-  scanVisualFromReason,
-  sessionStartErrorMessage,
-  type Phase,
-  type RemoteBanner,
-} from "./kiosk-helpers";
+import { scanVisualFromReason, type Phase, type RemoteBanner } from "./kiosk-helpers";
+import { useRecognizeLoop } from "./hooks/useRecognizeLoop";
+import { usePresenceLoop } from "./hooks/usePresenceLoop";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
 export default function App() {
@@ -51,11 +37,7 @@ export default function App() {
   const [remoteBanner, setRemoteBanner] = useState<RemoteBanner | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const scanningRef = useRef(false);
   const absentSinceRef = useRef<number | null>(null);
-  const noFaceStreakRef = useRef(0);
-  const serviceDownStreakRef = useRef(0);
-  const matchStreakRef = useRef<{ id: string; count: number } | null>(null);
   const presenceMissStreakRef = useRef(0);
   const handoffStreakRef = useRef<{ id: string; count: number } | null>(null);
   const handoffBusyRef = useRef(false);
@@ -63,8 +45,6 @@ export default function App() {
   const customerRef = useRef<Customer | null>(null);
   const configRef = useRef<GeekLockConfig | null>(null);
   const phaseRef = useRef<Phase>("boot");
-  const scanTimerRef = useRef<number | null>(null);
-  const presenceTimerRef = useRef<number | null>(null);
   const camRetryRef = useRef<number | null>(null);
   /** Epoch ms do início da sessão (timer local). */
   const sessionStartedAtRef = useRef<number | null>(null);
@@ -457,316 +437,48 @@ export default function App() {
     };
   }, [doEndSession, lockUi, unlockUi]);
 
-  // Recognize loop when locked
-  useEffect(() => {
-    if (phase !== "locked" || !config?.stationToken) return;
+  useRecognizeLoop({
+    phase,
+    config,
+    videoRef,
+    configRef,
+    unlockUi,
+    sessionStartedAtRef,
+    absentSinceRef,
+    presenceMissStreakRef,
+    handoffStreakRef,
+    setScanning,
+    setScanReason,
+    setCustomer,
+    setScore,
+    setStatus,
+    setWelcomeCustomer,
+    setSession,
+    setElapsed,
+  });
 
-    let cancelled = false;
-    matchStreakRef.current = null;
-
-    const scanOnce = async () => {
-      if (cancelled || scanningRef.current) return;
-      const video = videoRef.current;
-      if (!video || video.readyState < 2 || !video.videoWidth) {
-        if (!cancelled) scheduleNext();
-        return;
-      }
-
-      scanningRef.current = true;
-      setScanning(true);
-      try {
-        const imageBase64 = captureFrame(video, 0.85);
-        const res = await recognize(config, imageBase64);
-
-        if (res.matched && res.customer && (res.score ?? 0) > 0) {
-          noFaceStreakRef.current = 0;
-          serviceDownStreakRef.current = 0;
-          const score = res.score ?? 0;
-          const prev = matchStreakRef.current;
-          if (prev && prev.id === res.customer.id) {
-            matchStreakRef.current = { id: res.customer.id, count: prev.count + 1 };
-          } else {
-            matchStreakRef.current = { id: res.customer.id, count: 1 };
-          }
-
-          const streak = matchStreakRef.current.count;
-          const strongEnough = score >= STRONG_MATCH_SCORE;
-          const confirmed = strongEnough || streak >= 2;
-
-          setScanReason(undefined);
-          setCustomer(res.customer);
-          setScore(score);
-          if (!confirmed) {
-            setStatus(`Confirmando ${res.customer.name}… (${streak}/2 · ${(score * 100).toFixed(0)}%)`);
-            return;
-          }
-
-          const bal =
-            typeof res.timeBalanceSeconds === "number" ? res.timeBalanceSeconds : null;
-          if (bal != null && bal <= 0) {
-            matchStreakRef.current = null;
-            setWelcomeCustomer(null);
-            setScanReason("no_credit");
-            setStatus("Sem crédito — passe no caixa para liberar o PC");
-            return;
-          }
-
-          setStatus(`VIP ${res.customer.name} reconhecido — liberando`);
-          setWelcomeCustomer(res.customer);
-
-          try {
-            const started = await startSession(config, res.customer.id);
-            if (cancelled) return;
-            setSession(started.session);
-            if (started.customer) setCustomer(started.customer);
-            const startedAt = Date.parse(started.session.started_at);
-            sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
-            setElapsed(Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)));
-            absentSinceRef.current = null;
-            presenceMissStreakRef.current = 0;
-            handoffStreakRef.current = null;
-            matchStreakRef.current = null;
-            playUnlockChime();
-            await unlockUi();
-          } catch (err) {
-            matchStreakRef.current = null;
-            setWelcomeCustomer(null);
-            const mapped = sessionStartErrorMessage(err);
-            setScanReason(mapped.reason);
-            setStatus(mapped.status);
-          }
-        } else {
-          const reason = res.reason || "no_face";
-          const best = typeof res.bestScore === "number" ? res.bestScore : 0;
-          if (reason === "service_down") {
-            serviceDownStreakRef.current += 1;
-            setScanReason("service_down");
-            setStatus(res.tip || "Serviço facial reiniciando…");
-            const cfg = configRef.current;
-            if (cfg) {
-              checkHealth(cfg)
-                .then((h) => {
-                  if (h.faceService) serviceDownStreakRef.current = 0;
-                })
-                .catch(() => undefined);
-            }
-          } else {
-            serviceDownStreakRef.current = 0;
-            if (reason === "no_face") {
-              noFaceStreakRef.current += 1;
-              matchStreakRef.current = null;
-            } else if (reason === "unknown" || reason === "ambiguous") {
-              noFaceStreakRef.current = 0;
-              // Mantém streak se já tinha 1 match e o score ainda é alto
-              if (!(matchStreakRef.current && best >= KEEP_STREAK_MIN_SCORE)) {
-                matchStreakRef.current = null;
-              }
-            } else {
-              noFaceStreakRef.current = 0;
-              matchStreakRef.current = null;
-            }
-
-            if (typeof res.bestScore === "number") setScore(res.bestScore);
-            setScanReason(reason);
-            const tip =
-              res.tip ||
-              (reason === "no_face"
-                ? "Posicione o rosto no oval"
-                : best > 0
-                  ? `Não confirmado (${(best * 100).toFixed(0)}%) — olhe de frente`
-                  : "Não reconhecido");
-            setStatus(tip);
-          }
-        }
-      } catch (err) {
-        matchStreakRef.current = null;
-        setStatus(err instanceof Error ? err.message : "Erro no reconhecimento");
-        setScanReason("error");
-      } finally {
-        scanningRef.current = false;
-        setScanning(false);
-        if (!cancelled) scheduleNext();
-      }
-    };
-
-    const scheduleNext = () => {
-      const serviceDelay =
-        serviceDownStreakRef.current > 0
-          ? Math.min(5000 + serviceDownStreakRef.current * 1000, 15000)
-          : null;
-      const delay =
-        serviceDelay ??
-        (noFaceStreakRef.current >= 3 ? 2000 : matchStreakRef.current ? 1200 : 1500);
-      scanTimerRef.current = window.setTimeout(() => {
-        scanOnce().catch(() => scheduleNext());
-      }, delay);
-    };
-
-    scheduleNext();
-
-    return () => {
-      cancelled = true;
-      if (scanTimerRef.current != null) {
-        window.clearTimeout(scanTimerRef.current);
-        scanTimerRef.current = null;
-      }
-    };
-  }, [phase, config, unlockUi]);
-
-  // Presença: só VIP (Admin não retrava por ausência)
-  useEffect(() => {
-    if (phase !== "unlocked" || !config?.stationToken) return;
-    if (customer?.id === "staff") return;
-    if (!session) return;
-
-    if (!streamRef.current?.active) {
-      startCam().catch(() => undefined);
-    }
-
-    let cancelled = false;
-    let lastHb = 0;
-
-    const tick = async () => {
-      if (cancelled) return;
-      const cfg = configRef.current;
-      const sess = sessionRef.current;
-      if (!cfg) return;
-
-      const now = Date.now();
-      if (sess && now - lastHb >= SESSION_HB_MS) {
-        lastHb = now;
-        try {
-          const hb = await sessionHeartbeat(cfg, sess.id);
-          setSession(hb.session);
-          if (hb.timeDepleted || hb.session?.time_depleted) {
-            await doEndSession("no_credit");
-            return;
-          }
-        } catch {
-          /* ledger pode falhar — timer local continua */
-        }
-      }
-
-      const limitSec = cfg.absentSecondsToLock || DEFAULT_ABSENT_SEC;
-      const limitMs = limitSec * 1000;
-
-      if (!videoRef.current || videoRef.current.readyState < 2) {
-        presenceMissStreakRef.current += 1;
-        if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-          absentSinceRef.current = Date.now();
-        }
-      } else {
-        try {
-          const imageBase64 = captureFrame(videoRef.current, 0.85);
-          const vipId = sessionRef.current?.customer_id || customer?.id;
-          const res = await checkPresence(cfg, imageBase64, vipId);
-          if (res.reason === "service_down") {
-            // Não avança ausência durante reinício do face-service
-            presenceMissStreakRef.current = 0;
-          } else if (res.present) {
-            presenceMissStreakRef.current = 0;
-            handoffStreakRef.current = null;
-            absentSinceRef.current = null;
-            setAbsentLeft(null);
-          } else {
-            const otherId = res.bestCustomerId || null;
-            const otherScore = res.bestScore ?? 0;
-            const canHandoff =
-              !!otherId &&
-              otherId !== vipId &&
-              (res.reason === "other_vip" || otherScore >= STRONG_MATCH_SCORE);
-
-            if (canHandoff && !handoffBusyRef.current) {
-              const prev = handoffStreakRef.current;
-              if (prev && prev.id === otherId) {
-                handoffStreakRef.current = { id: otherId, count: prev.count + 1 };
-              } else {
-                handoffStreakRef.current = { id: otherId, count: 1 };
-              }
-              if (handoffStreakRef.current.count >= 2) {
-                handoffBusyRef.current = true;
-                try {
-                  const started = await startSession(cfg, otherId);
-                  if (cancelled) return;
-                  setSession(started.session);
-                  if (started.customer) {
-                    setCustomer(started.customer);
-                  } else {
-                    setCustomer({
-                      id: otherId,
-                      name: started.session.customer_name || "VIP",
-                      level: "bronze",
-                      points: 0,
-                    });
-                  }
-                  const startedAt = Date.parse(started.session.started_at);
-                  sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
-                  setElapsed(0);
-                  presenceMissStreakRef.current = 0;
-                  handoffStreakRef.current = null;
-                  absentSinceRef.current = null;
-                  setAbsentLeft(null);
-                  setStatus(`Sessão: ${started.session.customer_name || "VIP"}`);
-                  playUnlockChime();
-                } catch (err) {
-                  handoffStreakRef.current = null;
-                  const mapped = sessionStartErrorMessage(err);
-                  if (mapped.reason === "no_credit") {
-                    setStatus("Outro VIP sem crédito — aguardando ausência");
-                  }
-                  presenceMissStreakRef.current += 1;
-                  if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-                    absentSinceRef.current = Date.now();
-                  }
-                } finally {
-                  handoffBusyRef.current = false;
-                }
-              }
-            } else {
-              handoffStreakRef.current = null;
-              // no_face, low_quality, unknown, ambiguous — conta como ausência
-              presenceMissStreakRef.current += 1;
-              if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-                absentSinceRef.current = Date.now();
-              }
-            }
-          }
-        } catch {
-          presenceMissStreakRef.current += 1;
-          if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-            absentSinceRef.current = Date.now();
-          }
-        }
-      }
-
-      if (absentSinceRef.current != null) {
-        const left = Math.ceil((limitMs - (Date.now() - absentSinceRef.current)) / 1000);
-        setAbsentLeft(Math.max(0, left));
-        if (left <= 0) {
-          await doEndSession("absent");
-          return;
-        }
-      } else {
-        setAbsentLeft(null);
-      }
-
-      if (!cancelled) {
-        presenceTimerRef.current = window.setTimeout(() => {
-          tick().catch(() => undefined);
-        }, PRESENCE_MS);
-      }
-    };
-
-    tick().catch(() => undefined);
-
-    return () => {
-      cancelled = true;
-      if (presenceTimerRef.current != null) {
-        window.clearTimeout(presenceTimerRef.current);
-        presenceTimerRef.current = null;
-      }
-    };
-  }, [phase, config, session, customer?.id, startCam, doEndSession]);
+  usePresenceLoop({
+    phase,
+    config,
+    session,
+    customerId: customer?.id,
+    videoRef,
+    streamRef,
+    configRef,
+    sessionRef,
+    sessionStartedAtRef,
+    absentSinceRef,
+    presenceMissStreakRef,
+    handoffStreakRef,
+    handoffBusyRef,
+    startCam,
+    doEndSession,
+    setSession,
+    setCustomer,
+    setElapsed,
+    setAbsentLeft,
+    setStatus,
+  });
 
   const submitPin = async () => {
     setError("");

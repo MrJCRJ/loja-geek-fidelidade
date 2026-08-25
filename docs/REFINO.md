@@ -14,6 +14,11 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] GeekLock: `kiosk-helpers.ts`, `LockedScreen`, `OfflineScreen`, `RemoteBannerOverlay`
 - [x] `App.tsx` ~1116 → ~920 (lógica de scan/sessão ainda centralizada — próximo corte: hooks)
 
+## Feito (parte 8)
+
+- [x] GeekLock: `hooks/useRecognizeLoop.ts`, `hooks/usePresenceLoop.ts`
+- [x] `App.tsx` ~920 → ~634 (scan locked + presença/handoff unlocked)
+
 ---
 
 ## Backlog encontrado
@@ -23,7 +28,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | # | Item | Onde | Nota |
 |---|------|------|------|
 | R1 | ~~`routes.ts` monolito~~ | — | **feito partes 4–6** (stations/face/sessions/customers) |
-| R2 | GeekLock `App.tsx` ainda ~920 | `agent-windows/src/App.tsx` | Parte 7 tirou UI; extrair hooks scan/presença |
+| R2 | ~~GeekLock `App.tsx` monolito~~ | — | **feito partes 7–8** (~634 linhas; hooks scan/presença) |
 | R3 | `ClientesTab` ~560 linhas | `web/src/admin/tabs/ClientesTab.tsx` | Extrair enroll + tabela |
 
 ### Médio (duplicação / clareza)
@@ -58,4 +63,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 8:** extrair hooks do GeekLock (`useRecognizeLoop` / presença) **ou** partir `ClientesTab`.
+**Parte 9:** partir `ClientesTab` (enroll + tabela) **ou** R8 `ApiError` shared.
