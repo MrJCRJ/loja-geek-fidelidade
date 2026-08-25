@@ -31,6 +31,12 @@ Portal: https://loja-geek-portal.vercel.app
 | 4 | `STRICT_SECRETS=1` no PC controle |
 | 5 | Regenerar pendrive após estas mudanças (`pack:central` / `pack:lock`) |
 
+## Exe Windows — instalação / túnel / boot
+
+Lista dedicada (GeekCentral como GeekLock no login + túnel + API automática):
+
+→ **[`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)**
+
 ---
 
 ## P2 / P3 — Próximas (código ou produto)
