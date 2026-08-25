@@ -5,6 +5,7 @@ import {
   captureFrame as captureFrameShared,
   openFacingUserCamera,
 } from "../../shared/camera";
+import { formatHoursPortal } from "../../shared/format-time";
 
 const TOKEN_KEY = "lg_portal_token";
 
@@ -133,11 +134,7 @@ export async function api<T>(
 }
 
 export function formatHours(seconds: number) {
-  const s = Math.max(0, Math.floor(Number(seconds) || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m} min`;
+  return formatHoursPortal(seconds);
 }
 
 export function cameraErrorMessage(err: unknown): string {

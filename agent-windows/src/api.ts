@@ -5,6 +5,7 @@ import {
   captureFrame as captureFrameShared,
   openUserCamera as openUserCameraShared,
 } from "../../shared/camera";
+import { formatDuration as formatDurationShared } from "../../shared/format-time";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
 function joinUrl(base: string, path: string) {
@@ -216,10 +217,5 @@ export async function attachCameraStream(video: HTMLVideoElement, stream: MediaS
 }
 
 export function formatDuration(seconds: number) {
-  const s = Math.max(0, Math.floor(seconds));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m}m ${String(r).padStart(2, "0")}s`;
+  return formatDurationShared(seconds);
 }

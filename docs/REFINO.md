@@ -9,11 +9,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Normalizar `AdminSettings` num único helper no admin web
 - [x] Abrir esta lista a partir da auditoria
 
-## Feito (parte 2)
+## Feito (parte 3)
 
-- [x] `cameraErrorMessage` + cópias web/portal/kiosk em `shared/camera.ts`
-- [x] Portal usa `shared` (`openFacingUserCamera`, `attachCameraStream` com waitFrames)
-- [x] Admin web + GeekLock só reexportam o shared
+- [x] `shared/format-time.ts` — `formatDuration`, `formatHours`, `formatHoursPortal`
+- [x] web / portal / GeekLock reexportam o shared
 
 ---
 
@@ -33,7 +32,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 |---|------|------|------|
 | R4 | ~~`cameraErrorMessage` triplicado~~ | — | **feito parte 2** |
 | R5 | ~~Portal não usa `shared/camera.ts`~~ | — | **feito parte 2** |
-| R6 | `formatDuration` / `formatHours` parecidos | web + portal + lock | Um módulo shared de tempo |
+| R6 | ~~`formatDuration` / `formatHours` parecidos~~ | — | **feito parte 3** |
 | R7 | `DashboardPage` / `payments` / `portal-routes` ~500 linhas | portal + server | Cortar em pedaços quando tocar |
 | R8 | `ApiError` duplicado | web/portal/lock | Shared fino ou aceitar por fronteira |
 
@@ -59,4 +58,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 3:** `shared/format-time.ts` (`formatDuration` / `formatHours`) — ganho pequeno, risco mínimo.
+**Parte 4:** extrair um primeiro pedaço de `server/src/routes.ts` (ex.: rotas de stations + commands) — maior impacto em manutenibilidade.

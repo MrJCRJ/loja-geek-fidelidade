@@ -1,3 +1,5 @@
+import { formatDuration as formatDurationShared } from "../../shared/format-time";
+
 export type CustomerLevel = "bronze" | "prata" | "ouro";
 
 export type Customer = {
@@ -82,12 +84,7 @@ export type SessionStats = {
 };
 
 export function formatDuration(seconds: number) {
-  const s = Math.max(0, Math.floor(Number(seconds) || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const r = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
-  return `${m}m ${String(r).padStart(2, "0")}s`;
+  return formatDurationShared(seconds);
 }
 
 const TOKEN_KEY = "lg_admin_token";
