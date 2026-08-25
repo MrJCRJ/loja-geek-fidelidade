@@ -1,3 +1,4 @@
+import { ApiError } from "../../shared/api-error";
 import {
   CAMERA_ERROR_COPY,
   attachCameraStream as attachCameraStreamShared,
@@ -12,16 +13,7 @@ function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, "")}${path}`;
 }
 
-export class ApiError extends Error {
-  code?: string;
-  timeBalanceSeconds?: number;
-  constructor(message: string, opts?: { code?: string; timeBalanceSeconds?: number }) {
-    super(message);
-    this.name = "ApiError";
-    this.code = opts?.code;
-    this.timeBalanceSeconds = opts?.timeBalanceSeconds;
-  }
-}
+export { ApiError };
 
 export async function apiFetch<T>(
   config: GeekLockConfig,

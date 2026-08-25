@@ -1,3 +1,4 @@
+import { ApiError } from "../../shared/api-error";
 import { formatDuration as formatDurationShared } from "../../shared/format-time";
 
 export type CustomerLevel = "bronze" | "prata" | "ouro";
@@ -103,6 +104,8 @@ export function clearAdminSession() {
   window.dispatchEvent(new CustomEvent("lg-auth-expired"));
 }
 
+export { ApiError };
+
 export async function api<T>(
   path: string,
   options: RequestInit & { token?: string | null; stationToken?: string | null } = {},
@@ -121,9 +124,10 @@ export async function api<T>(
     if (res.status === 401 && token && options.stationToken == null && options.token !== null) {
       clearAdminSession();
     }
-    const err = data as { error?: string; tip?: string };
+    const err = data as { error?: string; tip?: string; code?: string };
     const msg = [err.error, err.tip].filter(Boolean).join(" — ") || `HTTP ${res.status}`;
-    throw new Error(res.status === 401 ? "Sessão expirada — faça login novamente (senha admin)." : msg);
+    const message = res.status === 401 ? "Sessão expirada — faça login novamente (senha admin)." : msg;
+    throw new ApiError(message, { tip: err.tip, code: err.code });
   }
   return data as T;
 }

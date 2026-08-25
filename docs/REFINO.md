@@ -19,6 +19,12 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] GeekLock: `hooks/useRecognizeLoop.ts`, `hooks/usePresenceLoop.ts`
 - [x] `App.tsx` ~920 → ~634 (scan locked + presença/handoff unlocked)
 
+## Feito (parte 9)
+
+- [x] Admin: `ClientesListPanel`, `ClienteEnrollPanel`, `ClienteManagePanel`
+- [x] `ClientesTab` ~560 → ~180 (orquestrador)
+- [x] `shared/api-error.ts` — `ApiError` unificado (web, portal, GeekLock)
+
 ---
 
 ## Backlog encontrado
@@ -29,7 +35,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 |---|------|------|------|
 | R1 | ~~`routes.ts` monolito~~ | — | **feito partes 4–6** (stations/face/sessions/customers) |
 | R2 | ~~GeekLock `App.tsx` monolito~~ | — | **feito partes 7–8** (~634 linhas; hooks scan/presença) |
-| R3 | `ClientesTab` ~560 linhas | `web/src/admin/tabs/ClientesTab.tsx` | Extrair enroll + tabela |
+| R3 | ~~`ClientesTab` monolito~~ | — | **feito parte 9** (list + enroll + manage) |
 
 ### Médio (duplicação / clareza)
 
@@ -39,7 +45,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | R5 | ~~Portal não usa `shared/camera.ts`~~ | — | **feito parte 2** |
 | R6 | ~~`formatDuration` / `formatHours` parecidos~~ | — | **feito parte 3** |
 | R7 | `DashboardPage` / `payments` / `portal-routes` ~500 linhas | portal + server | Cortar em pedaços quando tocar |
-| R8 | `ApiError` duplicado | web/portal/lock | Shared fino ou aceitar por fronteira |
+| R8 | ~~`ApiError` duplicado~~ | — | **feito parte 9** (`shared/api-error.ts`) |
 
 ### Baixo (polimento)
 
@@ -63,4 +69,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 9:** partir `ClientesTab` (enroll + tabela) **ou** R8 `ApiError` shared.
+**Parte 10:** CI GitHub Actions (P2) **ou** cortar `DashboardPage` / portal-routes (R7).

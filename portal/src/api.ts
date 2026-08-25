@@ -70,15 +70,9 @@ export type TimeLedgerEntry = {
   createdAt: string;
 };
 
-export class ApiError extends Error {
-  tip?: string;
-  code?: string;
-  constructor(message: string, extra?: { tip?: string; code?: string }) {
-    super(message);
-    this.tip = extra?.tip;
-    this.code = extra?.code;
-  }
-}
+import { ApiError } from "../../shared/api-error";
+
+export { ApiError };
 
 function apiBase() {
   const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8787";
