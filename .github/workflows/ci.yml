@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  server:
+    name: Server (test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - name: Native deps (better-sqlite3)
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+
+  web:
+    name: Admin web (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  portal:
+    name: Portal (build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: portal/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  geeklock:
+    name: GeekLock (tsc + web)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-windows
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: agent-windows/package-lock.json
+      - run: npm ci
+      - run: npm run build:web
+      - run: npx tsc --noEmit
+
+  face-service:
+    name: Face service (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: face-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: face-service/requirements.txt
+      - run: pip install -r requirements.txt
+      - run: pytest -q

@@ -43,6 +43,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] R11: tipagem `ZodError` + WS status + `db.ts` helpers
 - [x] R12: ícone marca `icon-256.png` no GeekLock e GeekCentral
 
+## Feito (parte 13)
+
+- [x] GitHub Actions: server test/build, web, portal, GeekLock tsc, face-service pytest
+
 ---
 
 ## Backlog encontrado
@@ -80,7 +84,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | # | Item |
 |---|------|
 | P1 | Admin responsivo no celular |
-| P2 | CI GitHub Actions |
+| P2 | ~~CI GitHub Actions~~ | — | **feito parte 13** (`.github/workflows/ci.yml`) |
 | P3 | LGPD retenção fina |
 | P4 | Multi-Central no mesmo portal |
 
@@ -88,4 +92,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 13:** CI GitHub Actions (P2) **ou** melhorias de produto (P1 admin mobile, P3 LGPD).
+**Parte 14:** admin mobile (P1) **ou** LGPD retenção fina (P3).
