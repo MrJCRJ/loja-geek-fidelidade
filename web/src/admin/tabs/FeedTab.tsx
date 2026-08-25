@@ -7,7 +7,12 @@ export function FeedTab({ live, events }: { live: LiveFeedItem[]; events: Recogn
       <section className="panel">
         <h2>Ao vivo</h2>
         <div aria-live="polite" aria-relevant="additions">
-          {live.length === 0 && <p className="muted">Aguardando reconhecimentos...</p>}
+          {live.length === 0 && (
+            <div className="empty-state">
+              <strong>Nada ao vivo ainda</strong>
+              <p>Quando um VIP for reconhecido na estação, aparece aqui.</p>
+            </div>
+          )}
           {live.map((item, i) => (
             <div className="feed-item" key={`${item.at}-${i}`}>
               <strong>{item.text}</strong>
@@ -18,6 +23,12 @@ export function FeedTab({ live, events }: { live: LiveFeedItem[]; events: Recogn
       </section>
       <section className="panel">
         <h2>Histórico recente</h2>
+        {events.length === 0 ? (
+          <div className="empty-state">
+            <strong>Sem histórico</strong>
+            <p>Reconhecimentos recentes da loja aparecerão nesta lista.</p>
+          </div>
+        ) : (
         <table className="table">
           <thead>
             <tr>
@@ -38,6 +49,7 @@ export function FeedTab({ live, events }: { live: LiveFeedItem[]; events: Recogn
             ))}
           </tbody>
         </table>
+        )}
       </section>
     </div>
   );

@@ -135,7 +135,6 @@ cat > "$RT/start-face.cmd" << 'EOF'
 set ROOT=%~dp0
 set DATA=%ROOT%..\data
 if not exist "%DATA%\models" mkdir "%DATA%\models"
-set FACE_MODE=opencv
 set MODEL_ROOT=%DATA%\models
 set PYTHONPATH=%ROOT%face\site-packages;%ROOT%face
 set PYTHONUTF8=1

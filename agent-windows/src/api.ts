@@ -185,14 +185,14 @@ export async function endSession(config: GeekLockConfig, sessionId?: string, rea
   });
 }
 
+import {
+  attachCameraStream as attachCameraStreamShared,
+  captureFrame as captureFrameShared,
+  openUserCamera as openUserCameraShared,
+} from "../../shared/camera";
+
 export function captureFrame(video: HTMLVideoElement, quality = 0.85): string {
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth || 640;
-  canvas.height = video.videoHeight || 480;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas indisponível");
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-  return canvas.toDataURL("image/jpeg", quality);
+  return captureFrameShared(video, quality);
 }
 
 export function cameraErrorMessage(err: unknown): string {
@@ -216,101 +216,17 @@ export function cameraErrorMessage(err: unknown): string {
   return `Falha na câmera: ${raw}`;
 }
 
-function withMediaTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new DOMException(message, "TimeoutError")), ms);
-    promise.then(
-      (v) => {
-        clearTimeout(timer);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(timer);
-        reject(e);
-      },
-    );
-  });
-}
-
 export async function openUserCamera(): Promise<MediaStream> {
-  if (!navigator.mediaDevices?.getUserMedia) {
-    throw new Error(cameraErrorMessage(new Error("getUserMedia indisponível")));
-  }
-
-  const timeoutMsg =
-    "Timeout ao abrir câmera (15s). DroidCam conectado no PC? Feche outros apps usando a câmera.";
-
-  let probe: MediaStream | null = null;
-  try {
-    probe = await withMediaTimeout(
-      navigator.mediaDevices.getUserMedia({ audio: false, video: true }),
-      15_000,
-      timeoutMsg,
-    );
-  } catch (err) {
-    throw new Error(cameraErrorMessage(err));
-  }
-
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
-  const droidcam = cams.find((d) => /droidcam|loopback|dc/i.test(d.label));
-
-  probe.getTracks().forEach((t) => t.stop());
-
-  const attempts: MediaStreamConstraints[] = [];
-  if (droidcam?.deviceId) {
-    attempts.push({
-      audio: false,
-      video: {
-        deviceId: { ideal: droidcam.deviceId },
-        width: { ideal: 640 },
-        height: { ideal: 480 },
-      },
-    });
-  }
-  attempts.push(
-    { audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 } } },
-    { audio: false, video: true },
-  );
-
-  let lastErr: unknown;
-  for (const constraints of attempts) {
-    try {
-      return await withMediaTimeout(navigator.mediaDevices.getUserMedia(constraints), 15_000, timeoutMsg);
-    } catch (err) {
-      lastErr = err;
-      const name = err instanceof DOMException ? err.name : "";
-      if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "NotFoundError") break;
-    }
-  }
-  throw new Error(cameraErrorMessage(lastErr));
+  return openUserCameraShared({
+    requireSecureContext: false,
+    timeoutMessage:
+      "Timeout ao abrir câmera (15s). DroidCam conectado no PC? Feche outros apps usando a câmera.",
+    formatError: cameraErrorMessage,
+  });
 }
 
 export async function attachCameraStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
-  video.srcObject = stream;
-  video.muted = true;
-  video.playsInline = true;
-  await new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("Vídeo não iniciou (10s). DroidCam conectado?")),
-      10_000,
-    );
-    const done = () => {
-      clearTimeout(timeout);
-      resolve();
-    };
-    const fail = (err: unknown) => {
-      clearTimeout(timeout);
-      reject(err instanceof Error ? err : new Error(String(err)));
-    };
-    video.onloadedmetadata = () => {
-      video.play().then(done).catch(fail);
-    };
-    if (video.readyState >= 1) {
-      video.onloadedmetadata = null;
-      video.play().then(done).catch(fail);
-    }
-  });
+  return attachCameraStreamShared(video, stream, "Vídeo não iniciou (10s). DroidCam conectado?");
 }
 
 export function formatDuration(seconds: number) {

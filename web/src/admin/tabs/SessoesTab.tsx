@@ -11,9 +11,12 @@ export function SessoesTab({
     <div className="grid-2" role="tabpanel" id="panel-sessoes" aria-labelledby="tab-sessoes">
       <section className="panel">
         <h2>Ativas agora</h2>
-        {(sessionStats?.active?.length ?? 0) === 0 && (
-          <p className="muted">Nenhuma máquina liberada no momento.</p>
-        )}
+        {(sessionStats?.active?.length ?? 0) === 0 ? (
+          <div className="empty-state">
+            <strong>Nenhuma máquina liberada</strong>
+            <p>Quando o GeekLock reconhecer um VIP, a sessão aparece aqui.</p>
+          </div>
+        ) : (
         <table className="table">
           <thead>
             <tr>
@@ -34,6 +37,7 @@ export function SessoesTab({
             ))}
           </tbody>
         </table>
+        )}
 
         <h3>Hoje por VIP</h3>
         <table className="table">

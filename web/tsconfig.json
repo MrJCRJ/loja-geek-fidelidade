@@ -17,5 +17,5 @@
     "noFallthroughCasesInSwitch": true,
     "noEmitOnError": false
   },
-  "include": ["src"]
+  "include": ["src", "../shared"]
 }

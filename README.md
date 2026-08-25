@@ -57,10 +57,11 @@ cd web && npm install && npm run dev
 
 ```bash
 cp .env.example .env
-docker compose up -d --build
+npm run compose:up          # face + api (HTTP :8787)
+# npm run compose:https     # + nginx 80/443 (webcam no browser)
 ```
 
-Acesse `http://IP-DO-PC-CONTROLE:8787` (ou HTTPS via nginx na pasta `deploy/`).
+Acesse `http://IP-DO-PC-CONTROLE:8787`. Modos de estação: [`docs/estacao-modos.md`](docs/estacao-modos.md).
 
 ### Modo Linux nativo (apps do sistema — sem navegador)
 
@@ -155,5 +156,6 @@ GitHub (privado): https://github.com/MrJCRJ/loja-geek-fidelidade
 ## Continuar em outro PC
 
 - **Lista de melhorias (atual):** [`docs/MELHORIAS.md`](./docs/MELHORIAS.md)
+- Modos GeekLock vs browser: [`docs/estacao-modos.md`](./docs/estacao-modos.md)
 - Roadmap: [`docs/roadmap.md`](./docs/roadmap.md)
 - Auditoria histórica: [`AUDITORIA.md`](./AUDITORIA.md)

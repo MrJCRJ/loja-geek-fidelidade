@@ -1,9 +1,4 @@
-"""Serviço local de embedding/match facial.
-
-Modos:
-- opencv (padrão): YuNet + SFace (OpenCV Zoo) — leve e bom para LAN
-- insightface: opcional se instalado (FACE_MODE=insightface)
-"""
+"""Serviço local de embedding facial — OpenCV YuNet + SFace."""
 
 from __future__ import annotations
 
@@ -11,6 +6,7 @@ import base64
 import os
 import threading
 import urllib.request
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
 
@@ -20,8 +16,13 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-FACE_MODE = os.getenv("FACE_MODE", "opencv").lower()
 FACE_SERVICE_TOKEN = os.getenv("FACE_SERVICE_TOKEN", "").strip()
+# Só a API local chama o face-service. Override com FACE_CORS_ORIGINS=* se precisar.
+FACE_CORS_ORIGINS = [
+    o.strip()
+    for o in os.getenv("FACE_CORS_ORIGINS", "http://127.0.0.1:8787,http://localhost:8787").split(",")
+    if o.strip()
+]
 MODEL_ROOT = Path(os.getenv("MODEL_ROOT", str(Path(__file__).resolve().parent / ".models")))
 MODEL_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -39,18 +40,8 @@ SFACE_URL = (
     "face_recognition_sface_2021dec.onnx"
 )
 
-app = FastAPI(title="Face Service", version="1.1.0")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 _detector = None
 _recognizer = None
-_insight = None
-_haar = None
 # YuNet/SFace não são thread-safe — lock evita segfault sob carga
 _opencv_lock = threading.Lock()
 
@@ -120,39 +111,26 @@ def _blur_score(img: np.ndarray) -> float:
 
 
 def _init_opencv(force: bool = False) -> None:
-    global _detector, _recognizer, _haar
+    global _detector, _recognizer
     if force:
         _detector = None
         _recognizer = None
-        _haar = None
     yunet = _download(YUNET_URL, MODEL_ROOT / "face_detection_yunet_2023mar.onnx")
     sface = _download(SFACE_URL, MODEL_ROOT / "face_recognition_sface_2021dec.onnx")
     try:
         _detector = cv2.FaceDetectorYN.create(str(yunet), "", (320, 320), YUNET_SCORE, 0.3)
         _recognizer = cv2.FaceRecognizerSF.create(str(sface), "")
-    except Exception:
+    except Exception as exc:
         _detector = None
         _recognizer = None
-        _haar = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-
-
-def _init_insight() -> None:
-    global _insight
-    import insightface
-    from insightface.app import FaceAnalysis
-
-    app_face = FaceAnalysis(name="buffalo_s", root=str(MODEL_ROOT), providers=["CPUExecutionProvider"])
-    app_face.prepare(ctx_id=-1, det_size=(640, 640))
-    _insight = app_face
+        raise RuntimeError(f"Falha ao carregar modelos YuNet/SFace: {exc}") from exc
 
 
 def ensure_ready() -> str:
-    if FACE_MODE == "insightface":
-        if _insight is None:
-            _init_insight()
-        return "insightface"
-    if _detector is None and _haar is None:
+    if _detector is None or _recognizer is None:
         _init_opencv()
+    if _detector is None or _recognizer is None:
+        raise RuntimeError("Modelos OpenCV indisponíveis")
     return "opencv"
 
 
@@ -186,26 +164,12 @@ def _pick_orientation(img: np.ndarray) -> tuple[np.ndarray, int, Any, float]:
 
     for rot in (0, 90, 180, 270):
         candidate = _rotate(img, rot)
-        if _detector is not None:
-            face, metric = _detect_yunet(candidate)
-            if face is not None and metric > best_metric:
-                best_metric = metric
-                best_img = candidate
-                best_rot = rot
-                best_face = face
-        else:
-            gray = cv2.cvtColor(candidate, cv2.COLOR_BGR2GRAY)
-            assert _haar is not None
-            faces = _haar.detectMultiScale(gray, 1.1, 5, minSize=(60, 60))
-            if len(faces) == 0:
-                continue
-            x, y, fw, fh = max(faces, key=lambda f: f[2] * f[3])
-            metric = float(fw * fh)
-            if metric > best_metric:
-                best_metric = metric
-                best_img = candidate
-                best_rot = rot
-                best_face = (x, y, fw, fh)
+        face, metric = _detect_yunet(candidate)
+        if face is not None and metric > best_metric:
+            best_metric = metric
+            best_img = candidate
+            best_rot = rot
+            best_face = face
 
     if best_face is None:
         raise FaceQualityError("no_face", "Nenhum rosto detectado")
@@ -256,75 +220,11 @@ def _embed_opencv(img: np.ndarray) -> tuple[list[float], dict[str, Any]]:
         blur = _blur_score(oriented)
         meta = _check_quality(oriented, face, blur)
         meta["rotation_used"] = rotation
-
-        if _detector is not None and _recognizer is not None:
-            aligned = _recognizer.alignCrop(oriented, face)
-            feat = _recognizer.feature(aligned)
-            vec = np.asarray(feat).reshape(-1).astype(np.float32)
-            return vec.tolist(), meta
-
-        # Fallback Haar
-        assert _haar is not None
-        x, y, fw, fh = face  # type: ignore[misc]
-        gray = cv2.cvtColor(oriented, cv2.COLOR_BGR2GRAY)
-        crop = gray[int(y) : int(y + fh), int(x) : int(x + fw)]
-        crop = cv2.resize(crop, (64, 64))
-        hist = cv2.calcHist([crop], [0], None, [64], [0, 256]).flatten()
-        hist = hist / (np.linalg.norm(hist) + 1e-8)
-        flat = crop.astype(np.float32).flatten() / 255.0
-        flat = flat / (np.linalg.norm(flat) + 1e-8)
-        vec = np.concatenate([hist, flat]).astype(np.float32)
+        assert _recognizer is not None
+        aligned = _recognizer.alignCrop(oriented, face)
+        feat = _recognizer.feature(aligned)
+        vec = np.asarray(feat).reshape(-1).astype(np.float32)
         return vec.tolist(), meta
-
-
-def _embed_insight(img: np.ndarray) -> tuple[list[float], dict[str, Any]]:
-    assert _insight is not None
-    processed = _preprocess(img)
-    best_vec = None
-    best_meta: dict[str, Any] = {}
-    best_area = -1.0
-    best_rot = 0
-
-    for rot in (0, 90, 180, 270):
-        candidate = _rotate(processed, rot)
-        rgb = cv2.cvtColor(candidate, cv2.COLOR_BGR2RGB)
-        faces = _insight.get(rgb)
-        if not faces:
-            continue
-        face = max(faces, key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1]))
-        area = float((face.bbox[2] - face.bbox[0]) * (face.bbox[3] - face.bbox[1]))
-        if area <= best_area:
-            continue
-        best_area = area
-        best_rot = rot
-        best_vec = face.normed_embedding.astype(np.float32).tolist()
-        h, w = candidate.shape[:2]
-        fw = float(face.bbox[2] - face.bbox[0])
-        fh = float(face.bbox[3] - face.bbox[1])
-        blur = _blur_score(candidate)
-        face_ratio = (fw * fh) ** 0.5 / float(min(h, w))
-        if face_ratio < MIN_FACE_RATIO:
-            continue
-        if blur < MIN_BLUR:
-            continue
-        best_meta = {
-            "face_ratio": round(face_ratio, 4),
-            "blur": round(blur, 2),
-            "quality": round(min(1.0, face_ratio / 0.3) * 0.6 + min(1.0, blur / 200.0) * 0.4, 3),
-            "face_box": {
-                "x": round(float(face.bbox[0]), 1),
-                "y": round(float(face.bbox[1]), 1),
-                "w": round(fw, 1),
-                "h": round(fh, 1),
-            },
-            "rotation_used": best_rot,
-        }
-
-    if best_vec is None:
-        raise FaceQualityError("no_face", "Nenhum rosto detectado")
-    if not best_meta:
-        raise FaceQualityError("low_quality", "Rosto detectado com qualidade insuficiente")
-    return best_vec, best_meta
 
 
 def cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
@@ -351,28 +251,37 @@ class MatchIn(BaseModel):
     margin: float = MATCH_MARGIN
 
 
-@app.on_event("startup")
-def startup() -> None:
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
     try:
         ensure_ready()
+        print("[face-service] OpenCV YuNet/SFace prontos")
     except Exception as exc:  # noqa: BLE001
-        print(f"[face-service] init warning: {exc}")
+        print(f"[face-service] init falhou (health ficará ok=false): {exc}")
+    yield
+
+
+app = FastAPI(title="Face Service", version="1.2.0", lifespan=lifespan)
+
+_cors_origins = ["*"] if FACE_CORS_ORIGINS == ["*"] else FACE_CORS_ORIGINS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST"],
+    allow_headers=["*"],
+)
 
 
 @app.get("/health")
 def health() -> dict[str, Any]:
-    mode = FACE_MODE
-    ready = True
     try:
         mode = ensure_ready()
+        return {"ok": True, "mode": mode, "version": "1.2.0", "auth": bool(FACE_SERVICE_TOKEN)}
     except Exception as exc:  # noqa: BLE001
-        ready = False
-        return {"ok": False, "mode": mode, "error": str(exc)}
-    return {"ok": ready, "mode": mode, "version": "1.1.0", "auth": bool(FACE_SERVICE_TOKEN)}
+        return {"ok": False, "mode": "opencv", "error": str(exc), "version": "1.2.0"}
 
 
 def _require_token(authorization: str | None) -> None:
-    """Se FACE_SERVICE_TOKEN estiver definido, exige Bearer igual (embed/match)."""
     if not FACE_SERVICE_TOKEN:
         return
     expected = f"Bearer {FACE_SERVICE_TOKEN}"
@@ -387,18 +296,15 @@ def embed(
 ) -> dict[str, Any]:
     _require_token(authorization)
     try:
-        mode = ensure_ready()
+        ensure_ready()
         img = _decode_image(body.image_base64)
-        if mode == "insightface":
-            vec, meta = _embed_insight(img)
-        else:
-            vec, meta = _embed_opencv(img)
+        vec, meta = _embed_opencv(img)
         return {
             "ok": True,
             "embedding": vec,
             "faces": 1,
             "dim": len(vec),
-            "mode": mode,
+            "mode": "opencv",
             **meta,
         }
     except FaceQualityError as exc:
@@ -412,10 +318,10 @@ def match(
     body: MatchIn,
     authorization: str | None = Header(default=None),
 ) -> dict[str, Any]:
+    """Mantido para debug/compat; a API Node faz match local por padrão."""
     _require_token(authorization)
     try:
         query = np.asarray(body.embedding, dtype=np.float32)
-        # Melhor score por customer_id
         best_by_customer: dict[str, dict[str, Any]] = {}
         for item in body.gallery:
             score = cosine_similarity(query, np.asarray(item.embedding, dtype=np.float32))

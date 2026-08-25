@@ -67,6 +67,12 @@ export function RecompensasTab({ rewards, refresh, onError, onToast, askConfirm 
       </section>
       <section className="panel">
         <h2>Catálogo</h2>
+        {rewards.length === 0 ? (
+          <div className="empty-state">
+            <strong>Nenhuma recompensa</strong>
+            <p>Crie a primeira no formulário ao lado para o VIP resgatar pontos.</p>
+          </div>
+        ) : (
         <table className="table">
           <thead>
             <tr>
@@ -125,6 +131,7 @@ export function RecompensasTab({ rewards, refresh, onError, onToast, askConfirm 
             ))}
           </tbody>
         </table>
+        )}
       </section>
     </div>
   );

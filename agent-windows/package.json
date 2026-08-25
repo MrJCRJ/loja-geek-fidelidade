@@ -50,13 +50,10 @@
     "win": {
       "target": [
         {
-          "target": "portable",
+          "target": "dir",
           "arch": ["x64"]
         }
       ],
-      "artifactName": "GeekLock.exe"
-    },
-    "portable": {
       "artifactName": "GeekLock.exe"
     },
     "linux": {

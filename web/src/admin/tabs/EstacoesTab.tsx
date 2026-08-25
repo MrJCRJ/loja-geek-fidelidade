@@ -113,6 +113,16 @@ export function EstacoesTab({
             </tr>
           </thead>
           <tbody>
+            {stations.length === 0 && (
+              <tr>
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <strong>Nenhuma estação</strong>
+                    <p>Crie uma acima ou faça claim pelo GeekLock / browser.</p>
+                  </div>
+                </td>
+              </tr>
+            )}
             {stations.map((s) => {
               const online = onlineMap.has(s.id) || Boolean(s.online);
               const st = liveStatus[s.id];

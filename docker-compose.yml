@@ -4,8 +4,8 @@ services:
     volumes:
       - face-models:/app/.models
     environment:
-      FACE_MODE: opencv
       MODEL_ROOT: /app/.models
+      # FACE_CORS_ORIGINS=*  # só se algum cliente precisar chamar o face direto
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8100/health')"]
@@ -46,6 +46,7 @@ services:
       - "8787:8787"
 
   nginx:
+    profiles: ["https"]
     image: nginx:1.27-alpine
     ports:
       - "80:80"

@@ -240,8 +240,11 @@ export function ClientesTab(props: Props) {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={5} className="muted">
-                  Nenhum cliente encontrado
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <strong>Nenhum VIP aqui</strong>
+                    <p>Cadastre um cliente ao lado ou ajuste a busca.</p>
+                  </div>
                 </td>
               </tr>
             )}
