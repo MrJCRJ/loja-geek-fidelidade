@@ -30,6 +30,12 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Server: `portal-routes.ts` partido em public, account, checkout, enroll + catalog/guards
 - [x] `portal-routes.ts` ~500 → ~12 (orquestrador)
 
+## Feito (parte 11)
+
+- [x] Portal: `dashboard/` (alerts, balance, checkout, history, header, skeleton)
+- [x] Hooks `useDashboardData` + `useDashboardCheckout`
+- [x] `DashboardPage` ~470 → ~65 (orquestrador)
+
 ---
 
 ## Backlog encontrado
@@ -49,7 +55,8 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | R4 | ~~`cameraErrorMessage` triplicado~~ | — | **feito parte 2** |
 | R5 | ~~Portal não usa `shared/camera.ts`~~ | — | **feito parte 2** |
 | R6 | ~~`formatDuration` / `formatHours` parecidos~~ | — | **feito parte 3** |
-| R7 | ~~`portal-routes` monolito~~ | — | **feito parte 10** (public/account/checkout/enroll) |
+| R7 | ~~`portal-routes` monolito~~ | — | **feito parte 10** |
+| R7b | ~~`DashboardPage` monolito~~ | — | **feito parte 11** (dashboard/ + hooks) |
 | R8 | ~~`ApiError` duplicado~~ | — | **feito parte 9** (`shared/api-error.ts`) |
 
 ### Baixo (polimento)
