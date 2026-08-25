@@ -37,6 +37,8 @@ Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 
 **Fase 1 feita:** GeekCentral com autostart Windows, bandeja, single-instance, delay no boot, watchdog da API e botão de firewall.
 
+**Fase 2 feita:** painel Portal/Túnel (rápido ou nomeado), download do `cloudflared` no Windows, `PORTAL_ORIGIN`, health público, copiar URL Vercel e webhook Pix.
+
 ---
 
 ## P2 / P3 — Próximas (código ou produto)

@@ -162,7 +162,8 @@ code,
   margin-bottom: 0.35rem;
 }
 
-.field input {
+.field input,
+.field select {
   width: 100%;
   padding: 0.6rem 0.75rem;
   border-radius: 10px;
@@ -177,14 +178,21 @@ code,
   color: rgba(143, 164, 196, 0.7);
 }
 
-.field input:hover {
+.field input:hover,
+.field select:hover {
   border-color: var(--line-strong);
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   border-color: rgba(232, 149, 26, 0.65);
   background: var(--field-bg-focus);
   box-shadow: 0 0 0 3px rgba(232, 149, 26, 0.18);
+}
+
+.field select option {
+  background: #0c1e3d;
+  color: var(--text);
 }
 
 .grid {

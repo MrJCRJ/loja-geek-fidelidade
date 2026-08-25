@@ -44,6 +44,7 @@ Como usar no PC da loja
 4) Espere ficar "Online". Anote o IP da LAN.
 5) Clique em "Abrir admin". Opcional: "Liberar firewall (8787)".
 6) Deixe "Iniciar com o Windows" marcado.
+7) Em Portal/Túnel: modo Rápido (teste) ou Nomeado (produção). Copie a URL para VITE_API_URL na Vercel.
 
 Estações (outros PCs)
 1) Copie a pasta GeekLock do pendrive.

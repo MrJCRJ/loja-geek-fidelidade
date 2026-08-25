@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld("geekcentral", {
   getAutostart: () => ipcRenderer.invoke("central:get-autostart"),
   setAutostart: (enabled) => ipcRenderer.invoke("central:set-autostart", enabled),
   ensureFirewall: () => ipcRenderer.invoke("central:ensure-firewall"),
+  setTunnel: (input) => ipcRenderer.invoke("central:set-tunnel", input),
+  checkTunnel: () => ipcRenderer.invoke("central:check-tunnel"),
   onStatus: (cb) => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on("central:status", handler);

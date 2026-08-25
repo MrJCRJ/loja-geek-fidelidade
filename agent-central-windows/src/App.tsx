@@ -44,6 +44,12 @@ export default function App() {
   const [tick, setTick] = useState(0);
   const [openAtLogin, setOpenAtLogin] = useState(true);
   const [fwMsg, setFwMsg] = useState("");
+  const [tunnelMode, setTunnelMode] = useState<"off" | "quick" | "named">("off");
+  const [tunnelName, setTunnelName] = useState("");
+  const [publicApiUrl, setPublicApiUrl] = useState("");
+  const [portalOrigin, setPortalOrigin] = useState("https://loja-geek-portal.vercel.app");
+  const [tunnelBusy, setTunnelBusy] = useState(false);
+  const [tunnelMsg, setTunnelMsg] = useState("");
 
   useEffect(() => {
     window.geekcentral.getStatus().then(setStatus).catch(() => undefined);
@@ -55,6 +61,12 @@ export default function App() {
         if (peek.suggestedStation) setStationSecret(peek.suggestedStation);
         if (peek.unitName) setUnitName(peek.unitName);
         if (typeof peek.openAtLogin === "boolean") setOpenAtLogin(peek.openAtLogin);
+        if (peek.tunnelMode === "quick" || peek.tunnelMode === "named" || peek.tunnelMode === "off") {
+          setTunnelMode(peek.tunnelMode);
+        }
+        if (peek.tunnelNamed) setTunnelName(peek.tunnelNamed);
+        if (peek.tunnelPublicUrl) setPublicApiUrl(peek.tunnelPublicUrl);
+        if (peek.portalOrigin) setPortalOrigin(peek.portalOrigin);
       })
       .catch(() => undefined);
     window.geekcentral
@@ -64,6 +76,12 @@ export default function App() {
     return window.geekcentral.onStatus((s) => {
       setStatus(s);
       if (typeof s.openAtLogin === "boolean") setOpenAtLogin(s.openAtLogin);
+      if (s.tunnelMode === "quick" || s.tunnelMode === "named" || s.tunnelMode === "off") {
+        setTunnelMode(s.tunnelMode);
+      }
+      if (s.tunnelNamed) setTunnelName(s.tunnelNamed);
+      if (s.tunnelPublicUrl) setPublicApiUrl(s.tunnelPublicUrl);
+      if (s.portalOrigin) setPortalOrigin(s.portalOrigin);
     });
   }, []);
 
@@ -299,6 +317,149 @@ export default function App() {
               Firewall: {status.firewallError}
             </p>
           )}
+        </section>
+      </div>
+
+      <div className="grid">
+        <section className="panel">
+          <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Portal / Túnel</h2>
+          <p className="muted" style={{ marginTop: 0 }}>
+            Expõe a API para o site na Vercel (e Pix). No Windows o cloudflared é baixado na 1ª vez.
+          </p>
+          <div className="field">
+            <label>Modo</label>
+            <select
+              value={tunnelMode}
+              onChange={(e) => setTunnelMode(e.target.value as "off" | "quick" | "named")}
+            >
+              <option value="off">Desligado</option>
+              <option value="quick">Rápido (URL muda a cada início)</option>
+              <option value="named">Nomeado (URL fixa — produção)</option>
+            </select>
+          </div>
+          {tunnelMode === "named" && (
+            <>
+              <div className="field">
+                <label>Nome do túnel Cloudflare</label>
+                <input
+                  value={tunnelName}
+                  onChange={(e) => setTunnelName(e.target.value)}
+                  placeholder="loja-geek-api"
+                />
+              </div>
+              <div className="field">
+                <label>URL pública fixa (https://api.…)</label>
+                <input
+                  value={publicApiUrl}
+                  onChange={(e) => setPublicApiUrl(e.target.value)}
+                  placeholder="https://api.seudominio.com"
+                />
+              </div>
+            </>
+          )}
+          <div className="field">
+            <label>PORTAL_ORIGIN (site Vercel)</label>
+            <input value={portalOrigin} onChange={(e) => setPortalOrigin(e.target.value)} />
+          </div>
+          <div className="row">
+            <span className={`pill ${status.tunnelRunning ? "ok" : "warn"}`}>
+              Túnel {status.tunnelRunning ? "ativo" : "parado"}
+            </span>
+            <span
+              className={`pill ${
+                status.tunnelPublicHealthy ? "ok" : status.tunnelPublicUrl ? "bad" : "warn"
+              }`}
+            >
+              Público {status.tunnelPublicHealthy ? "ok" : status.tunnelPublicUrl ? "falhou" : "—"}
+            </span>
+          </div>
+          {status.tunnelPublicUrl ? (
+            <p className="mono" style={{ wordBreak: "break-all" }}>
+              {status.tunnelPublicUrl}
+            </p>
+          ) : (
+            <p className="muted">Sem URL pública ainda.</p>
+          )}
+          <div className="row">
+            <button
+              className="btn"
+              type="button"
+              disabled={tunnelBusy || !status.api}
+              onClick={() => {
+                setTunnelBusy(true);
+                setTunnelMsg("Aplicando…");
+                window.geekcentral
+                  .setTunnel({
+                    tunnelMode,
+                    tunnelName,
+                    publicApiUrl,
+                    portalOrigin,
+                  })
+                  .then((r) => {
+                    if (r.status) setStatus(r.status);
+                    setTunnelMsg(
+                      r.ok
+                        ? tunnelMode === "off"
+                          ? "Túnel desligado"
+                          : "Túnel aplicado"
+                        : r.error || "Falhou",
+                    );
+                  })
+                  .catch((e) => setTunnelMsg(e instanceof Error ? e.message : "Falhou"))
+                  .finally(() => setTunnelBusy(false));
+              }}
+            >
+              {tunnelBusy ? "…" : "Aplicar túnel"}
+            </button>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={!status.tunnelPublicUrl}
+              onClick={() => copy(status.tunnelPublicUrl || "", "VITE_API_URL")}
+            >
+              Copiar URL (Vercel)
+            </button>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={!status.webhookUrl}
+              onClick={() => copy(status.webhookUrl || "", "webhook Pix")}
+            >
+              Copiar webhook Pix
+            </button>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={!status.tunnelPublicUrl || tunnelBusy}
+              onClick={() => {
+                setTunnelBusy(true);
+                window.geekcentral
+                  .checkTunnel()
+                  .then((r) => {
+                    if (r.status) setStatus(r.status);
+                    setTunnelMsg(r.ok ? "Público OK" : "Público sem resposta");
+                  })
+                  .finally(() => setTunnelBusy(false));
+              }}
+            >
+              Testar público
+            </button>
+          </div>
+          {status.webhookUrl && (
+            <p className="muted" style={{ wordBreak: "break-all" }}>
+              Webhook MP: <span className="mono">{status.webhookUrl}</span>
+            </p>
+          )}
+          {tunnelMsg && <p className="muted">{tunnelMsg}</p>}
+          {status.tunnelError && (
+            <p className="muted" style={{ color: "var(--warn)" }}>
+              {status.tunnelError}
+            </p>
+          )}
+          <p className="muted" style={{ fontSize: "0.85rem", marginBottom: 0 }}>
+            Vercel: variável <code>VITE_API_URL</code> = URL acima (redeploy). Túnel nomeado: ver{" "}
+            <code>docs/portal-api-tunnel.md</code>.
+          </p>
         </section>
 
         <section className="panel">

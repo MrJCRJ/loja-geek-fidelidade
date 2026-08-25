@@ -4,10 +4,12 @@ const path = require("node:path");
 const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const http = require("node:http");
+const { TunnelManager } = require("./tunnel.cjs");
 
 const DEFAULT_ADMIN = "admin123";
 const DEFAULT_STATION = "loja-geek-station-secret";
 const DEFAULT_JWT = "troque-este-segredo-em-producao";
+const DEFAULT_PORTAL = "https://loja-geek-portal.vercel.app";
 
 function isDev() {
   return Boolean(process.env.GEEKCENTRAL_DEV) || Boolean(process.env.VITE_DEV_SERVER_URL);
@@ -136,6 +138,14 @@ class ServiceManager {
       bootDelayMs: 15_000,
       firewallOk: false,
       firewallError: "",
+      tunnelMode: "off",
+      tunnelRunning: false,
+      tunnelPublicUrl: "",
+      tunnelNamed: "",
+      tunnelPublicHealthy: false,
+      tunnelError: "",
+      portalOrigin: DEFAULT_PORTAL,
+      webhookUrl: "",
       startedAt: null,
       uptimeMs: 0,
       faceError: "",
@@ -143,6 +153,25 @@ class ServiceManager {
       error: "",
       logs: [],
     };
+    this.tunnel = new TunnelManager({
+      runtimeDir: runtimeRoot(),
+      dataDir: this.dataDir(),
+      apiPort: 8787,
+      log: (m) => this.log(m),
+      onChange: (t) => {
+        this.status.tunnelMode = t.mode;
+        this.status.tunnelRunning = t.running;
+        this.status.tunnelPublicUrl = t.publicUrl || "";
+        this.status.tunnelNamed = t.namedTunnel || "";
+        this.status.tunnelPublicHealthy = Boolean(t.publicHealthy);
+        this.status.tunnelError = t.error || "";
+        this.status.portalOrigin = t.portalOrigin || DEFAULT_PORTAL;
+        this.status.webhookUrl = t.publicUrl
+          ? `${t.publicUrl}/api/portal/webhooks/mercadopago`
+          : "";
+        this.emit();
+      },
+    });
   }
 
   dataDir() {
@@ -179,6 +208,18 @@ class ServiceManager {
     this.status.bootDelayMs = Number(cfg.bootDelayMs ?? 15_000);
     this.status.firewallOk = Boolean(cfg.firewallRuleDone);
     this.status.firewallError = String(cfg.firewallError || "");
+    this.status.portalOrigin = String(cfg.portalOrigin || DEFAULT_PORTAL);
+    this.status.tunnelMode = cfg.tunnelMode === "quick" || cfg.tunnelMode === "named" ? cfg.tunnelMode : "off";
+    this.status.tunnelNamed = String(cfg.tunnelName || "");
+    this.tunnel.apiPort = this.status.apiPort;
+    this.tunnel.dataDir = dataDir;
+    this.tunnel.runtimeDir = runtimeRoot();
+    this.tunnel.applyConfig(cfg);
+    this.status.tunnelPublicUrl = this.tunnel.state.publicUrl;
+    this.status.tunnelRunning = this.tunnel.state.running;
+    this.status.tunnelPublicHealthy = this.tunnel.state.publicHealthy;
+    this.status.tunnelError = this.tunnel.state.error;
+    this.status.webhookUrl = this.tunnel.webhookUrl();
     this.status.phase = this.status.needsSetup ? "setup" : this.status.phase;
     this.emit();
     return {
@@ -219,6 +260,66 @@ class ServiceManager {
     if (result?.ok) this.log("[firewall] regra TCP liberada (rede privada)");
     else this.log(`[firewall] ${cfg.firewallError || "falhou"}`);
     this.emit();
+  }
+
+  /**
+   * @param {{
+   *   tunnelMode: "off" | "quick" | "named",
+   *   tunnelName?: string,
+   *   publicApiUrl?: string,
+   *   portalOrigin?: string,
+   * }} input
+   */
+  saveTunnelConfig(input) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    const mode = input.tunnelMode === "quick" || input.tunnelMode === "named" ? input.tunnelMode : "off";
+    cfg.tunnelMode = mode;
+    if (input.tunnelName != null) cfg.tunnelName = String(input.tunnelName).trim();
+    if (input.publicApiUrl != null) cfg.publicApiUrl = String(input.publicApiUrl).trim().replace(/\/$/, "");
+    if (input.portalOrigin != null) {
+      cfg.portalOrigin = String(input.portalOrigin).trim().replace(/\/$/, "") || DEFAULT_PORTAL;
+    }
+    saveConfig(dataDir, cfg);
+    this.status.portalOrigin = cfg.portalOrigin || DEFAULT_PORTAL;
+    this.status.tunnelMode = mode;
+    this.status.tunnelNamed = String(cfg.tunnelName || "");
+    this.tunnel.applyConfig(cfg);
+    this.emit();
+    return { ...cfg };
+  }
+
+  async applyTunnelFromConfig() {
+    const cfg = loadConfig(this.dataDir());
+    this.tunnel.apiPort = this.status.apiPort;
+    this.tunnel.dataDir = this.dataDir();
+    this.tunnel.runtimeDir = runtimeRoot();
+    this.tunnel.applyConfig(cfg);
+    if (!this.status.api || cfg.tunnelMode === "off" || !cfg.tunnelMode) {
+      this.tunnel.stop();
+      return { ok: true };
+    }
+    const res = await this.tunnel.start({
+      mode: cfg.tunnelMode,
+      tunnelName: cfg.tunnelName,
+      publicApiUrl: cfg.publicApiUrl,
+    });
+    if (res.ok && cfg.tunnelMode === "quick" && this.tunnel.state.publicUrl) {
+      cfg.lastQuickTunnelUrl = this.tunnel.state.publicUrl;
+      saveConfig(this.dataDir(), cfg);
+    }
+    this.status.webhookUrl = this.tunnel.webhookUrl();
+    this.emit();
+    return res;
+  }
+
+  async setTunnel(input) {
+    this.saveTunnelConfig(input);
+    if (!this.status.api && input.tunnelMode !== "off") {
+      return { ok: false, error: "Suba a API antes de ligar o túnel", status: { ...this.status } };
+    }
+    const res = await this.applyTunnelFromConfig();
+    return { ...res, status: { ...this.status } };
   }
 
   stopWatchdog() {
@@ -269,6 +370,15 @@ class ServiceManager {
         this.status.phase = "running";
         this.status.error = "";
         this.emit();
+      }
+      // Túnel: se deveria estar ligado e morreu, tenta de novo; senão só health público
+      const cfg = loadConfig(this.dataDir());
+      if (cfg.tunnelMode === "quick" || cfg.tunnelMode === "named") {
+        if (!this.tunnel.state.running) {
+          this.applyTunnelFromConfig().catch(() => undefined);
+        } else {
+          this.tunnel.checkPublicHealth().catch(() => undefined);
+        }
       }
       return;
     }
@@ -331,6 +441,7 @@ class ServiceManager {
 
   stop() {
     this.stopWatchdog();
+    this.tunnel.stop();
     for (const p of this.procs) {
       try {
         if (process.platform === "win32") {
@@ -468,7 +579,7 @@ class ServiceManager {
       STRICT_SECRETS: "1",
       UNIT_NAME: String(cfg.unitName || "Unidade 1"),
       UNIT_ID: String(cfg.unitId || "unit-1"),
-      PORTAL_ORIGIN: String(cfg.portalOrigin || process.env.PORTAL_ORIGIN || ""),
+      PORTAL_ORIGIN: String(cfg.portalOrigin || DEFAULT_PORTAL),
     };
     const api = spawn(apiCmd, [serverEntry], {
       cwd: path.join(nodeDir, "server"),
@@ -511,8 +622,15 @@ class ServiceManager {
     this.status.startedAt = this.startedAt;
     this.status.uptimeMs = 0;
     this._restartAttempts = 0;
+    this.status.portalOrigin = String(cfg.portalOrigin || DEFAULT_PORTAL);
     this.emit();
     this.startWatchdog();
+
+    try {
+      await this.applyTunnelFromConfig();
+    } catch (err) {
+      this.log(`[tunnel] ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 }
 

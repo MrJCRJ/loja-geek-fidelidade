@@ -322,3 +322,22 @@ ipcMain.handle("central:ensure-firewall", async () => {
   services.markFirewallAttempt(fw);
   return fw;
 });
+
+ipcMain.handle("central:set-tunnel", async (_e, input) => {
+  try {
+    return await services.setTunnel(input || { tunnelMode: "off" });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { ok: false, error: message, status: { ...services.status } };
+  }
+});
+
+ipcMain.handle("central:check-tunnel", async () => {
+  const ok = await services.tunnel.checkPublicHealth();
+  return {
+    ok,
+    publicUrl: services.status.tunnelPublicUrl,
+    publicHealthy: services.status.tunnelPublicHealthy,
+    status: { ...services.status },
+  };
+});

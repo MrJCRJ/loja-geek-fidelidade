@@ -13,6 +13,14 @@ export type CentralStatus = {
   bootDelayMs?: number;
   firewallOk?: boolean;
   firewallError?: string;
+  tunnelMode?: "off" | "quick" | "named" | string;
+  tunnelRunning?: boolean;
+  tunnelPublicUrl?: string;
+  tunnelNamed?: string;
+  tunnelPublicHealthy?: boolean;
+  tunnelError?: string;
+  portalOrigin?: string;
+  webhookUrl?: string;
   startedAt?: number | null;
   uptimeMs?: number;
   faceError?: string;
@@ -25,6 +33,13 @@ export type SetupPeek = CentralStatus & {
   suggestedJwt?: string;
   suggestedStation?: string;
   firewallRuleDone?: boolean;
+};
+
+export type TunnelInput = {
+  tunnelMode: "off" | "quick" | "named";
+  tunnelName?: string;
+  publicApiUrl?: string;
+  portalOrigin?: string;
 };
 
 export type GeekCentralApi = {
@@ -42,6 +57,15 @@ export type GeekCentralApi = {
   getAutostart: () => Promise<{ openAtLogin: boolean; bootDelayMs: number }>;
   setAutostart: (enabled: boolean) => Promise<{ ok: boolean; openAtLogin: boolean; bootDelayMs: number }>;
   ensureFirewall: () => Promise<{ ok: boolean; error?: string }>;
+  setTunnel: (
+    input: TunnelInput,
+  ) => Promise<{ ok: boolean; error?: string; publicUrl?: string; status?: CentralStatus }>;
+  checkTunnel: () => Promise<{
+    ok: boolean;
+    publicUrl?: string;
+    publicHealthy?: boolean;
+    status?: CentralStatus;
+  }>;
   onStatus: (cb: (s: CentralStatus) => void) => () => void;
 };
 

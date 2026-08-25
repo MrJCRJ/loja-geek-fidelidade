@@ -91,9 +91,9 @@ Windows login
 2. ~~**A3** — regra de firewall na 1ª execução~~ **feito** (botão + tentativa no setup)
 3. ~~**B5–B6** — delay no boot + restart se face/API morrer~~ **feito** (watchdog)
 
-### Fase 2 — “portal sempre no ar”
-4. **C1–C5** — cloudflared no Central + UI túnel + config em `data\`
-5. **C6–C8** — health público + PORTAL_ORIGIN + URL webhook
+### Fase 2 — “portal sempre no ar” ✅ (2026-08-25)
+4. ~~**C1–C5** — cloudflared no Central + UI túnel + config em `data\`~~ **feito**
+5. ~~**C6–C8** — health público + PORTAL_ORIGIN + URL webhook~~ **feito**
 
 ### Fase 3 — “instalação zero fricção”
 6. **A1–A2, A5–A7** — wizard / atalhos / update / uninstall
@@ -104,10 +104,11 @@ Windows login
 ## Critérios de pronto (aceite na loja)
 
 - [x] GeekCentral: autostart Windows, bandeja, single-instance, delay no boot, watchdog API
+- [x] GeekCentral: painel Portal/Túnel (quick + named), download cloudflared, copiar URL/webhook, health público
 - [ ] Reiniciar o **PC controle Windows** → sem clicar em nada, em ~1–2 min: API `:8787` responde, face healthy. *(validar após pack)*
 - [ ] Com túnel ligado: portal Vercel deixa de mostrar “lanhouse offline”.
 - [ ] GeekLock nas estações acha a central (IP fixo ou descoberta) e autostart continua ok.
-- [ ] Operador consegue copiar URL do túnel e URL do webhook Pix da própria tela do GeekCentral.
+- [ ] Operador consegue copiar URL do túnel e URL do webhook Pix da própria tela do GeekCentral. *(UI pronta — validar na loja)*
 
 ---
 

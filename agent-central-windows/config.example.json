@@ -10,5 +10,9 @@
   "openAtLogin": true,
   "bootDelayMs": 15000,
   "firewallRuleDone": false,
-  "portalOrigin": "https://loja-geek-portal.vercel.app"
+  "portalOrigin": "https://loja-geek-portal.vercel.app",
+  "tunnelMode": "off",
+  "tunnelName": "",
+  "publicApiUrl": "",
+  "lastQuickTunnelUrl": ""
 }
