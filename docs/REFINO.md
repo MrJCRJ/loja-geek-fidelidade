@@ -9,10 +9,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Normalizar `AdminSettings` num único helper no admin web
 - [x] Abrir esta lista a partir da auditoria
 
-## Feito (parte 6)
+## Feito (parte 7)
 
-- [x] `customer-routes.ts` — VIPs, enroll, pontos, tempo, rewards, ledger
-- [x] `routes.ts` ficou só admin (health, settings, backup, telemetria) ~240 linhas
+- [x] GeekLock: `kiosk-helpers.ts`, `LockedScreen`, `OfflineScreen`, `RemoteBannerOverlay`
+- [x] `App.tsx` ~1116 → ~920 (lógica de scan/sessão ainda centralizada — próximo corte: hooks)
 
 ---
 
@@ -23,7 +23,7 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | # | Item | Onde | Nota |
 |---|------|------|------|
 | R1 | ~~`routes.ts` monolito~~ | — | **feito partes 4–6** (stations/face/sessions/customers) |
-| R2 | `App.tsx` GeekLock ~1100 linhas | `agent-windows/src/App.tsx` | Separar scan/sessão/UI/WS |
+| R2 | GeekLock `App.tsx` ainda ~920 | `agent-windows/src/App.tsx` | Parte 7 tirou UI; extrair hooks scan/presença |
 | R3 | `ClientesTab` ~560 linhas | `web/src/admin/tabs/ClientesTab.tsx` | Extrair enroll + tabela |
 
 ### Médio (duplicação / clareza)
@@ -58,4 +58,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 7:** partir GeekLock `App.tsx` (scan / sessão / overlay) **ou** `ClientesTab` no admin.
+**Parte 8:** extrair hooks do GeekLock (`useRecognizeLoop` / presença) **ou** partir `ClientesTab`.

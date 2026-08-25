@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  ApiError,
   attachCameraStream,
   captureFrame,
   checkHealth,
@@ -16,85 +15,22 @@ import {
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
 import { reportTelemetry } from "./telemetry";
+import { LockedScreen } from "./LockedScreen";
+import { OfflineScreen } from "./OfflineScreen";
+import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
+import {
+  DEFAULT_ABSENT_SEC,
+  KEEP_STREAK_MIN_SCORE,
+  PRESENCE_MS,
+  SESSION_HB_MS,
+  STRONG_MATCH_SCORE,
+  playUnlockChime,
+  scanVisualFromReason,
+  sessionStartErrorMessage,
+  type Phase,
+  type RemoteBanner,
+} from "./kiosk-helpers";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
-
-type Phase = "boot" | "setup" | "offline" | "locked" | "unlocked" | "staff";
-type ScanVisual = "idle" | "scanning" | "warn" | "error" | "success";
-
-type RemoteBanner = {
-  title: string;
-  text: string;
-  level: "info" | "warn" | "urgent";
-  until: number;
-};
-
-const DEFAULT_ABSENT_SEC = 90;
-const PRESENCE_MS = 1800;
-const SESSION_HB_MS = 8000;
-/** Match único forte libera; senão precisa de 2 frames. */
-const STRONG_MATCH_SCORE = 0.55;
-const KEEP_STREAK_MIN_SCORE = 0.4;
-
-function scanVisualFromReason(reason?: string, scanning?: boolean): ScanVisual {
-  if (scanning) return "scanning";
-  if (reason === "no_face" || !reason) return "idle";
-  if (reason === "low_quality") return "error";
-  if (reason === "no_gallery") return "error";
-  if (reason === "unknown" || reason === "ambiguous") return "warn";
-  return "idle";
-}
-
-function statusIcon(reason?: string) {
-  if (reason === "no_gallery") return "⚠";
-  if (reason === "low_quality" || reason === "no_face") return "◎";
-  if (reason === "unknown" || reason === "ambiguous") return "?";
-  return "◉";
-}
-
-function playUnlockChime() {
-  try {
-    const ctx = new AudioContext();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1320, ctx.currentTime + 0.12);
-    gain.gain.setValueAtTime(0.15, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-    osc.onended = () => {
-      ctx.close().catch(() => undefined);
-    };
-  } catch {
-    /* ignore */
-  }
-}
-
-
-function sessionStartErrorMessage(err: unknown): { reason: string; status: string } {
-  if (err instanceof ApiError) {
-    if (err.code === "no_consent") {
-      return { reason: "no_consent", status: "Sem consentimento LGPD — cadastre de novo no portal" };
-    }
-    if (err.code === "no_credit" || /cr[eé]dito|caixa/i.test(err.message)) {
-      return { reason: "no_credit", status: err.message || "Sem crédito — passe no caixa" };
-    }
-    return { reason: "error", status: err.message || "Não foi possível iniciar a sessão" };
-  }
-  if (err instanceof Error) {
-    if (/consentimento|LGPD/i.test(err.message)) {
-      return { reason: "no_consent", status: err.message };
-    }
-    if (/cr[eé]dito|caixa/i.test(err.message)) {
-      return { reason: "no_credit", status: err.message };
-    }
-    return { reason: "error", status: err.message };
-  }
-  return { reason: "no_credit", status: "Sem crédito — passe no caixa" };
-}
 
 export default function App() {
   const [config, setConfig] = useState<GeekLockConfig | null>(null);
@@ -884,18 +820,9 @@ export default function App() {
     return () => window.clearTimeout(t);
   }, [remoteBanner]);
 
-  const remoteBannerEl =
-    remoteBanner && Date.now() < remoteBanner.until ? (
-      <div className={`remote-banner remote-banner--${remoteBanner.level}`} role="alert">
-        <div className="remote-banner-inner">
-          <p className="remote-banner-title">{remoteBanner.title}</p>
-          <p className="remote-banner-text">{remoteBanner.text}</p>
-          <button className="btn ghost" type="button" onClick={() => setRemoteBanner(null)}>
-            Fechar
-          </button>
-        </div>
-      </div>
-    ) : null;
+  const remoteBannerEl = (
+    <RemoteBannerOverlay banner={remoteBanner} onDismiss={() => setRemoteBanner(null)} />
+  );
 
   const ovalClass = welcomeCustomer
     ? "success"
@@ -940,45 +867,20 @@ export default function App() {
 
   if (phase === "offline") {
     return (
-      <div className="screen">
-        {remoteBannerEl}
-        <div className="card">
-          <h1 className="brand">GeekLock</h1>
-          <span className="pill bad">Sem conexão</span>
-          <p className="kiosk-lead">PC bloqueado. Conecte-se ao servidor da loja (PC controle).</p>
-          <p className="muted kiosk-status">{status}</p>
-          {error && <p className="error-text">{error}</p>}
-          <div className="row">
-            <button className="btn" type="button" onClick={retryOnline}>
-              Tentar de novo
-            </button>
-            <button
-              className="btn ghost"
-              type="button"
-              onClick={() => {
-                setPinMode("unlock");
-                setPin("");
-              }}
-            >
-              PIN Admin
-            </button>
-          </div>
-          {pinMode && (
-            <div className="field">
-              <label>PIN Admin</label>
-              <input
-                type="password"
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitPin()}
-              />
-              <button className="btn" type="button" onClick={submitPin}>
-                Confirmar
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <OfflineScreen
+        status={status}
+        error={error}
+        pin={pin}
+        pinMode={pinMode}
+        banner={remoteBannerEl}
+        onRetry={retryOnline}
+        onPinChange={setPin}
+        onOpenPin={() => {
+          setPinMode("unlock");
+          setPin("");
+        }}
+        onSubmitPin={submitPin}
+      />
     );
   }
 
@@ -994,123 +896,27 @@ export default function App() {
   }
 
   return (
-    <div className="screen screen-locked">
-      {remoteBannerEl}
-      <header className="locked-topbar">
-        <div className="locked-topbar-brand">
-          <strong>GeekLock</strong>
-          <span className="muted locked-topbar-station">{config?.stationName}</span>
-        </div>
-        <span className={`pill ${scanReason === "no_gallery" ? "bad" : "warn"} kiosk-status-pill`}>
-          {statusIcon(scanReason)} {status}
-        </span>
-        <button
-          className="btn ghost locked-topbar-pin"
-          type="button"
-          onClick={() => {
-            setPinMode("unlock");
-            setPin("");
-          }}
-        >
-          PIN Admin
-        </button>
-      </header>
-      <p className="muted locked-conn-hint">
-        Conectado ao PC controle
-        {score != null && score > 0 ? ` · score ${(score * 100).toFixed(0)}%` : ""}
-      </p>
-
-      {welcomeCustomer && (
-        <div className="welcome-splash">
-          <p className="welcome-kicker">Bem-vindo</p>
-          <h2 className="welcome-name">{welcomeCustomer.name}</h2>
-          <span className={`level-badge lg ${welcomeCustomer.level}`}>{welcomeCustomer.level}</span>
-          <p className="muted">Liberando máquina…</p>
-        </div>
-      )}
-
-      <div className="card">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h1 className="brand">GeekLock</h1>
-            <p className="muted kiosk-sub" style={{ margin: 0 }}>
-              {config?.stationName} · só VIP libera a máquina
-            </p>
-          </div>
-          <span className={`pill ${scanReason === "no_gallery" ? "bad" : "warn"} kiosk-status-pill`}>
-            {statusIcon(scanReason)} {status}
-          </span>
-        </div>
-
-        <p className="muted kiosk-sub" style={{ margin: "0.35rem 0 0" }}>
-          Conectado ao PC controle
-          {showScore ? ` · score ${(score! * 100).toFixed(0)}%` : ""}
-        </p>
-
-        <div className="grid" style={{ marginTop: "1rem" }}>
-          <div className="video-wrap">
-            <video ref={videoRef} muted playsInline />
-            {!camReady && (
-              <div className="video-placeholder">
-                <p>Câmera indisponível</p>
-                <p className="muted">Use PIN Admin ou reconecte o DroidCam</p>
-              </div>
-            )}
-            <div className={`face-guide scan-${ovalClass}`} aria-hidden />
-            <p className="face-guide-label">
-              {scanning ? "Analisando rosto…" : "Centralize o rosto"}
-            </p>
-          </div>
-          <div>
-            <p className="kiosk-lead">
-              Olhe para a câmera. O PC só destrava se o servidor confirmar que você é VIP.
-            </p>
-            {showScore && (
-              <p className="muted score-line">
-                Score: <strong>{(score! * 100).toFixed(0)}%</strong>
-              </p>
-            )}
-            {error && <p className="error-text">{error}</p>}
-            <div className="row">
-              <button
-                className="btn ghost"
-                type="button"
-                onClick={() => {
-                  setPinMode("unlock");
-                  setPin("");
-                }}
-              >
-                PIN Admin
-              </button>
-              <button
-                className="btn ghost"
-                type="button"
-                onClick={() => {
-                  setPinMode("quit");
-                  setPin("");
-                }}
-              >
-                Sair do app
-              </button>
-            </div>
-            {pinMode && (
-              <div className="field">
-                <label>PIN Admin ({pinMode === "quit" ? "sair" : "desbloquear"})</label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitPin()}
-                  autoFocus
-                />
-                <button className="btn" type="button" onClick={submitPin}>
-                  Confirmar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <LockedScreen
+      config={config}
+      status={status}
+      scanReason={scanReason}
+      scanning={scanning}
+      ovalClass={ovalClass}
+      showScore={showScore}
+      score={score}
+      error={error}
+      camReady={camReady}
+      welcomeCustomer={welcomeCustomer}
+      pin={pin}
+      pinMode={pinMode}
+      videoRef={videoRef}
+      banner={remoteBannerEl}
+      onPinChange={setPin}
+      onOpenPin={(mode) => {
+        setPinMode(mode);
+        setPin("");
+      }}
+      onSubmitPin={submitPin}
+    />
   );
 }
