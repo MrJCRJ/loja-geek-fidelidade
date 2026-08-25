@@ -3,6 +3,10 @@ const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("geeklock", {
   getConfig: () => ipcRenderer.invoke("config:get"),
   saveToken: (token) => ipcRenderer.invoke("config:save-token", token),
+  saveConfig: (partial) => ipcRenderer.invoke("config:save", partial),
+  startDiscovery: () => ipcRenderer.invoke("discovery:start"),
+  getDiscoveryPeers: () => ipcRenderer.invoke("discovery:peers"),
+  stopDiscovery: () => ipcRenderer.invoke("discovery:stop"),
   lock: () => ipcRenderer.invoke("lock:lock"),
   unlock: () => ipcRenderer.invoke("lock:unlock"),
   quitWithPin: (pin) => ipcRenderer.invoke("app:quit", pin),

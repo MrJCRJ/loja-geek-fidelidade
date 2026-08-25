@@ -22,15 +22,14 @@ GeekLock — trava VIP (estação / pendrive)
 
 Pré-requisito: PC CONTROLE com GeekCentral.exe online (ou Docker na LAN).
 
-1) Edite config.json nesta pasta:
-   - serverUrl: http://IP-DO-PC-CONTROLE:8787
-   - stationName: PC-01 (único por máquina)
-   - sharedSecret: loja-geek-station-secret
-   - staffPin: PIN de emergência
-   - absentSecondsToLock: 60
-2) No Windows da estação, execute GeekLock.exe (config.json na mesma pasta).
-3) Permita a webcam. Sem conexão com o servidor = tela travada.
-4) Cadastre VIP + fotos no admin do GeekCentral.
+1ª vez (assistente na tela)
+1) Copie a pasta GeekLock do pendrive para o disco (ex.: C:\GeekLock).
+2) Execute GeekLock.exe — aparece o assistente.
+3) Escolha o GeekCentral encontrado na LAN (ou digite a URL).
+4) Informe nome da estação (ex.: PC-01) e o mesmo segredo do Central.
+5) Permita a webcam. Sem conexão = tela travada.
+
+Config manual (opcional): edite config.json (serverUrl, stationName, sharedSecret, staffPin).
 
 Fluxo: reconhece VIP -> libera PC -> conta horas -> sem rosto ~60s -> trava de novo.
 

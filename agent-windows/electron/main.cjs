@@ -2,7 +2,8 @@ const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, se
 const path = require("node:path");
 const { OverlayLockController } = require("./lock-controller.cjs");
 const { SessionHud } = require("./session-hud.cjs");
-const { loadConfig, saveStationToken } = require("./config.cjs");
+const { loadConfig, saveStationToken, saveConfig } = require("./config.cjs");
+const { startListener } = require("../../shared/lan-discovery.cjs");
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -424,6 +425,36 @@ ipcMain.handle("config:get", () => loadConfig());
 ipcMain.handle("config:save-token", (_e, token) => {
   saveStationToken(String(token || ""));
   return loadConfig();
+});
+
+ipcMain.handle("config:save", (_e, partial) => {
+  return saveConfig(partial || {});
+});
+
+/** @type {ReturnType<typeof startListener> | null} */
+let discovery = null;
+
+ipcMain.handle("discovery:start", () => {
+  if (discovery) {
+    return { ok: true, peers: discovery.getPeers() };
+  }
+  discovery = startListener(() => {
+    // peers atualizados sob demanda via discovery:peers
+  });
+  return { ok: true, peers: [] };
+});
+
+ipcMain.handle("discovery:peers", () => {
+  if (!discovery) return [];
+  return discovery.getPeers();
+});
+
+ipcMain.handle("discovery:stop", () => {
+  if (discovery) {
+    discovery.stop();
+    discovery = null;
+  }
+  return { ok: true };
 });
 
 ipcMain.handle("lock:lock", () => {

@@ -3,26 +3,33 @@ const path = require("node:path");
 const { app } = require("electron");
 
 const DEFAULTS = {
-  serverUrl: "http://192.168.3.90:8787",
-  stationName: "PC-01",
-  sharedSecret: "loja-geek-station-secret",
+  serverUrl: "",
+  stationName: "",
+  sharedSecret: "",
   staffPin: "2580",
-  absentSecondsToLock: 60,
+  absentSecondsToLock: 90,
   stationToken: "",
+  setupComplete: false,
+  openAtLogin: true,
 };
 
 function configCandidates() {
   const list = [];
-  // Ao lado do executável (pendrive / portable)
   list.push(path.join(path.dirname(process.execPath), "config.json"));
-  // Pasta do app empacotado
   if (process.resourcesPath) {
     list.push(path.join(process.resourcesPath, "config.json"));
   }
-  // Dev / pasta do projeto
   list.push(path.join(app.getAppPath(), "config.json"));
   list.push(path.join(__dirname, "..", "config.json"));
   return list;
+}
+
+function writableConfigPath(cfg) {
+  return (
+    cfg._configPath ||
+    path.join(path.dirname(process.execPath), "config.json") ||
+    path.join(__dirname, "..", "config.json")
+  );
 }
 
 function loadConfig() {
@@ -30,7 +37,12 @@ function loadConfig() {
     try {
       if (fs.existsSync(file)) {
         const raw = JSON.parse(fs.readFileSync(file, "utf8"));
-        return { ...DEFAULTS, ...raw, _configPath: file };
+        const merged = { ...DEFAULTS, ...raw, _configPath: file };
+        // configs antigos com IP fixo e token já contam como setup feito
+        if (merged.setupComplete !== true) {
+          if (merged.stationToken && merged.serverUrl) merged.setupComplete = true;
+        }
+        return merged;
       }
     } catch {
       /* try next */
@@ -39,16 +51,17 @@ function loadConfig() {
   return { ...DEFAULTS, _configPath: null };
 }
 
-function saveStationToken(token) {
+function saveConfig(partial) {
   const cfg = loadConfig();
-  const target =
-    cfg._configPath ||
-    path.join(path.dirname(process.execPath), "config.json") ||
-    path.join(__dirname, "..", "config.json");
-  const next = { ...cfg, stationToken: token };
+  const target = writableConfigPath(cfg);
+  const next = { ...cfg, ...partial };
   delete next._configPath;
   fs.writeFileSync(target, JSON.stringify(next, null, 2), "utf8");
-  return target;
+  return { ...next, _configPath: target };
 }
 
-module.exports = { loadConfig, saveStationToken, DEFAULTS };
+function saveStationToken(token) {
+  return saveConfig({ stationToken: token });
+}
+
+module.exports = { loadConfig, saveStationToken, saveConfig, DEFAULTS };

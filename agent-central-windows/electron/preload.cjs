@@ -12,6 +12,9 @@ contextBridge.exposeInMainWorld("geekcentral", {
   ensureFirewall: () => ipcRenderer.invoke("central:ensure-firewall"),
   setTunnel: (input) => ipcRenderer.invoke("central:set-tunnel", input),
   checkTunnel: () => ipcRenderer.invoke("central:check-tunnel"),
+  qr: (text) => ipcRenderer.invoke("central:qr", text),
+  createShortcuts: () => ipcRenderer.invoke("central:create-shortcuts"),
+  uninstallLocal: (opts) => ipcRenderer.invoke("central:uninstall-local", opts),
   onStatus: (cb) => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on("central:status", handler);

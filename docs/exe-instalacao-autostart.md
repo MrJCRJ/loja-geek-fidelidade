@@ -95,9 +95,10 @@ Windows login
 4. ~~**C1–C5** — cloudflared no Central + UI túnel + config em `data\`~~ **feito**
 5. ~~**C6–C8** — health público + PORTAL_ORIGIN + URL webhook~~ **feito**
 
-### Fase 3 — “instalação zero fricção”
-6. **A1–A2, A5–A7** — wizard / atalhos / update / uninstall
-7. **D1–D3** — descoberta LAN + QR + assistente GeekLock
+### Fase 3 — “instalação zero fricção” ✅ (2026-08-25)
+6. ~~**A5–A7** — checklist na UI + atalhos Desktop/Iniciar + desinstalar local~~ **feito** (Central)
+7. ~~**D1–D3** — beacon UDP LAN + QR no Central + assistente 1ª vez no GeekLock~~ **feito**
+   - A1–A2 (copiar pasta/installer NSIS) ficam para pack futuro; atalhos + wizard cobrem o fluxo na loja.
 
 ---
 
@@ -105,9 +106,11 @@ Windows login
 
 - [x] GeekCentral: autostart Windows, bandeja, single-instance, delay no boot, watchdog API
 - [x] GeekCentral: painel Portal/Túnel (quick + named), download cloudflared, copiar URL/webhook, health público
+- [x] GeekCentral: checklist + QR da URL da API + atalhos + desinstalar local
+- [x] GeekLock: assistente 1ª vez (descoberta LAN UDP + claim)
 - [ ] Reiniciar o **PC controle Windows** → sem clicar em nada, em ~1–2 min: API `:8787` responde, face healthy. *(validar após pack)*
 - [ ] Com túnel ligado: portal Vercel deixa de mostrar “lanhouse offline”.
-- [ ] GeekLock nas estações acha a central (IP fixo ou descoberta) e autostart continua ok.
+- [ ] GeekLock nas estações acha a central (IP fixo ou descoberta) e autostart continua ok. *(código pronto — validar na loja)*
 - [ ] Operador consegue copiar URL do túnel e URL do webhook Pix da própria tela do GeekCentral. *(UI pronta — validar na loja)*
 
 ---

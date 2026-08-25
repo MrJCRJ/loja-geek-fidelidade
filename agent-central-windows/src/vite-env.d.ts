@@ -66,6 +66,11 @@ export type GeekCentralApi = {
     publicHealthy?: boolean;
     status?: CentralStatus;
   }>;
+  qr: (text: string) => Promise<{ ok: boolean; dataUrl?: string; error?: string }>;
+  createShortcuts: () => Promise<{ ok: boolean; error?: string; paths?: string[] }>;
+  uninstallLocal: (opts?: {
+    wipeData?: boolean;
+  }) => Promise<{ ok: boolean; error?: string; removed?: string[]; dataDeleted?: boolean }>;
   onStatus: (cb: (s: CentralStatus) => void) => () => void;
 };
 

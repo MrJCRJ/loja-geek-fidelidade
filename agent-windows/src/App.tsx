@@ -14,9 +14,10 @@ import {
   startSession,
 } from "./api";
 import { StationSocket, type StationCommand } from "./ws";
+import { SetupWizard } from "./SetupWizard";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
-type Phase = "boot" | "offline" | "locked" | "unlocked" | "staff";
+type Phase = "boot" | "setup" | "offline" | "locked" | "unlocked" | "staff";
 type ScanVisual = "idle" | "scanning" | "warn" | "error" | "success";
 
 const DEFAULT_ABSENT_SEC = 90;
@@ -259,6 +260,11 @@ export default function App() {
       const cfg = await window.geeklock.getConfig();
       if (cancelled) return;
       setConfig(cfg);
+      if (!cfg.setupComplete || !cfg.serverUrl || !cfg.stationName) {
+        setPhase("setup");
+        setStatus("Configure a estação");
+        return;
+      }
       try {
         await checkHealth(cfg);
         let next = cfg;
@@ -844,6 +850,25 @@ export default function App() {
           <p className="muted kiosk-status">{status}</p>
         </div>
       </div>
+    );
+  }
+
+  if (phase === "setup") {
+    return (
+      <SetupWizard
+        onDone={async (cfg) => {
+          setConfig(cfg);
+          setStatus("Conectado ao servidor");
+          try {
+            await heartbeat(cfg);
+            await lockUi();
+          } catch (err) {
+            setPhase("offline");
+            setStatus(err instanceof Error ? err.message : "Sem conexão com o PC controle");
+            await window.geeklock.lock();
+          }
+        }}
+      />
     );
   }
 

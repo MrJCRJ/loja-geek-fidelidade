@@ -7,7 +7,17 @@ export type GeekLockConfig = {
   staffPin: string;
   absentSecondsToLock: number;
   stationToken?: string;
+  setupComplete?: boolean;
+  openAtLogin?: boolean;
   _configPath?: string | null;
+};
+
+export type DiscoveryPeer = {
+  lanIp: string;
+  apiPort: number;
+  unitName?: string;
+  serverUrl: string;
+  seenAt: number;
 };
 
 export type Customer = {
@@ -35,6 +45,10 @@ declare global {
     geeklock: {
       getConfig: () => Promise<GeekLockConfig>;
       saveToken: (token: string) => Promise<GeekLockConfig>;
+      saveConfig: (partial: Partial<GeekLockConfig>) => Promise<GeekLockConfig>;
+      startDiscovery: () => Promise<{ ok: boolean; peers: DiscoveryPeer[] }>;
+      getDiscoveryPeers: () => Promise<DiscoveryPeer[]>;
+      stopDiscovery: () => Promise<{ ok: boolean }>;
       lock: () => Promise<{ locked: boolean }>;
       unlock: () => Promise<{ locked: boolean }>;
       quitWithPin: (pin: string) => Promise<{ ok: boolean; error?: string }>;

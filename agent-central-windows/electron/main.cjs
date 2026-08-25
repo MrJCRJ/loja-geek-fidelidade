@@ -10,6 +10,8 @@ const {
 const path = require("node:path");
 const { ServiceManager, isDev } = require("./services.cjs");
 const { ensureApiFirewallRule } = require("./firewall.cjs");
+const { createWindowsShortcuts, removeWindowsShortcuts } = require("./shortcuts.cjs");
+const QRCode = require("qrcode");
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -264,6 +266,11 @@ ipcMain.handle("central:complete-setup", async (_e, input) => {
     services.setOpenAtLogin(true);
     const fw = await ensureApiFirewallRule(services.status.apiPort || 8787);
     services.markFirewallAttempt(fw);
+    await createWindowsShortcuts({
+      target: process.execPath,
+      name: "GeekCentral",
+      cwd: path.dirname(process.execPath),
+    });
     await services.start();
     return { ok: true, status: { ...services.status, openAtLogin: true } };
   } catch (err) {
@@ -340,4 +347,60 @@ ipcMain.handle("central:check-tunnel", async () => {
     publicHealthy: services.status.tunnelPublicHealthy,
     status: { ...services.status },
   };
+});
+
+ipcMain.handle("central:qr", async (_e, text) => {
+  const data = String(text || "").trim();
+  if (!data) return { ok: false, error: "vazio" };
+  try {
+    const dataUrl = await QRCode.toDataURL(data, { margin: 1, width: 220 });
+    return { ok: true, dataUrl };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
+ipcMain.handle("central:create-shortcuts", async () => {
+  const res = await createWindowsShortcuts({
+    target: process.execPath,
+    name: "GeekCentral",
+    cwd: path.dirname(process.execPath),
+    desktop: true,
+    startMenu: true,
+  });
+  if (res.ok) services.log("[setup] atalhos criados (Área de trabalho / Menu Iniciar)");
+  else services.log(`[setup] atalhos: ${res.error || "falhou"}`);
+  return res;
+});
+
+ipcMain.handle("central:uninstall-local", async (_e, opts) => {
+  const wipeData = Boolean(opts?.wipeData);
+  try {
+    app.setLoginItemSettings({ openAtLogin: false, path: process.execPath });
+  } catch {
+    /* ignore */
+  }
+  services.setOpenAtLogin(false);
+  const removed = removeWindowsShortcuts("GeekCentral");
+  let dataDeleted = false;
+  if (wipeData) {
+    try {
+      const dataDir = services.dataDir();
+      // não apaga a pasta inteira se o exe está dentro — só limpa db/config sensíveis com cuidado
+      const fs = require("node:fs");
+      for (const name of ["fidelidade.db", "fidelidade.db-wal", "fidelidade.db-shm", "config.json"]) {
+        const p = path.join(dataDir, name);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      }
+      dataDeleted = true;
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+        removed: removed.removed,
+      };
+    }
+  }
+  services.log("[setup] remoção local: autostart off + atalhos");
+  return { ok: true, removed: removed.removed, dataDeleted };
 });

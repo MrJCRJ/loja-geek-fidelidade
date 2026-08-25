@@ -50,6 +50,8 @@ export default function App() {
   const [portalOrigin, setPortalOrigin] = useState("https://loja-geek-portal.vercel.app");
   const [tunnelBusy, setTunnelBusy] = useState(false);
   const [tunnelMsg, setTunnelMsg] = useState("");
+  const [stationQr, setStationQr] = useState("");
+  const [installMsg, setInstallMsg] = useState("");
 
   useEffect(() => {
     window.geekcentral.getStatus().then(setStatus).catch(() => undefined);
@@ -84,6 +86,17 @@ export default function App() {
       if (s.portalOrigin) setPortalOrigin(s.portalOrigin);
     });
   }, []);
+
+  useEffect(() => {
+    const url = `http://${status.lanIp}:${status.apiPort}`;
+    if (!status.lanIp || status.lanIp === "...") return;
+    window.geekcentral
+      .qr(url)
+      .then((r) => {
+        if (r.ok && r.dataUrl) setStationQr(r.dataUrl);
+      })
+      .catch(() => undefined);
+  }, [status.lanIp, status.apiPort]);
 
   useEffect(() => {
     if (status.phase !== "running" || !status.startedAt) return;
@@ -488,8 +501,67 @@ export default function App() {
             <br />
             Neste PC: <span className="mono">{localAdmin}</span>
           </p>
+          {stationQr ? (
+            <div style={{ marginTop: "0.85rem", textAlign: "center" }}>
+              <img src={stationQr} alt="QR serverUrl" width={160} height={160} style={{ borderRadius: 8 }} />
+              <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+                QR do serverUrl (LAN)
+              </p>
+            </div>
+          ) : null}
         </section>
       </div>
+
+      <section className="panel">
+        <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Checklist da loja</h2>
+        <ul className="muted" style={{ margin: "0 0 0.75rem", paddingLeft: "1.2rem", lineHeight: 1.6 }}>
+          <li>{status.api ? "✓" : "○"} API online (:{status.apiPort})</li>
+          <li>{status.face ? "✓" : "○"} Face online</li>
+          <li>{openAtLogin ? "✓" : "○"} Iniciar com o Windows</li>
+          <li>{status.firewallOk ? "✓" : "○"} Firewall liberado</li>
+          <li>
+            {status.tunnelRunning || status.tunnelPublicUrl ? "✓" : "○"} Túnel / URL pública
+            {status.tunnelPublicHealthy ? " (público ok)" : ""}
+          </li>
+          <li>○ GeekLock nas estações com este serverUrl (descoberta LAN automática)</li>
+        </ul>
+        <div className="row">
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              setInstallMsg("Criando atalhos…");
+              window.geekcentral
+                .createShortcuts()
+                .then((r) => setInstallMsg(r.ok ? "Atalhos criados" : r.error || "Falhou"))
+                .catch((e) => setInstallMsg(e instanceof Error ? e.message : "Falhou"));
+            }}
+          >
+            Criar atalhos
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() => {
+              if (!window.confirm("Remover autostart e atalhos do GeekCentral?")) return;
+              const wipeData = window.confirm("Também apagar config/banco em data\\ ? (irreversível)");
+              window.geekcentral
+                .uninstallLocal({ wipeData })
+                .then((r) =>
+                  setInstallMsg(
+                    r.ok
+                      ? `Removido. Atalhos: ${(r.removed || []).length}${r.dataDeleted ? " · dados apagados" : ""}`
+                      : r.error || "Falhou",
+                  ),
+                )
+                .catch((e) => setInstallMsg(e instanceof Error ? e.message : "Falhou"));
+            }}
+          >
+            Remover instalação local
+          </button>
+        </div>
+        {installMsg && <p className="muted">{installMsg}</p>}
+      </section>
 
       <section className="panel">
         <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Log</h2>

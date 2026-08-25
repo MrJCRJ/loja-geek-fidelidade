@@ -5,6 +5,7 @@ const crypto = require("node:crypto");
 const { spawn } = require("node:child_process");
 const http = require("node:http");
 const { TunnelManager } = require("./tunnel.cjs");
+const { startBeacon } = require("../../shared/lan-discovery.cjs");
 
 const DEFAULT_ADMIN = "admin123";
 const DEFAULT_STATION = "loja-geek-station-secret";
@@ -123,6 +124,7 @@ class ServiceManager {
     this.watchdogTimer = null;
     this._restarting = false;
     this._restartAttempts = 0;
+    this.beacon = null;
     this.status = {
       phase: "idle",
       api: false,
@@ -439,8 +441,31 @@ class ServiceManager {
     return { ok: true };
   }
 
+  stopBeacon() {
+    if (this.beacon) {
+      try {
+        this.beacon.stop();
+      } catch {
+        /* ignore */
+      }
+      this.beacon = null;
+    }
+  }
+
+  startBeacon() {
+    this.stopBeacon();
+    this.beacon = startBeacon(() => ({
+      lanIp: this.status.lanIp || lanIPv4(),
+      apiPort: this.status.apiPort || 8787,
+      unitName: this.status.unitName || "Unidade",
+      version: 1,
+    }));
+    this.log("[discovery] anunciando GeekCentral na LAN (UDP 48787)");
+  }
+
   stop() {
     this.stopWatchdog();
+    this.stopBeacon();
     this.tunnel.stop();
     for (const p of this.procs) {
       try {
@@ -625,6 +650,7 @@ class ServiceManager {
     this.status.portalOrigin = String(cfg.portalOrigin || DEFAULT_PORTAL);
     this.emit();
     this.startWatchdog();
+    this.startBeacon();
 
     try {
       await this.applyTunnelFromConfig();
