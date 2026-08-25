@@ -1,3 +1,10 @@
+import {
+  CAMERA_ERROR_COPY,
+  attachCameraStream as attachCameraStreamShared,
+  cameraErrorMessage as cameraErrorMessageShared,
+  captureFrame as captureFrameShared,
+  openUserCamera as openUserCameraShared,
+} from "../../shared/camera";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
 function joinUrl(base: string, path: string) {
@@ -185,35 +192,12 @@ export async function endSession(config: GeekLockConfig, sessionId?: string, rea
   });
 }
 
-import {
-  attachCameraStream as attachCameraStreamShared,
-  captureFrame as captureFrameShared,
-  openUserCamera as openUserCameraShared,
-} from "../../shared/camera";
-
 export function captureFrame(video: HTMLVideoElement, quality = 0.85): string {
   return captureFrameShared(video, quality);
 }
 
 export function cameraErrorMessage(err: unknown): string {
-  const name = err instanceof DOMException ? err.name : "";
-  const raw = err instanceof Error ? err.message : String(err || "erro desconhecido");
-  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return "Permissão da câmera negada. Permita o acesso à webcam no app.";
-  }
-  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-    return "Nenhuma câmera encontrada. DroidCam conectado? Rode: bash scripts/linux-loja.sh droidcam IP";
-  }
-  if (name === "NotReadableError" || name === "TrackStartError") {
-    return "Câmera ocupada por outro app. Feche e tente de novo.";
-  }
-  if (name === "TimeoutError") {
-    return raw;
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    return "getUserMedia indisponível neste ambiente.";
-  }
-  return `Falha na câmera: ${raw}`;
+  return cameraErrorMessageShared(err, CAMERA_ERROR_COPY.kiosk);
 }
 
 export async function openUserCamera(): Promise<MediaStream> {
@@ -226,7 +210,9 @@ export async function openUserCamera(): Promise<MediaStream> {
 }
 
 export async function attachCameraStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
-  return attachCameraStreamShared(video, stream, "Vídeo não iniciou (10s). DroidCam conectado?");
+  return attachCameraStreamShared(video, stream, {
+    timeoutMessage: "Vídeo não iniciou (10s). DroidCam conectado?",
+  });
 }
 
 export function formatDuration(seconds: number) {

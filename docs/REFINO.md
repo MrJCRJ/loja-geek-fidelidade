@@ -9,6 +9,12 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Normalizar `AdminSettings` num único helper no admin web
 - [x] Abrir esta lista a partir da auditoria
 
+## Feito (parte 2)
+
+- [x] `cameraErrorMessage` + cópias web/portal/kiosk em `shared/camera.ts`
+- [x] Portal usa `shared` (`openFacingUserCamera`, `attachCameraStream` com waitFrames)
+- [x] Admin web + GeekLock só reexportam o shared
+
 ---
 
 ## Backlog encontrado
@@ -25,8 +31,8 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 | # | Item | Onde | Nota |
 |---|------|------|------|
-| R4 | `cameraErrorMessage` triplicado | web / portal / GeekLock | Unificar em `shared/` (msgs por app ok) |
-| R5 | Portal não usa `shared/camera.ts` | `portal/src/api.ts` | Alinhar ao shared (já usado no web/lock) |
+| R4 | ~~`cameraErrorMessage` triplicado~~ | — | **feito parte 2** |
+| R5 | ~~Portal não usa `shared/camera.ts`~~ | — | **feito parte 2** |
 | R6 | `formatDuration` / `formatHours` parecidos | web + portal + lock | Um módulo shared de tempo |
 | R7 | `DashboardPage` / `payments` / `portal-routes` ~500 linhas | portal + server | Cortar em pedaços quando tocar |
 | R8 | `ApiError` duplicado | web/portal/lock | Shared fino ou aceitar por fronteira |
@@ -53,4 +59,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Parte 2:** unificar `cameraErrorMessage` + opcionalmente portal → `shared/camera.ts` (ganho real, risco baixo).
+**Parte 3:** `shared/format-time.ts` (`formatDuration` / `formatHours`) — ganho pequeno, risco mínimo.

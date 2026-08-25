@@ -137,7 +137,9 @@ export function wsUrl(role: "admin" | "station", token: string) {
 }
 
 import {
+  CAMERA_ERROR_COPY,
   attachCameraStream as attachCameraStreamShared,
+  cameraErrorMessage as cameraErrorMessageShared,
   captureFrame as captureFrameShared,
   openUserCamera as openUserCameraShared,
 } from "../../shared/camera";
@@ -146,35 +148,8 @@ export function captureFrame(video: HTMLVideoElement, quality = 0.72): string {
   return captureFrameShared(video, quality);
 }
 
-/** Mensagens claras para falhas comuns de webcam no notebook/Linux. */
 export function cameraErrorMessage(err: unknown): string {
-  const name = err instanceof DOMException ? err.name : "";
-  const raw = err instanceof Error ? err.message : String(err || "erro desconhecido");
-  if (!window.isSecureContext) {
-    return "A câmera só funciona em HTTPS (ou localhost). Abra https://IP-DO-SERVIDOR/ — não use http://IP:8787.";
-  }
-  if (name === "NotAllowedError" || name === "PermissionDeniedError") {
-    return "Permissão da câmera negada. No Chromium: cadeado na barra de endereço → Câmera → Permitir, e recarregue.";
-  }
-  if (name === "NotFoundError" || name === "DevicesNotFoundError") {
-    return "Nenhuma câmera encontrada. Confira se o notebook detecta a webcam e se não está desativada no BIOS.";
-  }
-  if (name === "NotReadableError" || name === "TrackStartError") {
-    return "Câmera ocupada por outro app. Feche Firefox/abas na porta 8100, Cheese, Zoom… e confira se o DroidCam no PC está conectado ao celular.";
-  }
-  if (name === "TimeoutError") {
-    return raw;
-  }
-  if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
-    return "A webcam não aceitou as restrições de vídeo. Tente de novo (o app já faz fallback automático).";
-  }
-  if (name === "SecurityError") {
-    return "Navegador bloqueou a câmera (contexto inseguro). Use HTTPS.";
-  }
-  if (!navigator.mediaDevices?.getUserMedia) {
-    return "Este navegador não expõe getUserMedia. Use Chromium/Chrome/Edge atualizado.";
-  }
-  return `Falha na câmera: ${raw}`;
+  return cameraErrorMessageShared(err, CAMERA_ERROR_COPY.web);
 }
 
 /**
@@ -194,9 +169,7 @@ export async function attachCameraStream(
   video: HTMLVideoElement,
   stream: MediaStream,
 ): Promise<void> {
-  return attachCameraStreamShared(
-    video,
-    stream,
-    "Vídeo não iniciou (10s). DroidCam no PC está conectado e mostrando imagem?",
-  );
+  return attachCameraStreamShared(video, stream, {
+    timeoutMessage: "Vídeo não iniciou (10s). DroidCam no PC está conectado e mostrando imagem?",
+  });
 }
