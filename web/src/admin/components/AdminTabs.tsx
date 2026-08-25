@@ -7,6 +7,7 @@ const TABS: Array<[Tab, string]> = [
   ["estacoes", "Estações"],
   ["sessoes", "Sessões / Horas"],
   ["recompensas", "Recompensas"],
+  ["saude", "Saúde"],
   ["config", "Config"],
 ];
 

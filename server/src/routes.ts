@@ -42,6 +42,7 @@ import {
   sendCommandToAllStations,
   sendCommandToStation,
   sendToStation,
+  setStationOfflineHook,
 } from "./hub.js";
 import {
   deleteStation,
@@ -71,6 +72,21 @@ import {
   startSession,
 } from "./sessions.js";
 import { rateLimit, verifyAdminPassword } from "./security.js";
+import {
+  buildDiagnostics,
+  listTelemetryEvents,
+  logEvent,
+} from "./telemetry.js";
+
+setStationOfflineHook((stationId, stationName) => {
+  logEvent({
+    level: "warn",
+    source: "api",
+    kind: "station.ws_offline",
+    message: `Estação desconectou do WebSocket: ${stationName || stationId}`,
+    stationId,
+  });
+});
 
 async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
   try {
@@ -171,6 +187,68 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!(await adminGuard(req, reply))) return;
     const face = await faceHealth();
     return { ...getReadiness(), faceService: face };
+  });
+
+  app.get("/api/admin/diagnostics", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    return buildDiagnostics();
+  });
+
+  app.get("/api/admin/telemetry", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const q = req.query as { limit?: string; level?: string; source?: string; kind?: string };
+    return {
+      events: listTelemetryEvents({
+        limit: q.limit ? Number(q.limit) : 100,
+        level: q.level,
+        source: q.source,
+        kind: q.kind,
+      }),
+    };
+  });
+
+  app.post("/api/telemetry/events", async (req, reply) => {
+    const body = z
+      .object({
+        level: z.enum(["debug", "info", "warn", "error"]).optional(),
+        source: z.string().min(1).max(64),
+        kind: z.string().min(1).max(96),
+        message: z.string().min(1).max(500),
+        meta: z.record(z.unknown()).optional(),
+        token: z.string().optional(),
+      })
+      .parse(req.body);
+
+    let stationId: string | null = null;
+    const headerStation = stationFromHeader(req);
+    if (headerStation) {
+      stationId = headerStation.id as string;
+    } else if (body.token) {
+      const st = getStationByToken(body.token);
+      if (!st) return reply.code(401).send({ error: "Token de estação inválido" });
+      stationId = st.id as string;
+    } else {
+      try {
+        await req.jwtVerify();
+      } catch {
+        return reply.code(401).send({ error: "Autenticação necessária" });
+      }
+    }
+
+    const ip = req.ip || "unknown";
+    if (!rateLimit(`tel:${ip}`, 120, 60_000)) {
+      return reply.code(429).send({ error: "Muitos eventos — aguarde" });
+    }
+
+    const saved = logEvent({
+      level: body.level,
+      source: body.source,
+      kind: body.kind,
+      message: body.message,
+      stationId,
+      meta: body.meta,
+    });
+    return { ok: true, ...saved };
   });
 
   app.post("/api/admin/backup", async (req, reply) => {
@@ -556,9 +634,25 @@ export async function registerRoutes(app: FastifyInstance) {
       .object({
         command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
         text: z.string().optional(),
+        title: z.string().max(80).optional(),
+        level: z.enum(["info", "warn", "urgent"]).optional(),
+        durationSec: z.number().int().min(3).max(600).optional(),
       })
       .parse(req.body);
-    sendCommandToStation(id, body.command, { text: body.text || "" });
+    sendCommandToStation(id, body.command, {
+      text: body.text || "",
+      title: body.title || "",
+      level: body.level || "info",
+      durationSec: body.durationSec ?? 12,
+    });
+    logEvent({
+      level: "info",
+      source: "admin",
+      kind: `command.${body.command}`,
+      message: `Comando ${body.command} → estação ${id}`,
+      stationId: id,
+      meta: { text: body.text, title: body.title, level: body.level },
+    });
     return { ok: true };
   });
 
@@ -568,9 +662,24 @@ export async function registerRoutes(app: FastifyInstance) {
       .object({
         command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
         text: z.string().optional(),
+        title: z.string().max(80).optional(),
+        level: z.enum(["info", "warn", "urgent"]).optional(),
+        durationSec: z.number().int().min(3).max(600).optional(),
       })
       .parse(req.body);
-    sendCommandToAllStations(body.command, { text: body.text || "" });
+    sendCommandToAllStations(body.command, {
+      text: body.text || "",
+      title: body.title || "",
+      level: body.level || "info",
+      durationSec: body.durationSec ?? 12,
+    });
+    logEvent({
+      level: "info",
+      source: "admin",
+      kind: `command_all.${body.command}`,
+      message: `Comando ${body.command} → todas as estações`,
+      meta: { text: body.text, title: body.title, level: body.level },
+    });
     return { ok: true };
   });
 
@@ -675,6 +784,13 @@ export async function registerRoutes(app: FastifyInstance) {
     const embedded = await extractEmbedding(body.imageBase64);
     if (!embedded.ok || !embedded.embedding) {
       if (embedded.code === "service_down") {
+        logEvent({
+          level: "error",
+          source: "api",
+          kind: "face.service_down",
+          message: "Recognize: face-service indisponível",
+          stationId: station.id as string,
+        });
         return reply.code(503).send({
           matched: false,
           reason: "service_down",

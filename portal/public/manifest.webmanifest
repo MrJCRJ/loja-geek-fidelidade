@@ -12,13 +12,15 @@
       "src": "/brand/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
-      "src": "/brand/logo.png",
-      "sizes": "1950x544",
+      "src": "/brand/icon-192.png",
+      "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "categories": ["shopping", "entertainment"],
+  "orientation": "portrait-primary"
 }

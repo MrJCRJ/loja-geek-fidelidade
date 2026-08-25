@@ -5,6 +5,7 @@ import { buildApp } from "./app.js";
 import { config } from "./config.js";
 import { assertProductionSecrets } from "./security.js";
 import { markStaleStationsOffline } from "./stations.js";
+import { startTelemetryProbe } from "./telemetry.js";
 
 async function main() {
   assertProductionSecrets();
@@ -24,6 +25,7 @@ async function main() {
   }
 
   setInterval(() => markStaleStationsOffline(25_000), 10_000);
+  startTelemetryProbe(60_000);
 
   await app.listen({ port: config.port, host: config.host });
   app.log.info(`API em http://${config.host}:${config.port}`);

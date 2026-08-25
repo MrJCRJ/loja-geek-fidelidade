@@ -31,6 +31,13 @@ export type Catalog = {
   payments?: { mode: string; pixEnabled: boolean };
   whatsappLan?: string;
   whatsappShop?: string;
+  shopCatalog?: Array<{
+    id: string;
+    title: string;
+    blurb: string;
+    whatsapp: string;
+    prefill: string;
+  }>;
 };
 
 export type WebOrder = {

@@ -15,6 +15,7 @@ import { addFaceEmbedding, clearFaceEmbeddings, getCustomer } from "./customers.
 import { extractEmbedding } from "./face-client.js";
 import { facePreviewFromEmbed, faceQualityTip } from "./face-preview.js";
 import { getHourPriceReais, getSubscriberDiscountPct, listTimeLedger } from "./billing.js";
+import { getUnitSettings } from "./admin-ops.js";
 import { rateLimit } from "./security.js";
 import {
   checkoutHours,
@@ -51,6 +52,7 @@ export async function registerPortalRoutes(app: FastifyInstance) {
   app.get("/api/portal/catalog", async () => {
     const mode = config.portalCheckoutMode;
     const mp = mercadopagoEnabled();
+    const unit = getUnitSettings();
     return {
       baseHourPrice: getHourPriceReais(),
       subscriberDiscountPct: getSubscriberDiscountPct(),
@@ -70,6 +72,62 @@ export async function registerPortalRoutes(app: FastifyInstance) {
       },
       whatsappLan: "5575988603747",
       whatsappShop: "5575991869502",
+      unit,
+      units: [
+        {
+          id: "loja-geeks",
+          name: "Loja GEEKS",
+          kind: "shop",
+          note: "Celular, games e colecionáveis",
+          whatsapp: "5575991869502",
+        },
+        {
+          id: "game-box",
+          name: "Game Box",
+          kind: "shop",
+          note: "Games e acessórios",
+          whatsapp: "5575991869502",
+        },
+        {
+          id: "lan-geeks",
+          name: "Lan House Geeks",
+          kind: "lan",
+          note: "PCs · GeekLock · serviços digitais",
+          whatsapp: "5575988603747",
+          unitId: unit.unitId,
+          unitName: unit.unitName,
+        },
+      ],
+      shopCatalog: [
+        {
+          id: "ps5",
+          title: "Jogos / consoles",
+          blurb: "Peça disponibilidade de games e acessórios",
+          whatsapp: "5575991869502",
+          prefill: "Oi! Quero saber sobre jogos/consoles na Loja GEEKS.",
+        },
+        {
+          id: "cell",
+          title: "Celular e acessórios",
+          blurb: "Capas, fones, carregadores e mais",
+          whatsapp: "5575991869502",
+          prefill: "Oi! Quero ver opções de celular/acessórios.",
+        },
+        {
+          id: "inss",
+          title: "Serviços digitais / INSS",
+          blurb: "Agendamento e auxílio na lan house",
+          whatsapp: "5575988603747",
+          prefill: "Oi! Preciso de ajuda com serviço digital / INSS na Lan Geeks.",
+        },
+        {
+          id: "hours",
+          title: "Horas de PC",
+          blurb: "Compre pelo portal ou peça crédito no balcão",
+          whatsapp: "5575988603747",
+          prefill: "Oi! Quero comprar horas de PC na Lan House Geeks.",
+        },
+      ],
     };
   });
 

@@ -14,6 +14,12 @@ const clients = new Set<HubClient>();
 /** Último status conhecido por estação (para Admin recém-conectado). */
 const lastStationStatus = new Map<string, HubMessage>();
 
+let onStationOffline: ((stationId: string, stationName?: string) => void) | null = null;
+
+export function setStationOfflineHook(fn: (stationId: string, stationName?: string) => void) {
+  onStationOffline = fn;
+}
+
 export function addClient(client: HubClient) {
   clients.add(client);
   client.socket.on("close", () => {
@@ -24,6 +30,11 @@ export function addClient(client: HubClient) {
         station: { id: client.stationId, name: client.stationName },
         at: new Date().toISOString(),
       });
+      try {
+        onStationOffline?.(client.stationId, client.stationName);
+      } catch {
+        /* ignore */
+      }
     }
   });
   client.socket.on("error", () => clients.delete(client));

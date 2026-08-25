@@ -15,10 +15,18 @@ import {
 } from "./api";
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
+import { reportTelemetry } from "./telemetry";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
 type Phase = "boot" | "setup" | "offline" | "locked" | "unlocked" | "staff";
 type ScanVisual = "idle" | "scanning" | "warn" | "error" | "success";
+
+type RemoteBanner = {
+  title: string;
+  text: string;
+  level: "info" | "warn" | "urgent";
+  until: number;
+};
 
 const DEFAULT_ABSENT_SEC = 90;
 const PRESENCE_MS = 1800;
@@ -104,6 +112,7 @@ export default function App() {
   const [pinMode, setPinMode] = useState<"unlock" | "quit" | null>(null);
   const [error, setError] = useState("");
   const [camReady, setCamReady] = useState(false);
+  const [remoteBanner, setRemoteBanner] = useState<RemoteBanner | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const scanningRef = useRef(false);
@@ -279,6 +288,11 @@ export default function App() {
       } catch (err) {
         setPhase("offline");
         setStatus(err instanceof Error ? err.message : "Sem conexão com o PC controle");
+        reportTelemetry(cfg.serverUrl, cfg.stationToken, {
+          level: "error",
+          kind: "boot.offline",
+          message: err instanceof Error ? err.message : "Sem conexão no boot",
+        });
         await window.geeklock.lock();
       }
     })();
@@ -306,13 +320,34 @@ export default function App() {
   useEffect(() => {
     if (!config?.stationToken) return;
 
-    const handleCommand = (command: StationCommand, text?: string) => {
+    const handleCommand = (
+      command: StationCommand,
+      payload?: { text?: string; title?: string; level?: string; durationSec?: number },
+    ) => {
       if (command === "reload") {
+        reportTelemetry(config.serverUrl, config.stationToken, {
+          kind: "command.reload",
+          message: "Reload remoto recebido",
+        });
         location.reload();
         return;
       }
-      if (command === "message" && text) {
-        setStatus(text);
+      if (command === "message" && payload?.text) {
+        const level =
+          payload.level === "warn" || payload.level === "urgent" ? payload.level : "info";
+        const durationSec = payload.durationSec && payload.durationSec > 0 ? payload.durationSec : 12;
+        setRemoteBanner({
+          title: payload.title?.trim() || (level === "urgent" ? "Aviso urgente" : "Mensagem da central"),
+          text: payload.text,
+          level,
+          until: Date.now() + durationSec * 1000,
+        });
+        setStatus(payload.text);
+        reportTelemetry(config.serverUrl, config.stationToken, {
+          kind: "command.message",
+          message: "Mensagem remota exibida",
+          meta: { level, durationSec },
+        });
         return;
       }
       if (command === "lock_screen" || command === "end_session") {
@@ -330,6 +365,13 @@ export default function App() {
 
     const sock = new StationSocket(config.serverUrl, config.stationToken, {
       onCommand: handleCommand,
+      onClose: () => {
+        reportTelemetry(config.serverUrl, config.stationToken, {
+          level: "warn",
+          kind: "ws.close",
+          message: "WebSocket da estação fechou",
+        });
+      },
     });
     stationWsRef.current = sock;
     sock.connect();
@@ -831,6 +873,30 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    if (!remoteBanner) return;
+    const left = remoteBanner.until - Date.now();
+    if (left <= 0) {
+      setRemoteBanner(null);
+      return;
+    }
+    const t = window.setTimeout(() => setRemoteBanner(null), left);
+    return () => window.clearTimeout(t);
+  }, [remoteBanner]);
+
+  const remoteBannerEl =
+    remoteBanner && Date.now() < remoteBanner.until ? (
+      <div className={`remote-banner remote-banner--${remoteBanner.level}`} role="alert">
+        <div className="remote-banner-inner">
+          <p className="remote-banner-title">{remoteBanner.title}</p>
+          <p className="remote-banner-text">{remoteBanner.text}</p>
+          <button className="btn ghost" type="button" onClick={() => setRemoteBanner(null)}>
+            Fechar
+          </button>
+        </div>
+      </div>
+    ) : null;
+
   const ovalClass = welcomeCustomer
     ? "success"
     : scanVisualFromReason(scanReason, scanning);
@@ -875,6 +941,7 @@ export default function App() {
   if (phase === "offline") {
     return (
       <div className="screen">
+        {remoteBannerEl}
         <div className="card">
           <h1 className="brand">GeekLock</h1>
           <span className="pill bad">Sem conexão</span>
@@ -917,14 +984,18 @@ export default function App() {
 
   if (phase === "unlocked") {
     return (
-      <div className="session-hidden">
-        <video ref={videoRef} muted playsInline className="session-hidden-cam" />
-      </div>
+      <>
+        {remoteBannerEl}
+        <div className="session-hidden">
+          <video ref={videoRef} muted playsInline className="session-hidden-cam" />
+        </div>
+      </>
     );
   }
 
   return (
     <div className="screen screen-locked">
+      {remoteBannerEl}
       <header className="locked-topbar">
         <div className="locked-topbar-brand">
           <strong>GeekLock</strong>

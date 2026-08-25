@@ -448,3 +448,57 @@ body,
   width: 1px;
   height: 1px;
 }
+
+.remote-banner {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgba(3, 8, 18, 0.72);
+  backdrop-filter: blur(6px);
+  animation: remote-in 0.28s ease-out;
+}
+
+.remote-banner-inner {
+  width: min(520px, 100%);
+  padding: 1.35rem 1.5rem;
+  border-radius: 16px;
+  border: 1px solid var(--line-strong);
+  background: rgba(12, 30, 61, 0.92);
+  box-shadow: var(--shadow);
+  text-align: center;
+}
+
+.remote-banner--warn .remote-banner-inner {
+  border-color: rgba(245, 185, 66, 0.55);
+}
+
+.remote-banner--urgent .remote-banner-inner {
+  border-color: rgba(255, 61, 113, 0.65);
+  box-shadow: 0 0 0 1px rgba(255, 61, 113, 0.25), var(--shadow);
+}
+
+.remote-banner-title {
+  margin: 0 0 0.4rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.remote-banner-text {
+  margin: 0 0 1rem;
+  font-size: 1.15rem;
+  line-height: 1.4;
+}
+
+@keyframes remote-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

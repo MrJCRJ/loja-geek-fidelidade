@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { getToken } from "../api";
+import { api, getToken, type Catalog } from "../api";
 import BrandHeader from "../components/BrandHeader";
 import OfflineBanner from "../components/OfflineBanner";
 import { useProximityField } from "../hooks/useProximityField";
@@ -9,6 +9,37 @@ import { useScrollParallax } from "../hooks/useScrollParallax";
 
 const WA_SHOP = "https://wa.me/5575991869502";
 const WA_LAN = "https://wa.me/5575988603747";
+
+const DEFAULT_SHOP = [
+  {
+    id: "ps5",
+    title: "Jogos / consoles",
+    blurb: "Peça disponibilidade de games e acessórios",
+    whatsapp: "5575991869502",
+    prefill: "Oi! Quero saber sobre jogos/consoles na Loja GEEKS.",
+  },
+  {
+    id: "cell",
+    title: "Celular e acessórios",
+    blurb: "Capas, fones, carregadores e mais",
+    whatsapp: "5575991869502",
+    prefill: "Oi! Quero ver opções de celular/acessórios.",
+  },
+  {
+    id: "inss",
+    title: "Serviços digitais / INSS",
+    blurb: "Agendamento e auxílio na lan house",
+    whatsapp: "5575988603747",
+    prefill: "Oi! Preciso de ajuda com serviço digital / INSS na Lan Geeks.",
+  },
+  {
+    id: "hours",
+    title: "Horas de PC",
+    blurb: "Compre pelo portal ou peça crédito no balcão",
+    whatsapp: "5575988603747",
+    prefill: "Oi! Quero comprar horas de PC na Lan House Geeks.",
+  },
+];
 
 const UNITS = [
   {
@@ -65,10 +96,19 @@ export default function LandingPage() {
   const heroRef = useRef<HTMLElement>(null);
   const priceSectionRef = useRef<HTMLElement>(null);
   const [priceActive, setPriceActive] = useState(false);
+  const [shopCatalog, setShopCatalog] = useState(DEFAULT_SHOP);
   const price = usePriceCount(priceActive, 10);
 
   useProximityField(rootRef, { selector: ".prox", radius: 120 });
   useScrollParallax(heroRef, { maxShift: 10 });
+
+  useEffect(() => {
+    api<Catalog>("/api/portal/catalog")
+      .then((c) => {
+        if (c.shopCatalog?.length) setShopCatalog(c.shopCatalog);
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     const el = priceSectionRef.current;
@@ -171,6 +211,34 @@ export default function LandingPage() {
             </p>
           </div>
         ))}
+      </section>
+
+      <section className="section reveal" aria-labelledby="catalogo-title">
+        <p className="section-label" id="catalogo-title">
+          Catálogo WhatsApp
+        </p>
+        <h2 className="display display--md" style={{ marginBottom: "0.5rem" }}>
+          Peça pelo Zap
+        </h2>
+        <p className="muted" style={{ marginTop: 0, maxWidth: "32rem" }}>
+          Games, celular, serviços digitais e horas de PC — abra o WhatsApp com a mensagem pronta.
+        </p>
+        <div className="wa-catalog">
+          {shopCatalog.map((item) => (
+            <a
+              key={item.id}
+              className="wa-catalog-item prox"
+              href={`https://wa.me/${item.whatsapp}?text=${encodeURIComponent(item.prefill)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <span className="unit-name">{item.title}</span>
+              <p className="unit-meta" style={{ margin: "0.35rem 0 0" }}>
+                {item.blurb}
+              </p>
+            </a>
+          ))}
+        </div>
       </section>
 
       <section className="section reveal" aria-labelledby="contato-title">

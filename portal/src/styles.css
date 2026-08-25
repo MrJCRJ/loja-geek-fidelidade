@@ -1018,6 +1018,27 @@ a:hover {
   --prox-y: 0;
 }
 
+.wa-catalog {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.wa-catalog-item {
+  display: block;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--geek-line);
+  border-radius: 12px;
+  text-decoration: none;
+  color: inherit;
+  background: color-mix(in srgb, var(--geek-navy) 55%, transparent);
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.wa-catalog-item:hover {
+  border-color: color-mix(in srgb, var(--geek-gold) 45%, var(--geek-line));
+}
+
 .unit::before {
   content: "";
   position: absolute;

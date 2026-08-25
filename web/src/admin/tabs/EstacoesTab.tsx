@@ -29,13 +29,28 @@ export function EstacoesTab({
 }: Props) {
   const [stationName, setStationName] = useState("");
   const [messageText, setMessageText] = useState("Olá da central!");
+  const [messageTitle, setMessageTitle] = useState("Aviso da loja");
+  const [messageLevel, setMessageLevel] = useState<"info" | "warn" | "urgent">("info");
+  const [messageDuration, setMessageDuration] = useState(15);
   const [createdToken, setCreatedToken] = useState<{ name: string; token: string } | null>(null);
   const onlineMap = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
+
+  const messageBody = () => ({
+    command: "message" as const,
+    text: messageText || "Aviso da central",
+    title: messageTitle || undefined,
+    level: messageLevel,
+    durationSec: messageDuration,
+  });
 
   const sendCmd = (stationId: string, command: string, text?: string) =>
     api(`/api/stations/${stationId}/command`, {
       method: "POST",
-      body: JSON.stringify({ command, text }),
+      body: JSON.stringify(
+        command === "message"
+          ? { ...messageBody(), text: text || messageBody().text }
+          : { command, text },
+      ),
     })
       .then(() => onToast(`Comando ${command} enviado`, "ok"))
       .catch((e) => onError(e instanceof Error ? e.message : "Falha no comando"));
@@ -205,8 +220,35 @@ export function EstacoesTab({
       <section className="panel">
         <h2>Comando global</h2>
         <div className="field">
+          <label>Título</label>
+          <input value={messageTitle} onChange={(e) => setMessageTitle(e.target.value)} />
+        </div>
+        <div className="field">
           <label>Texto da mensagem</label>
           <input value={messageText} onChange={(e) => setMessageText(e.target.value)} />
+        </div>
+        <div className="row">
+          <div className="field" style={{ flex: 1 }}>
+            <label>Nível</label>
+            <select
+              value={messageLevel}
+              onChange={(e) => setMessageLevel(e.target.value as "info" | "warn" | "urgent")}
+            >
+              <option value="info">Info</option>
+              <option value="warn">Aviso</option>
+              <option value="urgent">Urgente</option>
+            </select>
+          </div>
+          <div className="field" style={{ flex: 1 }}>
+            <label>Duração (s)</label>
+            <input
+              type="number"
+              min={3}
+              max={600}
+              value={messageDuration}
+              onChange={(e) => setMessageDuration(Number(e.target.value) || 12)}
+            />
+          </div>
         </div>
         <div className="row">
           <button
@@ -215,7 +257,7 @@ export function EstacoesTab({
             onClick={() =>
               api("/api/stations/command-all", {
                 method: "POST",
-                body: JSON.stringify({ command: "message", text: messageText || "Aviso da central" }),
+                body: JSON.stringify(messageBody()),
               })
                 .then(() => onToast("Mensagem enviada a todos", "ok"))
                 .catch((e) => onError(e.message))

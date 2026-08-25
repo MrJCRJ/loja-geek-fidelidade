@@ -202,5 +202,21 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_password_reset_customer ON password_reset_tokens(customer_id);
   `);
 
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS system_events (
+      id TEXT PRIMARY KEY,
+      created_at TEXT NOT NULL,
+      level TEXT NOT NULL,
+      source TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      message TEXT NOT NULL,
+      station_id TEXT,
+      meta TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_system_events_created ON system_events(created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_system_events_level ON system_events(level);
+    CREATE INDEX IF NOT EXISTS idx_system_events_kind ON system_events(kind);
+  `);
+
   return db;
 }

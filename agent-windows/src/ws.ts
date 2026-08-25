@@ -20,7 +20,10 @@ export type StationStatusPayload = {
 };
 
 type Handlers = {
-  onCommand?: (command: StationCommand, text?: string) => void;
+  onCommand?: (
+    command: StationCommand,
+    payload?: { text?: string; title?: string; level?: string; durationSec?: number },
+  ) => void;
   onOpen?: () => void;
   onClose?: () => void;
 };
@@ -104,9 +107,17 @@ export class StationSocket {
           type?: string;
           command?: StationCommand;
           text?: string;
+          title?: string;
+          level?: string;
+          durationSec?: number;
         };
         if (msg.type === "command" && msg.command) {
-          this.handlers.onCommand?.(msg.command, msg.text);
+          this.handlers.onCommand?.(msg.command, {
+            text: msg.text,
+            title: msg.title,
+            level: msg.level,
+            durationSec: msg.durationSec,
+          });
         }
       } catch {
         /* ignore */

@@ -77,6 +77,7 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
           />
           <p className="muted" style={{ margin: "0.35rem 0 0" }}>
             Identifica esta loja no GeekCentral (base multi-unidade). Use um ID por PC controle.
+            O portal lista as 3 unidades comerciais; só a lan aponta o GeekLock para este Central.
           </p>
         </div>
         <div className="field">

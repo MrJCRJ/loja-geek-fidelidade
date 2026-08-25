@@ -22,6 +22,7 @@ import { ConfigTab } from "../admin/tabs/ConfigTab";
 import { EstacoesTab } from "../admin/tabs/EstacoesTab";
 import { FeedTab } from "../admin/tabs/FeedTab";
 import { RecompensasTab } from "../admin/tabs/RecompensasTab";
+import { SaudeTab } from "../admin/tabs/SaudeTab";
 import { SessoesTab } from "../admin/tabs/SessoesTab";
 import type { LiveFeedItem, Tab } from "../admin/types";
 
@@ -356,6 +357,7 @@ export default function AdminPage() {
           askConfirm={askConfirm}
         />
       )}
+      {tab === "saude" && <SaudeTab onError={setError} />}
       {tab === "config" && (
         <ConfigTab
           settings={data.settings}

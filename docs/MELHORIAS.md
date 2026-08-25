@@ -1,6 +1,6 @@
 # Lista de melhorias — Loja Geek Fidelidade
 
-Atualizado em **2026-08-25** (pós-implementação P1).  
+Atualizado em **2026-08-25** (telemetria + P3).  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade  
 Portal: https://loja-geek-portal.vercel.app
 
@@ -18,6 +18,11 @@ Portal: https://loja-geek-portal.vercel.app
 - [x] Empty states no admin (clientes, feed, estações, sessões, recompensas)
 - [x] Doc modos de estação: [`estacao-modos.md`](./estacao-modos.md)
 - [x] Visual glass (admin, portal, GeekLock, GeekCentral) — commits anteriores
+- [x] Fases 1–3 .exe (autostart, túnel, descoberta LAN / wizard)
+- [x] Telemetria produção + aba Saúde — [`telemetria.md`](./telemetria.md)
+- [x] Overlay de mensagem remota rico (título / nível / duração)
+- [x] PWA portal (manifest + service worker)
+- [x] Catálogo WhatsApp + unidades no `/api/portal/catalog`
 
 ---
 
@@ -35,9 +40,7 @@ Portal: https://loja-geek-portal.vercel.app
 
 Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 
-**Fase 1 feita:** GeekCentral com autostart Windows, bandeja, single-instance, delay no boot, watchdog da API e botão de firewall.
-
-**Fase 2 feita:** painel Portal/Túnel (rápido ou nomeado), download do `cloudflared` no Windows, `PORTAL_ORIGIN`, health público, copiar URL Vercel e webhook Pix.
+**Fases 1–3 feitas** (autostart, túnel UI, descoberta LAN + assistente GeekLock).
 
 ---
 
@@ -46,14 +49,10 @@ Lista dedicada: [`exe-instalacao-autostart.md`](./exe-instalacao-autostart.md)
 | # | Item |
 |---|------|
 | 18 | Admin responsivo no celular |
-| 20 | Dashboard métricas no GeekCentral |
-| 21 | Overlay de mensagem remota mais rico no GeekLock |
-| 22 | URL do portal nas 3 fichas Google Business |
-| 23 | Backup automático SQLite |
+| 20 | Dashboard métricas no GeekCentral (além da aba Saúde) |
+| 23 | Backup automático SQLite (agendado) |
 | 24 | CI GitHub Actions |
-| 25 | Multi-unidade GeekLock |
-| 26 | PWA no portal |
-| 27 | Catálogo games / WhatsApp |
+| 25 | Multi-unidade GeekLock avançada (vários Centrals no mesmo portal) |
 | 28 | Retenção LGPD fina (apagar face sem apagar conta) |
 
 ---
