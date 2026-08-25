@@ -11,11 +11,15 @@
   --geek-white: #ffffff;
   --geek-ink: #e8edf5;
   --geek-muted: #8a9bb5;
-  --geek-line: #243d6b;
+  --geek-line: rgba(255, 255, 255, 0.1);
+  --geek-line-strong: rgba(255, 255, 255, 0.16);
+  --geek-panel: rgba(12, 30, 61, 0.4);
+  --geek-field: rgba(255, 255, 255, 0.06);
+  --geek-field-focus: rgba(255, 255, 255, 0.1);
   --geek-ok: #2ecc71;
   --geek-bad: #e74c3c;
-  --radius-panel: 2px;
-  --radius-btn: 4px;
+  --radius-panel: 12px;
+  --radius-btn: 8px;
   --font-body: "Outfit", system-ui, sans-serif;
   --font-display: "Bebas Neue", "Arial Narrow", sans-serif;
 
@@ -39,15 +43,20 @@
 body {
   margin: 0;
   min-height: 100vh;
-  /* Textura de placa: linhas finas, sem orbs/glow */
+  color-scheme: dark;
+  /* Textura de placa + fundo fixo para o glass */
   background-color: var(--geek-navy-deep);
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 3px,
-    rgba(255, 255, 255, 0.012) 3px,
-    rgba(255, 255, 255, 0.012) 4px
-  );
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(232, 149, 26, 0.14), transparent 42%),
+    radial-gradient(circle at 88% 8%, rgba(26, 53, 102, 0.45), transparent 40%),
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(255, 255, 255, 0.012) 3px,
+      rgba(255, 255, 255, 0.012) 4px
+    );
+  background-attachment: fixed;
   position: relative;
 }
 
@@ -235,14 +244,17 @@ a:hover {
   min-width: 0;
 }
 
-/* ——— Painéis (só interação) ——— */
+/* ——— Painéis glass (formulários / cards) ——— */
 
 .card {
-  background: var(--geek-navy-mid);
+  background: var(--geek-panel);
   border: 1px solid var(--geek-line);
   border-radius: var(--radius-panel);
-  padding: 1.15rem 1.1rem;
+  padding: 1.2rem 1.15rem;
   margin-bottom: 1rem;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   transition: border-color 0.22s ease-out;
 }
 
@@ -286,7 +298,10 @@ a:hover {
 }
 
 .field label {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   color: var(--geek-muted);
 }
 
@@ -294,20 +309,38 @@ a:hover {
 .field textarea,
 .field select {
   border: 1px solid var(--geek-line);
-  background: var(--geek-navy-deep);
+  background: var(--geek-field);
   color: var(--geek-ink);
   border-radius: var(--radius-btn);
   padding: 0.75rem 0.85rem;
   font: inherit;
-  transition: border-color 0.2s ease-out;
+  outline: none;
+  transition: border-color 0.2s ease-out, background 0.2s ease-out, box-shadow 0.2s ease-out;
+}
+
+.field input::placeholder,
+.field textarea::placeholder {
+  color: rgba(138, 155, 181, 0.7);
+}
+
+.field input:hover,
+.field textarea:hover,
+.field select:hover {
+  border-color: var(--geek-line-strong);
 }
 
 .field input:focus,
 .field textarea:focus,
 .field select:focus {
   outline: none;
-  border-color: var(--geek-gold);
-  box-shadow: 0 0 0 1px var(--geek-gold);
+  border-color: rgba(232, 149, 26, 0.65);
+  background: var(--geek-field-focus);
+  box-shadow: 0 0 0 3px rgba(232, 149, 26, 0.18);
+}
+
+.field select option {
+  background: var(--geek-navy);
+  color: var(--geek-ink);
 }
 
 .field input.field-invalid,
