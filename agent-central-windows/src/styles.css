@@ -116,6 +116,26 @@ code,
   white-space: pre-wrap;
 }
 
+.field {
+  margin-bottom: 0.75rem;
+}
+
+.field label {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  margin-bottom: 0.3rem;
+}
+
+.field input {
+  width: 100%;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #0b1015;
+  color: var(--text);
+}
+
 .grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

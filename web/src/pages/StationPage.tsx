@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api, captureFrame, openUserCamera, wsUrl, type Customer, type Reward } from "../api";
+import { api, attachCameraStream, captureFrame, openUserCamera, wsUrl, type Customer, type Reward } from "../api";
 
 const TOKEN_KEY = "lg_station_token";
 const NAME_KEY = "lg_station_name";
@@ -10,7 +10,7 @@ export default function StationPage() {
   const [token, setToken] = useState(localStorage.getItem(TOKEN_KEY) || "");
   const [draftToken, setDraftToken] = useState("");
   const [name, setName] = useState(params.get("name") || localStorage.getItem(NAME_KEY) || "");
-  const [secret, setSecret] = useState("loja-geek-station-secret");
+  const [secret, setSecret] = useState("");
   const [setupError, setSetupError] = useState("");
   const [status, setStatus] = useState<"idle" | "scanning" | "matched" | "unknown">("idle");
   const [message, setMessage] = useState("");
@@ -55,8 +55,7 @@ export default function StationPage() {
     const stream = await openUserCamera();
     streamRef.current = stream;
     if (videoRef.current) {
-      videoRef.current.srcObject = stream;
-      await videoRef.current.play();
+      await attachCameraStream(videoRef.current, stream);
     }
     setStatus("scanning");
   }, []);
@@ -210,7 +209,13 @@ export default function StationPage() {
           </div>
           <div className="field">
             <label>Segredo compartilhado (claim automático)</label>
-            <input value={secret} onChange={(e) => setSecret(e.target.value)} />
+            <input
+              type="password"
+              value={secret}
+              onChange={(e) => setSecret(e.target.value)}
+              placeholder="Informe o segredo da loja (não fica salvo na tela)"
+              autoComplete="off"
+            />
           </div>
           {setupError && <p style={{ color: "crimson" }}>{setupError}</p>}
           <button className="btn" type="submit">

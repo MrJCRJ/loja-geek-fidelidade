@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=GeekLock
+Comment=Trava VIP Loja Geek (agente em bandeja)
+Exec=PLACEHOLDER_WRAPPER
+Icon=security-high
+Terminal=false
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+StartupNotify=false
+Categories=Utility;

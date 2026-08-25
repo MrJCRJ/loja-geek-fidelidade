@@ -42,6 +42,16 @@ declare global {
       onLockState: (cb: (data: { locked: boolean }) => void) => () => void;
       onRequestEndSession: (cb: () => void) => () => void;
       onRequestQuit: (cb: () => void) => () => void;
+      onRequestStaffPin: (cb: () => void) => () => void;
+      onRequestLock: (cb: () => void) => () => void;
+      updateTray: (payload: {
+        phase: string;
+        name?: string;
+        mode?: string;
+        elapsed?: number;
+        present?: boolean;
+        absentLeft?: number | null;
+      }) => void;
     };
   }
 }

@@ -4,11 +4,16 @@ export type Customer = {
   id: string;
   name: string;
   phone?: string | null;
+  email?: string | null;
   level: CustomerLevel;
   points: number;
   consent_at?: string | null;
   notes?: string | null;
   face_samples?: number;
+  time_balance_seconds?: number;
+  subscription_status?: string;
+  subscription_expires_at?: string | null;
+  subscriber_since?: string | null;
   created_at?: string;
   updated_at?: string;
 };
@@ -96,6 +101,11 @@ export function setAdminToken(token: string | null) {
   else localStorage.setItem(TOKEN_KEY, token);
 }
 
+export function clearAdminSession() {
+  setAdminToken(null);
+  window.dispatchEvent(new CustomEvent("lg-auth-expired"));
+}
+
 export async function api<T>(
   path: string,
   options: RequestInit & { token?: string | null; stationToken?: string | null } = {},
@@ -111,7 +121,12 @@ export async function api<T>(
   const res = await fetch(path, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error((data as { error?: string }).error || `HTTP ${res.status}`);
+    if (res.status === 401 && token && options.stationToken == null && options.token !== null) {
+      clearAdminSession();
+    }
+    const err = data as { error?: string; tip?: string };
+    const msg = [err.error, err.tip].filter(Boolean).join(" — ") || `HTTP ${res.status}`;
+    throw new Error(res.status === 401 ? "Sessão expirada — faça login novamente (senha admin)." : msg);
   }
   return data as T;
 }
@@ -147,7 +162,10 @@ export function cameraErrorMessage(err: unknown): string {
     return "Nenhuma câmera encontrada. Confira se o notebook detecta a webcam e se não está desativada no BIOS.";
   }
   if (name === "NotReadableError" || name === "TrackStartError") {
-    return "Câmera ocupada por outro app (Zoom, Meet, Cheese…). Feche e tente de novo.";
+    return "Câmera ocupada por outro app. Feche Firefox/abas na porta 8100, Cheese, Zoom… e confira se o DroidCam no PC está conectado ao celular.";
+  }
+  if (name === "TimeoutError") {
+    return raw;
   }
   if (name === "OverconstrainedError" || name === "ConstraintNotSatisfiedError") {
     return "A webcam não aceitou as restrições de vídeo. Tente de novo (o app já faz fallback automático).";
@@ -161,9 +179,25 @@ export function cameraErrorMessage(err: unknown): string {
   return `Falha na câmera: ${raw}`;
 }
 
+function withMediaTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new DOMException(message, "TimeoutError")), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(timer);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(timer);
+        reject(e);
+      },
+    );
+  });
+}
+
 /**
- * Abre a webcam do notebook com fallbacks.
- * `facingMode: "user"` falha em muitas UVC no Linux → tenta constraints mais simples.
+ * Abre a webcam com fallbacks (DroidCam / v4l2loopback no Linux).
+ * 1) pede permissão com constraints simples; 2) tenta DroidCam por label; 3) fallback genérico.
  */
 export async function openUserCamera(): Promise<MediaStream> {
   if (!window.isSecureContext) {
@@ -173,37 +207,103 @@ export async function openUserCamera(): Promise<MediaStream> {
     throw new Error(cameraErrorMessage(new Error("getUserMedia indisponível")));
   }
 
-  const attempts: MediaStreamConstraints[] = [
-    { audio: false, video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } },
+  const timeoutMsg =
+    "Timeout ao abrir câmera (15s). No PC: DroidCam conectado ao celular? Feche outras abas usando a câmera.";
+
+  // Permissão + destrava labels reais dos dispositivos (evita deviceId errado com exact)
+  let probe: MediaStream | null = null;
+  try {
+    probe = await withMediaTimeout(
+      navigator.mediaDevices.getUserMedia({ audio: false, video: true }),
+      15_000,
+      timeoutMsg,
+    );
+  } catch (err) {
+    throw new Error(cameraErrorMessage(err));
+  }
+
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
+  const droidcam = cams.find((d) => /droidcam|loopback|dc/i.test(d.label));
+
+  probe.getTracks().forEach((t) => t.stop());
+  probe = null;
+
+  const attempts: MediaStreamConstraints[] = [];
+  if (droidcam?.deviceId) {
+    attempts.push({
+      audio: false,
+      video: {
+        deviceId: { ideal: droidcam.deviceId },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+    });
+  }
+  attempts.push(
     { audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 } } },
     { audio: false, video: true },
-  ];
-
-  try {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
-    if (cams[0]?.deviceId) {
-      attempts.splice(1, 0, {
-        audio: false,
-        video: { deviceId: { exact: cams[0].deviceId }, width: { ideal: 640 }, height: { ideal: 480 } },
-      });
-    }
-  } catch {
-    /* enumerate pode exigir permissão prévia — ignora */
-  }
+  );
 
   let lastErr: unknown;
   for (const constraints of attempts) {
     try {
-      return await navigator.mediaDevices.getUserMedia(constraints);
+      return await withMediaTimeout(navigator.mediaDevices.getUserMedia(constraints), 15_000, timeoutMsg);
     } catch (err) {
       lastErr = err;
       const name = err instanceof DOMException ? err.name : "";
-      // Permissão negada / sem dispositivo: não adianta tentar de novo
       if (name === "NotAllowedError" || name === "PermissionDeniedError" || name === "NotFoundError") {
         break;
       }
     }
   }
   throw new Error(cameraErrorMessage(lastErr));
+}
+
+/** Anexa stream ao <video> e aguarda frames (DroidCam pode demorar). */
+export async function attachCameraStream(
+  video: HTMLVideoElement,
+  stream: MediaStream,
+): Promise<void> {
+  video.srcObject = stream;
+  video.muted = true;
+  video.playsInline = true;
+
+  await new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error("Vídeo não iniciou (10s). DroidCam no PC está conectado e mostrando imagem?")),
+      10_000,
+    );
+
+    const done = () => {
+      clearTimeout(timeout);
+      resolve();
+    };
+    const fail = (err: unknown) => {
+      clearTimeout(timeout);
+      reject(err instanceof Error ? err : new Error(String(err)));
+    };
+
+    video.onloadedmetadata = () => {
+      video
+        .play()
+        .then(done)
+        .catch((err) => {
+          const name = err instanceof DOMException ? err.name : "";
+          if (name === "AbortError") {
+            setTimeout(() => video.play().then(done).catch(fail), 120);
+          } else {
+            fail(err);
+          }
+        });
+    };
+
+    if (video.readyState >= 1) {
+      video.onloadedmetadata = null;
+      video
+        .play()
+        .then(done)
+        .catch(fail);
+    }
+  });
 }

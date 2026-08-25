@@ -5,16 +5,25 @@ import { config } from "./config.js";
 
 export type CustomerLevel = "bronze" | "prata" | "ouro";
 
-let db: Database.Database;
+let db: Database.Database | undefined;
 
 export function getDb() {
   if (!db) throw new Error("Database not initialized");
   return db;
 }
 
-export function initDb() {
-  fs.mkdirSync(path.dirname(config.databasePath), { recursive: true });
-  db = new Database(config.databasePath);
+export function closeDb() {
+  if (db) {
+    db.close();
+    db = undefined;
+  }
+}
+
+export function initDb(databasePath?: string) {
+  if (db) return db;
+  const resolvedPath = databasePath ?? config.databasePath;
+  fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
+  db = new Database(resolvedPath);
   db.pragma("journal_mode = WAL");
   db.pragma("foreign_keys = ON");
 
@@ -95,6 +104,67 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_sessions_status ON machine_sessions(status);
     CREATE INDEX IF NOT EXISTS idx_sessions_customer ON machine_sessions(customer_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_station ON machine_sessions(station_id);
+
+    CREATE TABLE IF NOT EXISTS time_ledger (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      delta_seconds INTEGER NOT NULL,
+      amount_reais REAL NOT NULL DEFAULT 0,
+      reason TEXT NOT NULL,
+      meta TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS subscriptions (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      plan_code TEXT NOT NULL DEFAULT 'monthly',
+      price_reais REAL NOT NULL DEFAULT 0,
+      status TEXT NOT NULL,
+      started_at TEXT NOT NULL,
+      expires_at TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_time_ledger_customer ON time_ledger(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_subscriptions_customer ON subscriptions(customer_id);
+  `);
+
+  // Migrações leves (colunas novas em DBs já existentes)
+  const customerCols = (
+    db.prepare("PRAGMA table_info(customers)").all() as Array<{ name: string }>
+  ).map((c) => c.name);
+  const ensureCol = (name: string, ddl: string) => {
+    if (!customerCols.includes(name)) {
+      db.exec(`ALTER TABLE customers ADD COLUMN ${ddl}`);
+    }
+  };
+  ensureCol("time_balance_seconds", "time_balance_seconds INTEGER NOT NULL DEFAULT 0");
+  ensureCol("subscription_status", "subscription_status TEXT NOT NULL DEFAULT 'none'");
+  ensureCol("subscription_expires_at", "subscription_expires_at TEXT");
+  ensureCol("subscriber_since", "subscriber_since TEXT");
+  ensureCol("email", "email TEXT");
+  ensureCol("password_hash", "password_hash TEXT");
+  ensureCol("email_verified_at", "email_verified_at TEXT");
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS web_orders (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      amount_reais REAL NOT NULL DEFAULT 0,
+      hours REAL,
+      months INTEGER,
+      status TEXT NOT NULL,
+      provider TEXT NOT NULL DEFAULT 'stub',
+      provider_ref TEXT,
+      created_at TEXT NOT NULL,
+      paid_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_web_orders_customer ON web_orders(customer_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email
+      ON customers(email) WHERE email IS NOT NULL AND email != '';
   `);
 
   const countRewards = db.prepare("SELECT COUNT(*) AS c FROM rewards").get() as { c: number };
@@ -108,17 +178,29 @@ export function initDb() {
     insert.run("rw_brinde", "Brinde surpresa", "Item geek sortido", 150, now);
   }
 
-  const threshold = db.prepare("SELECT value FROM settings WHERE key = ?").get("face_match_threshold");
-  if (!threshold) {
-    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
-      "face_match_threshold",
-      String(config.faceMatchThreshold),
+  const upsertSetting = (key: string, value: string) => {
+    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
+    if (!row) {
+      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(key, value);
+    }
+  };
+  upsertSetting("face_match_threshold", String(config.faceMatchThreshold));
+  upsertSetting("points_per_real", String(config.pointsPerReal));
+  upsertSetting("hour_price_reais", "10");
+  upsertSetting("subscriber_hour_discount_pct", "20");
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      token_hash TEXT NOT NULL UNIQUE,
+      expires_at TEXT NOT NULL,
+      used_at TEXT,
+      created_at TEXT NOT NULL,
+      created_by TEXT NOT NULL DEFAULT 'portal'
     );
-    db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(
-      "points_per_real",
-      String(config.pointsPerReal),
-    );
-  }
+    CREATE INDEX IF NOT EXISTS idx_password_reset_customer ON password_reset_tokens(customer_id);
+  `);
 
   return db;
 }

@@ -11,9 +11,21 @@ type HubMessage = Record<string, unknown>;
 
 const clients = new Set<HubClient>();
 
+/** Último status conhecido por estação (para Admin recém-conectado). */
+const lastStationStatus = new Map<string, HubMessage>();
+
 export function addClient(client: HubClient) {
   clients.add(client);
-  client.socket.on("close", () => clients.delete(client));
+  client.socket.on("close", () => {
+    clients.delete(client);
+    if (client.role === "station" && client.stationId) {
+      broadcastAdmins({
+        type: "station_offline",
+        station: { id: client.stationId, name: client.stationName },
+        at: new Date().toISOString(),
+      });
+    }
+  });
   client.socket.on("error", () => clients.delete(client));
 }
 
@@ -47,4 +59,16 @@ export function listConnectedStations() {
   return [...clients]
     .filter((c) => c.role === "station" && c.stationId)
     .map((c) => ({ stationId: c.stationId!, stationName: c.stationName || c.stationId! }));
+}
+
+export function setStationStatus(stationId: string, status: HubMessage) {
+  lastStationStatus.set(stationId, status);
+}
+
+export function getStationStatus(stationId: string) {
+  return lastStationStatus.get(stationId) || null;
+}
+
+export function getAllStationStatuses() {
+  return Object.fromEntries(lastStationStatus.entries());
 }

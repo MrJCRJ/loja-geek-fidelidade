@@ -25,7 +25,7 @@ No PC controle:
 
 1. Copie a pasta `GeekCentral` para o disco (ex.: `C:\GeekCentral`).
 2. Execute `GeekCentral.exe` e espere **Online**.
-3. Anote o IP da LAN e abra o admin (senha padrão `admin123`).
+3. No primeiro boot, defina a senha admin e os segredos (wizard obrigatório). Depois abra o admin.
 
 Nas estações: pasta `GeekLock`, `config.json` com `"serverUrl": "http://IP-DO-CONTROLE:8787"`, rode `GeekLock.exe`.
 
@@ -50,7 +50,7 @@ cd web && npm install && npm run dev
 | Tela | URL |
 |------|-----|
 | Home | http://localhost:5173/ |
-| Admin | http://localhost:5173/admin — senha `admin123` |
+| Admin | http://localhost:5173/admin — senha do `.env` / setup |
 | Estação | http://localhost:5173/station?name=Balcao-1 |
 
 ## Docker no PC controle (Linux)
@@ -61,6 +61,28 @@ docker compose up -d --build
 ```
 
 Acesse `http://IP-DO-PC-CONTROLE:8787` (ou HTTPS via nginx na pasta `deploy/`).
+
+### Modo Linux nativo (apps do sistema — sem navegador)
+
+```bash
+# Sobe API/face + GeekCentral (Electron) + GeekLock (Electron)
+bash scripts/linux-loja.sh start
+# ou: npm run linux:start
+```
+
+| App | Papel |
+|-----|--------|
+| **GeekCentral** | PC controle — cadastro VIP, enroll, estações |
+| **GeekLock** | Estação — trava, reconhecimento, sessão |
+
+Não use Firefox/Chrome. Tudo abre em janela Electron.
+
+```bash
+bash scripts/linux-loja.sh admin      # só GeekCentral
+bash scripts/linux-loja.sh geeklock   # só GeekLock
+bash scripts/linux-loja.sh droidcam IP_DO_CELULAR
+bash scripts/linux-loja.sh stop
+```
 
 ## Ligar uma estação na loja (browser)
 
@@ -73,31 +95,58 @@ chromium --kiosk "https://IP-DO-PC-CONTROLE/station?name=PC-03"
 
 > Webcam no **navegador** exige **HTTPS** (ou localhost). O **GeekLock.exe** não precisa de HTTPS.
 
+## Portal do cliente (Vercel)
+
+App em `portal/` (Vite + React): cadastro, saldo, compra de horas (stub), assinatura e enroll facial pelo celular.
+
+```bash
+cd portal && npm install && VITE_API_URL=http://127.0.0.1:8787 npm run dev
+# → http://localhost:5175
+```
+
+Na Vercel: Root Directory `portal`, `VITE_API_URL=https://api.seudominio.com`.  
+Na API da loja: `PORTAL_ORIGIN=https://seu-portal.vercel.app`.  
+Expor a API: ver [`docs/portal-api-tunnel.md`](docs/portal-api-tunnel.md).
+
 ## Estrutura
 
 ```
 loja-geek-fidelidade/
-  server/                  # Fastify + SQLite + WebSocket
+  server/                  # Fastify + SQLite + WebSocket + /api/portal/*
   face-service/            # OpenCV YuNet+SFace
-  web/                     # React admin + estação
+  web/                     # React GeekCentral (admin) + estação
+  portal/                  # Portal do cliente (deploy Vercel)
   agent-windows/           # GeekLock (estação)
   agent-central-windows/   # GeekCentral (PC controle)
+  docs/                    # Tunnel CORS, etc.
   scripts/                 # pack pendrive + prepare runtime
   data/                    # banco SQLite (dev/docker)
   docker-compose.yml
 ```
 
-## Admin de qualquer lugar (fase 2 — ainda não implementado)
+## Admin remoto / túnel
 
-A Vercel só hospeda o **front**. A API/WebSocket/facial precisam continuar no PC controle.
+A Vercel hospeda só o **front do portal** (e, se quiser, o admin). A API/WebSocket/facial ficam no PC da loja.
 
-Caminho previsto:
+1. Expor `8787` com **Cloudflare Tunnel** → URL HTTPS (`docs/portal-api-tunnel.md`).
+2. Deploy `portal/` na Vercel com `VITE_API_URL` apontando para o túnel.
+3. GeekLock nas estações pode continuar na LAN (`http://IP:8787`).
 
-1. No PC com GeekCentral online, expor a porta `8787` com **Cloudflare Tunnel** (ou similar) → URL HTTPS pública.
-2. Deploy do front `web/` na **Vercel** com variável apontando para essa URL (`VITE_API_BASE` / WebSocket).
-3. GeekLock nas estações pode continuar na LAN (`http://IP:8787`) ou usar a URL do túnel.
+Enquanto o PC da loja estiver desligado, o portal não credita nem reconhece.
 
-Enquanto o PC da loja estiver desligado, o admin remoto não controla as máquinas.
+## Documentação
+
+| Doc | Uso |
+|-----|-----|
+| [`docs/roadmap.md`](docs/roadmap.md) | Planejamento consolidado |
+| [`docs/portal-backlog.md`](docs/portal-backlog.md) | Pendências do portal |
+| [`docs/loja-ready.md`](docs/loja-ready.md) | Checklist túnel + Pix |
+| [`docs/portal-api-tunnel.md`](docs/portal-api-tunnel.md) | Cloudflare Tunnel |
+
+```bash
+npm run loja:ready
+# ou: bash scripts/loja-ready.sh
+```
 
 ## Repositório
 

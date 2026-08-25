@@ -1,6 +1,7 @@
 import { nanoid } from "nanoid";
-import { getDb } from "./db.js";
+import { consumeTime, getTimeBalance } from "./billing.js";
 import { getCustomer } from "./customers.js";
+import { getDb } from "./db.js";
 
 export type SessionRow = {
   id: string;
@@ -15,7 +16,14 @@ export type SessionRow = {
 
 function enrich(session: SessionRow) {
   const customer = getCustomer(session.customer_id) as
-    | { id: string; name: string; level: string; points: number }
+    | {
+        id: string;
+        name: string;
+        level: string;
+        points: number;
+        time_balance_seconds?: number;
+        subscription_status?: string;
+      }
     | undefined;
   const station = getDb().prepare("SELECT id, name FROM stations WHERE id = ?").get(session.station_id) as
     | { id: string; name: string }
@@ -25,6 +33,8 @@ function enrich(session: SessionRow) {
     customer_name: customer?.name ?? null,
     customer_level: customer?.level ?? null,
     customer_points: customer?.points ?? null,
+    time_balance_seconds: customer?.time_balance_seconds ?? getTimeBalance(session.customer_id),
+    subscription_status: customer?.subscription_status ?? "none",
     station_name: station?.name ?? null,
   };
 }
@@ -42,6 +52,11 @@ export function getSession(id: string) {
 }
 
 export function startSession(customerId: string, stationId: string) {
+  const balance = getTimeBalance(customerId);
+  if (balance <= 0) {
+    throw new Error("Sem crédito de horas — passe no caixa");
+  }
+
   const db = getDb();
   const now = new Date().toISOString();
 
@@ -51,11 +66,9 @@ export function startSession(customerId: string, stationId: string) {
       db.prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(now, existing.id);
       return enrich(getSession(existing.id)!);
     }
-    // Fecha sessão anterior de outro VIP na mesma máquina
     endSession(existing.id, "replaced");
   }
 
-  // Fecha outras sessões ativas do mesmo cliente em outras máquinas
   const other = db
     .prepare(
       `SELECT id FROM machine_sessions WHERE customer_id = ? AND status = 'active' AND station_id != ?`,
@@ -94,7 +107,22 @@ export function heartbeatSession(sessionId: string, stationId: string) {
     `UPDATE machine_sessions SET last_seen_at = ?, seconds_total = seconds_total + ? WHERE id = ?`,
   ).run(iso, deltaSec, sessionId);
 
-  return enrich(getSession(sessionId)!);
+  let timeDepleted = false;
+  let timeBalance = getTimeBalance(session.customer_id);
+  if (deltaSec > 0) {
+    const result = consumeTime(session.customer_id, deltaSec, {
+      sessionId,
+      stationId,
+    });
+    timeBalance = result.balance;
+    timeDepleted = result.depleted;
+  }
+
+  return {
+    ...enrich(getSession(sessionId)!),
+    time_balance_seconds: timeBalance,
+    time_depleted: timeDepleted,
+  };
 }
 
 export function endSession(sessionId: string, _reason = "end") {
@@ -114,6 +142,10 @@ export function endSession(sessionId: string, _reason = "end") {
      WHERE id = ?`,
   ).run(iso, iso, deltaSec, sessionId);
 
+  if (deltaSec > 0) {
+    consumeTime(session.customer_id, deltaSec, { sessionId, reason: _reason });
+  }
+
   return enrich(getSession(sessionId)!);
 }
 
@@ -125,9 +157,7 @@ export function endActiveSessionForStation(stationId: string) {
 
 export function listSessions(limit = 100) {
   const rows = getDb()
-    .prepare(
-      `SELECT * FROM machine_sessions ORDER BY started_at DESC LIMIT ?`,
-    )
+    .prepare(`SELECT * FROM machine_sessions ORDER BY started_at DESC LIMIT ?`)
     .all(limit) as SessionRow[];
   return rows.map(enrich);
 }

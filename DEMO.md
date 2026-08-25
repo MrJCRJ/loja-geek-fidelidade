@@ -18,7 +18,7 @@ bash scripts/pack-pendrive.sh
 
 1. Copie `GeekCentral` para o disco (ex. `C:\GeekCentral`).
 2. Execute `GeekCentral.exe` → espere **Online**.
-3. Anote o IP da LAN → **Abrir admin** (senha `admin123`).
+3. No primeiro boot, defina a senha admin no wizard. Depois use **Abrir admin**.
 4. Cadastre VIP + enroll facial.
 
 ## Nas estações

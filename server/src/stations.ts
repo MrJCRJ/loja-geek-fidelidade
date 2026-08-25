@@ -1,5 +1,6 @@
 import { nanoid } from "nanoid";
 import { getDb } from "./db.js";
+import { hashStationToken } from "./security.js";
 
 export type StationRow = {
   id: string;
@@ -17,8 +18,23 @@ export function listStations() {
     .all() as Omit<StationRow, "token">[];
 }
 
+function findByTokenColumn(value: string) {
+  return getDb().prepare("SELECT * FROM stations WHERE token = ?").get(value) as StationRow | undefined;
+}
+
+/** Aceita token em claro; compara com hash SHA-256 (e migra legado plaintext). */
 export function getStationByToken(token: string) {
-  return getDb().prepare("SELECT * FROM stations WHERE token = ?").get(token) as StationRow | undefined;
+  if (!token) return undefined;
+  const hashed = hashStationToken(token);
+  const byHash = findByTokenColumn(hashed);
+  if (byHash) return byHash;
+
+  const legacy = findByTokenColumn(token);
+  if (legacy) {
+    getDb().prepare("UPDATE stations SET token = ? WHERE id = ?").run(hashed, legacy.id);
+    return { ...legacy, token: hashed };
+  }
+  return undefined;
 }
 
 export function getStation(id: string) {
@@ -28,13 +44,14 @@ export function getStation(id: string) {
 export function registerStation(name: string) {
   const id = nanoid();
   const token = nanoid(32);
+  const tokenHash = hashStationToken(token);
   const now = new Date().toISOString();
   getDb()
     .prepare(
       `INSERT INTO stations (id, name, token, last_seen_at, last_ip, online, created_at)
        VALUES (?, ?, ?, NULL, NULL, 0, ?)`,
     )
-    .run(id, name.trim(), token, now);
+    .run(id, name.trim(), tokenHash, now);
   return { id, name: name.trim(), token, created_at: now };
 }
 
@@ -47,14 +64,21 @@ export function deleteStation(id: string) {
   return getDb().prepare("DELETE FROM stations WHERE id = ?").run(id).changes > 0;
 }
 
-export function heartbeatStation(token: string, ip?: string) {
-  const station = getStationByToken(token);
+export function heartbeatStationById(id: string, ip?: string) {
+  const station = getStation(id);
   if (!station) return null;
   const now = new Date().toISOString();
   getDb()
     .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1 WHERE id = ?")
     .run(now, ip || station.last_ip, station.id);
   return getStation(station.id);
+}
+
+/** `token` deve ser o valor em claro enviado pela estação (não o hash do banco). */
+export function heartbeatStation(token: string, ip?: string) {
+  const station = getStationByToken(token);
+  if (!station) return null;
+  return heartbeatStationById(station.id, ip);
 }
 
 export function markStationOffline(id: string) {

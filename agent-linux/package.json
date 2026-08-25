@@ -1,0 +1,14 @@
+{
+  "name": "loja-geek-linux-apps",
+  "private": true,
+  "version": "1.0.0",
+  "description": "GeekAdmin + launcher Linux (Electron, sem navegador)",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "admin": "ELECTRON_DISABLE_SANDBOX=1 electron . --no-sandbox",
+    "admin:dev": "ELECTRON_DISABLE_SANDBOX=1 electron . --no-sandbox"
+  },
+  "devDependencies": {
+    "electron": "^35.2.1"
+  }
+}

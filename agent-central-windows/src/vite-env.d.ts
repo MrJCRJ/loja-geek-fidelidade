@@ -6,12 +6,31 @@ export type CentralStatus = {
   apiPort: number;
   facePort: number;
   adminPassword: string;
+  needsSetup?: boolean;
+  setupComplete?: boolean;
+  unitName?: string;
+  startedAt?: number | null;
+  uptimeMs?: number;
+  faceError?: string;
+  lastFaceCheck?: string;
   error: string;
   logs: string[];
 };
 
+export type SetupPeek = CentralStatus & {
+  suggestedJwt?: string;
+  suggestedStation?: string;
+};
+
 export type GeekCentralApi = {
   getStatus: () => Promise<CentralStatus>;
+  peekSetup: () => Promise<SetupPeek>;
+  completeSetup: (input: {
+    adminPassword: string;
+    jwtSecret?: string;
+    stationSharedSecret?: string;
+    unitName?: string;
+  }) => Promise<{ ok: boolean; error?: string; status?: CentralStatus }>;
   restart: () => Promise<{ ok: boolean; error?: string; status?: CentralStatus }>;
   openAdmin: () => Promise<{ ok: boolean; url: string }>;
   openUrl: (url: string) => Promise<{ ok: boolean }>;

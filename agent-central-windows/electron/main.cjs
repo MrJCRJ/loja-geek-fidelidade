@@ -9,7 +9,7 @@ const services = new ServiceManager(app);
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 920,
-    height: 720,
+    height: 780,
     show: true,
     autoHideMenuBar: true,
     webPreferences: {
@@ -38,6 +38,7 @@ function createWindow() {
 app.whenReady().then(async () => {
   createWindow();
   try {
+    services.peekSetup();
     await services.start();
   } catch (err) {
     services.status.phase = "error";
@@ -61,6 +62,21 @@ app.on("window-all-closed", () => {
 
 ipcMain.handle("central:get-status", () => ({ ...services.status }));
 
+ipcMain.handle("central:peek-setup", () => services.peekSetup());
+
+ipcMain.handle("central:complete-setup", async (_e, input) => {
+  try {
+    services.completeSetup(input || {});
+    await services.start();
+    return { ok: true, status: { ...services.status } };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    services.status.error = message;
+    services.emit();
+    return { ok: false, error: message, status: { ...services.status } };
+  }
+});
+
 ipcMain.handle("central:restart", async () => {
   try {
     await services.start();
@@ -74,8 +90,32 @@ ipcMain.handle("central:restart", async () => {
 });
 
 ipcMain.handle("central:open-admin", async () => {
+  const { BrowserWindow, session } = require("electron");
   const url = `http://127.0.0.1:${services.status.apiPort}/admin`;
-  await shell.openExternal(url);
+  const existing = BrowserWindow.getAllWindows().find((w) => w.getTitle().includes("GeekCentral"));
+  if (existing) {
+    existing.focus();
+    return { ok: true, url };
+  }
+  const adminWin = new BrowserWindow({
+    width: 1280,
+    height: 860,
+    title: "GeekCentral — Loja Geek",
+    autoHideMenuBar: true,
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false,
+    },
+  });
+  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
+    if (permission === "media" || permission === "camera" || permission === "microphone") {
+      callback(true);
+      return;
+    }
+    callback(false);
+  });
+  adminWin.loadURL(url);
   return { ok: true, url };
 });
 

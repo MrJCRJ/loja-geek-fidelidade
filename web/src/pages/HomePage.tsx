@@ -16,7 +16,7 @@ export default function HomePage() {
 
       <div className="grid-2">
         <Link to="/admin" className="panel" style={{ textDecoration: "none" }}>
-          <h2 style={{ fontFamily: "var(--display)", marginTop: 0 }}>PC Controle</h2>
+          <h2 style={{ fontFamily: "var(--display)", marginTop: 0 }}>GeekCentral</h2>
           <p className="muted">Cadastro VIP, feed ao vivo, recompensas e comandos para todas as estações.</p>
           <span className="btn">Abrir admin</span>
         </Link>

@@ -12,10 +12,15 @@ venv/
 face-service/.models/
 web/dist/
 server/dist/
+portal/dist/
+portal/node_modules/
 agent-windows/dist/
 agent-windows/release/
 agent-windows/node_modules/
+agent-linux/node_modules/
 agent-windows/config.json
+agent-linux/config.json
+
 agent-central-windows/dist/
 agent-central-windows/release/
 agent-central-windows/node_modules/

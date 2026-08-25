@@ -4,8 +4,10 @@ import { getDb, type CustomerLevel } from "./db.js";
 export function listCustomers() {
   return getDb()
     .prepare(
-      `SELECT c.*,
-        (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
+      `SELECT c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
+              c.created_at, c.updated_at, c.email,
+              c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
+              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
        FROM customers c
        ORDER BY c.name COLLATE NOCASE`,
     )
@@ -15,8 +17,10 @@ export function listCustomers() {
 export function getCustomer(id: string) {
   return getDb()
     .prepare(
-      `SELECT c.*,
-        (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
+      `SELECT c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
+              c.created_at, c.updated_at, c.email,
+              c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
+              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
        FROM customers c WHERE c.id = ?`,
     )
     .get(id);
@@ -90,6 +94,11 @@ export function addFaceEmbedding(customerId: string, embedding: number[]) {
     .prepare("INSERT INTO face_embeddings (id, customer_id, embedding, created_at) VALUES (?, ?, ?, ?)")
     .run(id, customerId, JSON.stringify(embedding), now);
   return id;
+}
+
+/** Remove todas as amostras faciais do cliente (permite re-enroll). */
+export function clearFaceEmbeddings(customerId: string): number {
+  return getDb().prepare("DELETE FROM face_embeddings WHERE customer_id = ?").run(customerId).changes;
 }
 
 export function listFaceEmbeddings() {

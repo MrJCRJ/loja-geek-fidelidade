@@ -22,4 +22,15 @@ contextBridge.exposeInMainWorld("geeklock", {
     ipcRenderer.on("staff:request-quit", handler);
     return () => ipcRenderer.removeListener("staff:request-quit", handler);
   },
+  onRequestStaffPin: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on("staff:request-pin", handler);
+    return () => ipcRenderer.removeListener("staff:request-pin", handler);
+  },
+  onRequestLock: (cb) => {
+    const handler = () => cb();
+    ipcRenderer.on("session:request-lock", handler);
+    return () => ipcRenderer.removeListener("session:request-lock", handler);
+  },
+  updateTray: (payload) => ipcRenderer.send("tray:update", payload),
 });

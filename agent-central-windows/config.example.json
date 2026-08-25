@@ -1,7 +1,10 @@
 {
-  "adminPassword": "admin123",
-  "stationSharedSecret": "loja-geek-station-secret",
-  "jwtSecret": "troque-este-segredo-em-producao",
+  "adminPassword": "",
+  "stationSharedSecret": "",
+  "jwtSecret": "",
+  "unitName": "Unidade 1",
+  "unitId": "unit-1",
   "apiPort": 8787,
-  "facePort": 8100
+  "facePort": 8100,
+  "setupComplete": false
 }

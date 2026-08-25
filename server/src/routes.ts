@@ -1,10 +1,22 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import fs from "node:fs";
+import path from "node:path";
 import { z } from "zod";
 import { config } from "./config.js";
+import {
+  createSqliteBackup,
+  exportCustomerLgpd,
+  getReadiness,
+  getUnitSettings,
+  listBackupFiles,
+  resolveBackupPath,
+  setUnitSettings,
+} from "./admin-ops.js";
 import {
   addFaceEmbedding,
   addRecognitionEvent,
   adjustPoints,
+  clearFaceEmbeddings,
   createCustomer,
   createReward,
   deleteCustomer,
@@ -21,9 +33,11 @@ import {
   updateCustomer,
   updateReward,
 } from "./customers.js";
-import { extractEmbedding, faceHealth, matchEmbedding } from "./face-client.js";
+import { extractEmbedding, faceHealth, matchEmbedding, parseGalleryEmbeddings } from "./face-client.js";
+import { facePreviewFromEmbed } from "./face-preview.js";
 import {
   broadcastAdmins,
+  getAllStationStatuses,
   listConnectedStations,
   sendCommandToAllStations,
   sendCommandToStation,
@@ -33,10 +47,20 @@ import {
   deleteStation,
   getStationByToken,
   heartbeatStation,
+  heartbeatStationById,
   listStations,
   registerStation,
   renameStation,
 } from "./stations.js";
+import {
+  adjustTime,
+  getCustomerTimeSummary,
+  getHourPriceReais,
+  getSubscriberDiscountPct,
+  getTimeBalance,
+  sellTime,
+  setSubscription,
+} from "./billing.js";
 import {
   endActiveSessionForStation,
   endSession,
@@ -46,6 +70,7 @@ import {
   sessionStatsToday,
   startSession,
 } from "./sessions.js";
+import { rateLimit, verifyAdminPassword } from "./security.js";
 
 async function adminGuard(req: FastifyRequest, reply: FastifyReply) {
   try {
@@ -74,8 +99,12 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/admin/login", async (req, reply) => {
+    const ip = req.ip || "unknown";
+    if (!rateLimit(`admin-login:${ip}`, 10, 60_000)) {
+      return reply.code(429).send({ error: "Muitas tentativas — aguarde um minuto" });
+    }
     const body = z.object({ password: z.string() }).parse(req.body);
-    if (body.password !== config.adminPassword) {
+    if (!verifyAdminPassword(body.password)) {
       return reply.code(401).send({ error: "Senha inválida" });
     }
     const token = app.jwt.sign({ role: "admin" }, { expiresIn: "12h" });
@@ -89,9 +118,14 @@ export async function registerRoutes(app: FastifyInstance) {
 
   app.get("/api/settings", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
+    const unit = getUnitSettings();
     return {
       faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
       pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
+      hourPriceReais: getHourPriceReais(),
+      subscriberHourDiscountPct: getSubscriberDiscountPct(),
+      unitName: unit.unitName,
+      unitId: unit.unitId,
     };
   });
 
@@ -101,6 +135,10 @@ export async function registerRoutes(app: FastifyInstance) {
       .object({
         faceMatchThreshold: z.number().min(0.1).max(0.99).optional(),
         pointsPerReal: z.number().min(0.01).max(100).optional(),
+        hourPriceReais: z.number().min(0.5).max(500).optional(),
+        subscriberHourDiscountPct: z.number().min(0).max(90).optional(),
+        unitName: z.string().min(1).max(80).optional(),
+        unitId: z.string().min(1).max(64).optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -109,10 +147,64 @@ export async function registerRoutes(app: FastifyInstance) {
     if (body.pointsPerReal !== undefined) {
       setSetting("points_per_real", String(body.pointsPerReal));
     }
+    if (body.hourPriceReais !== undefined) {
+      setSetting("hour_price_reais", String(body.hourPriceReais));
+    }
+    if (body.subscriberHourDiscountPct !== undefined) {
+      setSetting("subscriber_hour_discount_pct", String(body.subscriberHourDiscountPct));
+    }
+    if (body.unitName !== undefined || body.unitId !== undefined) {
+      setUnitSettings({ unitName: body.unitName, unitId: body.unitId });
+    }
+    const unit = getUnitSettings();
     return {
       faceMatchThreshold: Number(getSetting("face_match_threshold", String(config.faceMatchThreshold))),
       pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
+      hourPriceReais: getHourPriceReais(),
+      subscriberHourDiscountPct: getSubscriberDiscountPct(),
+      unitName: unit.unitName,
+      unitId: unit.unitId,
     };
+  });
+
+  app.get("/api/admin/readiness", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const face = await faceHealth();
+    return { ...getReadiness(), faceService: face };
+  });
+
+  app.post("/api/admin/backup", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    try {
+      return createSqliteBackup();
+    } catch (err) {
+      return reply.code(500).send({ error: err instanceof Error ? err.message : "Falha no backup" });
+    }
+  });
+
+  app.get("/api/admin/backups", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    return { backups: listBackupFiles().map(({ fileName, size, createdAt }) => ({ fileName, size, createdAt })) };
+  });
+
+  app.get("/api/admin/backups/:fileName", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { fileName } = req.params as { fileName: string };
+    const full = resolveBackupPath(fileName);
+    if (!full) return reply.code(404).send({ error: "Backup não encontrado" });
+    const buf = fs.readFileSync(full);
+    return reply
+      .header("content-type", "application/octet-stream")
+      .header("content-disposition", `attachment; filename="${path.basename(full)}"`)
+      .send(buf);
+  });
+
+  app.get("/api/customers/:id/export", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const data = exportCustomerLgpd(id);
+    if (!data) return reply.code(404).send({ error: "Cliente não encontrado" });
+    return data;
   });
 
   app.get("/api/customers", async (req, reply) => {
@@ -162,11 +254,29 @@ export async function registerRoutes(app: FastifyInstance) {
     return updated;
   });
 
+  app.post("/api/customers/:id/password-reset", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    try {
+      const { adminIssuePasswordReset } = await import("./customer-auth.js");
+      return adminIssuePasswordReset(id);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
   app.delete("/api/customers/:id", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     if (!deleteCustomer(id)) return reply.code(404).send({ error: "Não encontrado" });
     return { ok: true };
+  });
+
+  app.post("/api/face/preview", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const body = z.object({ imageBase64: z.string().min(32) }).parse(req.body);
+    const embedded = await extractEmbedding(body.imageBase64);
+    return facePreviewFromEmbed(embedded);
   });
 
   app.post("/api/customers/:id/enroll", async (req, reply) => {
@@ -179,11 +289,38 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     const body = z.object({ imageBase64: z.string().min(32) }).parse(req.body);
     const embedded = await extractEmbedding(body.imageBase64);
-    if (!embedded.ok || !embedded.embedding) {
-      return reply.code(400).send({ error: embedded.error || "Nenhum rosto detectado" });
+    const preview = facePreviewFromEmbed(embedded);
+    if (!preview.ok) {
+      return reply.code(400).send({
+        error: preview.error,
+        code: preview.code,
+        tip: preview.tip,
+        quality: preview.quality,
+      });
     }
-    const embId = addFaceEmbedding(id, embedded.embedding);
-    return { ok: true, embeddingId: embId, faces: embedded.faces ?? 1 };
+    const embId = addFaceEmbedding(id, embedded.embedding!);
+    return {
+      ok: true,
+      embeddingId: embId,
+      faces: embedded.faces ?? 1,
+      quality: embedded.quality,
+      rotation_used: embedded.rotation_used,
+      blur: embedded.blur,
+    };
+  });
+
+  app.delete("/api/customers/:id/enroll", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const customer = getCustomer(id);
+    if (!customer) return reply.code(404).send({ error: "Não encontrado" });
+    const removed = clearFaceEmbeddings(id);
+    return {
+      ok: true,
+      removed,
+      customer: getCustomer(id),
+      tip: "Amostras faciais apagadas — pode cadastrar de novo",
+    };
   });
 
   app.post("/api/customers/:id/points", async (req, reply) => {
@@ -220,6 +357,76 @@ export async function registerRoutes(app: FastifyInstance) {
         sendToStation(station.id, { type: "points_updated", customer });
       }
       return { ...result, customer };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  app.get("/api/customers/:id/time", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const summary = getCustomerTimeSummary(id);
+    if (!summary) return reply.code(404).send({ error: "Cliente não encontrado" });
+    return summary;
+  });
+
+  app.post("/api/customers/:id/time/sale", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        hours: z.number().positive().optional(),
+        amountReais: z.number().positive().optional(),
+      })
+      .parse(req.body);
+    try {
+      const result = sellTime({ customerId: id, hours: body.hours, amountReais: body.amountReais });
+      broadcastAdmins({ type: "time_updated", customer: result.customer });
+      return { ok: true, ...result };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  app.post("/api/customers/:id/time/adjust", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        deltaSeconds: z.number().int(),
+        note: z.string().optional(),
+      })
+      .parse(req.body);
+    try {
+      const result = adjustTime({ customerId: id, deltaSeconds: body.deltaSeconds, note: body.note });
+      broadcastAdmins({ type: "time_updated", customer: result.customer });
+      return { ok: true, ...result };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  app.post("/api/customers/:id/subscription", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        status: z.enum(["none", "active", "paused"]),
+        months: z.number().int().min(1).max(36).optional(),
+        priceReais: z.number().min(0).optional(),
+        notes: z.string().optional(),
+      })
+      .parse(req.body);
+    try {
+      const result = setSubscription({
+        customerId: id,
+        status: body.status,
+        months: body.months,
+        priceReais: body.priceReais,
+        notes: body.notes,
+      });
+      broadcastAdmins({ type: "subscription_updated", customer: result.customer });
+      return { ok: true, ...result };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
     }
@@ -307,6 +514,7 @@ export async function registerRoutes(app: FastifyInstance) {
     return {
       stations: listStations(),
       connected: listConnectedStations(),
+      live: getAllStationStatuses(),
     };
   });
 
@@ -346,7 +554,7 @@ export async function registerRoutes(app: FastifyInstance) {
     const { id } = req.params as { id: string };
     const body = z
       .object({
-        command: z.enum(["reload", "message", "lock_screen", "unlock_screen"]),
+        command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
         text: z.string().optional(),
       })
       .parse(req.body);
@@ -358,7 +566,7 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!(await adminGuard(req, reply))) return;
     const body = z
       .object({
-        command: z.enum(["reload", "message", "lock_screen", "unlock_screen"]),
+        command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
         text: z.string().optional(),
       })
       .parse(req.body);
@@ -371,38 +579,178 @@ export async function registerRoutes(app: FastifyInstance) {
     return listRecognitionEvents(50);
   });
 
-  app.post("/api/recognize", async (req, reply) => {
+  app.post("/api/presence", async (req, reply) => {
     const station = stationFromHeader(req);
     if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
-    heartbeatStation(station.token, req.ip);
+    heartbeatStationById(station.id, req.ip);
 
-    const body = z.object({ imageBase64: z.string().min(32) }).parse(req.body);
+    const body = z
+      .object({
+        imageBase64: z.string().min(32),
+        customerId: z.string().min(1).optional(),
+      })
+      .parse(req.body);
     const embedded = await extractEmbedding(body.imageBase64);
     if (!embedded.ok || !embedded.embedding) {
-      return { matched: false, reason: embedded.error || "no_face" };
+      if (embedded.code === "service_down") {
+        return reply.code(503).send({
+          present: false,
+          reason: "service_down",
+          code: "service_down",
+          tip: "Serviço facial reiniciando — aguarde alguns segundos",
+        });
+      }
+      const code = embedded.code || "no_face";
+      const reason =
+        code === "face_too_small" || code === "face_blurry" || code === "low_quality"
+          ? "low_quality"
+          : "no_face";
+      return { present: false, reason, code };
+    }
+
+    // Sem customerId: só "há rosto" (compat). Com customerId: VIP da sessão ainda reconhecido.
+    if (!body.customerId) {
+      return { present: true, reason: "face", code: "ok" };
     }
 
     const galleryRaw = listFaceEmbeddings();
-    const gallery = galleryRaw.map((g) => ({
-      id: g.id,
-      customer_id: g.customer_id,
-      embedding: JSON.parse(g.embedding) as number[],
-    }));
+    const gallery = parseGalleryEmbeddings(galleryRaw);
+    if (gallery.length === 0) {
+      return { present: false, reason: "no_gallery", code: "no_gallery" };
+    }
 
     const threshold = Number(getSetting("face_match_threshold", String(config.faceMatchThreshold)));
     const matched = await matchEmbedding(embedded.embedding, gallery, threshold);
     if (!matched.ok) {
+      if (matched.code === "service_down") {
+        return reply.code(503).send({
+          present: false,
+          reason: "service_down",
+          code: "service_down",
+          tip: "Serviço facial reiniciando — aguarde alguns segundos",
+          error: matched.error,
+        });
+      }
+      return reply.code(502).send({ error: matched.error || "Falha no match de presença" });
+    }
+
+    if (matched.match && matched.match.customer_id !== body.customerId) {
+      return {
+        present: false,
+        reason: "other_vip",
+        code: "other_vip",
+        bestScore: matched.match.score,
+        bestCustomerId: matched.match.customer_id,
+      };
+    }
+
+    if (!matched.match) {
+      return {
+        present: false,
+        reason: matched.reason === "ambiguous" ? "ambiguous" : "unknown",
+        code: matched.reason === "ambiguous" ? "ambiguous" : "unknown",
+        bestScore: matched.best_score ?? 0,
+        bestCustomerId: matched.best_customer_id ?? null,
+      };
+    }
+
+    return {
+      present: true,
+      reason: "face",
+      code: "ok",
+      score: matched.match.score,
+    };
+  });
+
+  app.post("/api/recognize", async (req, reply) => {
+    const station = stationFromHeader(req);
+    if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
+    const ip = req.ip || "unknown";
+    if (!rateLimit(`recognize:${station.id}:${ip}`, 120, 60_000)) {
+      return reply.code(429).send({ error: "Muitas tentativas de reconhecimento" });
+    }
+    heartbeatStationById(station.id, req.ip);
+
+    const body = z.object({ imageBase64: z.string().min(32) }).parse(req.body);
+    const embedded = await extractEmbedding(body.imageBase64);
+    if (!embedded.ok || !embedded.embedding) {
+      if (embedded.code === "service_down") {
+        return reply.code(503).send({
+          matched: false,
+          reason: "service_down",
+          code: "service_down",
+          tip: "Serviço facial reiniciando — aguarde alguns segundos",
+          error: embedded.error,
+        });
+      }
+      const code = embedded.code || "no_face";
+      const reason =
+        code === "face_too_small" || code === "face_blurry" || code === "low_quality"
+          ? "low_quality"
+          : "no_face";
+      const tip =
+        code === "face_too_small"
+          ? "Aproxime o rosto da câmera"
+          : code === "face_blurry"
+            ? "Imagem borrada — melhore a luz e segure firme"
+            : "Posicione o rosto no centro do oval";
+      return { matched: false, reason, tip, code, error: embedded.error };
+    }
+
+    const galleryRaw = listFaceEmbeddings();
+    if (galleryRaw.length === 0) {
+      return {
+        matched: false,
+        reason: "no_gallery",
+        tip: "Nenhum VIP com enroll facial. Cadastre amostras no GeekCentral.",
+      };
+    }
+
+    const gallery = parseGalleryEmbeddings(galleryRaw);
+    if (gallery.length === 0) {
+      return {
+        matched: false,
+        reason: "no_gallery",
+        tip: "Nenhum VIP com enroll facial válido. Cadastre amostras no GeekCentral.",
+      };
+    }
+
+    const threshold = Number(getSetting("face_match_threshold", String(config.faceMatchThreshold)));
+    const matched = await matchEmbedding(embedded.embedding, gallery, threshold);
+    if (!matched.ok) {
+      if (matched.code === "service_down") {
+        return reply.code(503).send({
+          matched: false,
+          reason: "service_down",
+          code: "service_down",
+          tip: "Serviço facial reiniciando — aguarde alguns segundos",
+          error: matched.error,
+        });
+      }
       return reply.code(502).send({ error: matched.error || "Falha no match" });
     }
 
     if (!matched.match) {
+      const bestScore = matched.best_score ?? 0;
       addRecognitionEvent({
-        customerId: null,
+        customerId: matched.best_customer_id || null,
         stationId: station.id,
-        score: 0,
+        score: bestScore,
         status: "unknown",
       });
-      return { matched: false, reason: "unknown" };
+      const tip =
+        matched.reason === "ambiguous"
+          ? "Match ambíguo — refaça o enroll com mais ângulos"
+          : bestScore > 0
+            ? `Score baixo: ${(bestScore * 100).toFixed(0)}% — aproxime o rosto ou ajuste o limiar`
+            : "Não reconhecido — faça enroll no GeekCentral";
+      return {
+        matched: false,
+        reason: matched.reason === "ambiguous" ? "ambiguous" : "unknown",
+        bestScore,
+        bestCustomerId: matched.best_customer_id ?? null,
+        tip,
+      };
     }
 
     const customer = getCustomer(matched.match.customer_id);
@@ -427,38 +775,75 @@ export async function registerRoutes(app: FastifyInstance) {
       matched: true,
       score: matched.match.score,
       customer,
+      tip: `VIP reconhecido (${(matched.match.score * 100).toFixed(0)}%)`,
+      timeBalanceSeconds: getTimeBalance(matched.match.customer_id),
     };
   });
 
   app.post("/api/sessions/start", async (req, reply) => {
     const station = stationFromHeader(req);
     if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
-    heartbeatStation(station.token, req.ip);
+    heartbeatStationById(station.id, req.ip);
     const body = z.object({ customerId: z.string().min(1) }).parse(req.body);
     const customer = getCustomer(body.customerId);
     if (!customer) return reply.code(404).send({ error: "Cliente não encontrado" });
     if (!(customer as { consent_at?: string }).consent_at) {
-      return reply.code(400).send({ error: "Cliente sem consentimento LGPD" });
+      return reply.code(400).send({
+        error: "Cliente sem consentimento LGPD",
+        code: "no_consent",
+      });
     }
-    const session = startSession(body.customerId, station.id);
-    const payload = {
-      type: "session_started",
-      session,
-      station: { id: station.id, name: station.name },
-      at: new Date().toISOString(),
-    };
-    broadcastAdmins(payload);
-    sendToStation(station.id, payload);
-    return { ok: true, session };
+    try {
+      const session = startSession(body.customerId, station.id);
+      const payload = {
+        type: "session_started",
+        session,
+        station: { id: station.id, name: station.name },
+        customer,
+        at: new Date().toISOString(),
+      };
+      broadcastAdmins(payload);
+      sendToStation(station.id, payload);
+      return {
+        ok: true,
+        session,
+        customer,
+        timeBalanceSeconds: getTimeBalance(body.customerId),
+      };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro";
+      const isCredit = /cr[eé]dito|caixa/i.test(message);
+      return reply.code(400).send({
+        error: message,
+        code: isCredit ? "no_credit" : "session_error",
+        timeBalanceSeconds: getTimeBalance(body.customerId),
+      });
+    }
   });
 
   app.post("/api/sessions/heartbeat", async (req, reply) => {
     const station = stationFromHeader(req);
     if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
-    heartbeatStation(station.token, req.ip);
+    heartbeatStationById(station.id, req.ip);
     const body = z.object({ sessionId: z.string().min(1) }).parse(req.body);
     try {
-      const session = heartbeatSession(body.sessionId, station.id);
+      const session = heartbeatSession(body.sessionId, station.id) as {
+        time_depleted?: boolean;
+        customer_id: string;
+        id: string;
+      };
+      if (session.time_depleted) {
+        const ended = endSession(session.id, "no_credit");
+        sendCommandToStation(station.id, "end_session", { reason: "no_credit" });
+        broadcastAdmins({
+          type: "session_ended",
+          session: ended,
+          station: { id: station.id, name: station.name },
+          reason: "no_credit",
+          at: new Date().toISOString(),
+        });
+        return { ok: true, session: ended, timeDepleted: true };
+      }
       return { ok: true, session };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });

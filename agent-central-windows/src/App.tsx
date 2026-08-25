@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { CentralStatus } from "./vite-env";
 
 const empty: CentralStatus = {
@@ -8,20 +8,66 @@ const empty: CentralStatus = {
   lanIp: "...",
   apiPort: 8787,
   facePort: 8100,
-  adminPassword: "admin123",
+  adminPassword: "",
+  needsSetup: true,
+  setupComplete: false,
+  unitName: "Unidade 1",
+  startedAt: null,
+  uptimeMs: 0,
+  faceError: "",
+  lastFaceCheck: "",
   error: "",
   logs: [],
 };
+
+function formatUptime(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const r = s % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  if (m > 0) return `${m}m ${String(r).padStart(2, "0")}s`;
+  return `${r}s`;
+}
 
 export default function App() {
   const [status, setStatus] = useState<CentralStatus>(empty);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [setupError, setSetupError] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [adminPassword2, setAdminPassword2] = useState("");
+  const [unitName, setUnitName] = useState("Unidade 1");
+  const [jwtSecret, setJwtSecret] = useState("");
+  const [stationSecret, setStationSecret] = useState("");
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     window.geekcentral.getStatus().then(setStatus).catch(() => undefined);
+    window.geekcentral
+      .peekSetup()
+      .then((peek) => {
+        setStatus(peek);
+        if (peek.suggestedJwt) setJwtSecret(peek.suggestedJwt);
+        if (peek.suggestedStation) setStationSecret(peek.suggestedStation);
+        if (peek.unitName) setUnitName(peek.unitName);
+      })
+      .catch(() => undefined);
     return window.geekcentral.onStatus(setStatus);
   }, []);
+
+  useEffect(() => {
+    if (status.phase !== "running" || !status.startedAt) return;
+    const id = window.setInterval(() => setTick((t) => t + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [status.phase, status.startedAt]);
+
+  const uptimeLabel = useMemo(() => {
+    void tick;
+    if (!status.startedAt) return "—";
+    return formatUptime(Date.now() - status.startedAt);
+  }, [status.startedAt, tick]);
 
   const adminUrl = `http://${status.lanIp}:${status.apiPort}/admin`;
   const stationUrl = `http://${status.lanIp}:${status.apiPort}/station?name=PC-01`;
@@ -47,13 +93,90 @@ export default function App() {
     }
   };
 
+  const submitSetup = async (e: FormEvent) => {
+    e.preventDefault();
+    setSetupError("");
+    if (adminPassword.length < 8) {
+      setSetupError("Senha com pelo menos 8 caracteres");
+      return;
+    }
+    if (adminPassword !== adminPassword2) {
+      setSetupError("As senhas não coincidem");
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await window.geekcentral.completeSetup({
+        adminPassword,
+        jwtSecret,
+        stationSharedSecret: stationSecret,
+        unitName,
+      });
+      if (!res.ok) {
+        setSetupError(res.error || "Falha no setup");
+        return;
+      }
+      if (res.status) setStatus(res.status);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (status.phase === "setup" || status.needsSetup) {
+    return (
+      <div className="shell">
+        <h1 className="brand">GeekCentral</h1>
+        <p className="muted">Primeiro boot — defina senha e segredos da loja (obrigatório).</p>
+        <form className="panel" onSubmit={submitSetup}>
+          <div className="field">
+            <label>Nome da unidade</label>
+            <input value={unitName} onChange={(e) => setUnitName(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Nova senha admin</label>
+            <input
+              type="password"
+              value={adminPassword}
+              onChange={(e) => setAdminPassword(e.target.value)}
+              minLength={8}
+              required
+              autoFocus
+            />
+          </div>
+          <div className="field">
+            <label>Confirmar senha</label>
+            <input
+              type="password"
+              value={adminPassword2}
+              onChange={(e) => setAdminPassword2(e.target.value)}
+              minLength={8}
+              required
+            />
+          </div>
+          <div className="field">
+            <label>JWT secret (gerado)</label>
+            <input value={jwtSecret} onChange={(e) => setJwtSecret(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Station shared secret (gerado)</label>
+            <input value={stationSecret} onChange={(e) => setStationSecret(e.target.value)} required />
+          </div>
+          {setupError && <p style={{ color: "var(--danger)" }}>{setupError}</p>}
+          <button className="btn" type="submit" disabled={busy}>
+            {busy ? "Salvando…" : "Salvar e iniciar"}
+          </button>
+        </form>
+      </div>
+    );
+  }
+
   return (
     <div className="shell">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <div>
           <h1 className="brand">GeekCentral</h1>
           <p className="muted" style={{ margin: "0.25rem 0 0" }}>
-            Servidor da loja — API, facial e admin no PC controle
+            {status.unitName || "Unidade"} — API, facial e admin no PC controle
           </p>
         </div>
         <span
@@ -90,8 +213,31 @@ export default function App() {
             IP da LAN: <span className="mono">{status.lanIp}</span>
           </p>
           <p className="muted">
-            Senha admin: <span className="mono">{status.adminPassword}</span>
+            Uptime: <span className="mono">{uptimeLabel}</span>
           </p>
+          {!status.face && status.faceError ? (
+            <p className="muted" style={{ color: "var(--warn)" }}>
+              Face: {status.faceError}
+            </p>
+          ) : null}
+          {status.lastFaceCheck ? (
+            <p className="muted">Último check face: {new Date(status.lastFaceCheck).toLocaleString("pt-BR")}</p>
+          ) : null}
+          <div className="row" style={{ alignItems: "center" }}>
+            <span className="muted">Senha admin:</span>
+            <span className="mono">{showPassword ? status.adminPassword || "—" : "••••••••"}</span>
+            <button className="btn ghost" type="button" onClick={() => setShowPassword((v) => !v)}>
+              {showPassword ? "Ocultar" : "Revelar"}
+            </button>
+            <button
+              className="btn ghost"
+              type="button"
+              disabled={!status.adminPassword}
+              onClick={() => copy(status.adminPassword, "senha")}
+            >
+              Copiar
+            </button>
+          </div>
           <div className="row">
             <button className="btn" type="button" disabled={!status.api} onClick={() => window.geekcentral.openAdmin()}>
               Abrir admin
@@ -107,9 +253,15 @@ export default function App() {
           <p className="muted" style={{ marginTop: 0 }}>
             No GeekLock de cada PC, use este <code>serverUrl</code>:
           </p>
-          <p className="mono">http://{status.lanIp}:{status.apiPort}</p>
+          <p className="mono">
+            http://{status.lanIp}:{status.apiPort}
+          </p>
           <div className="row">
-            <button className="btn ghost" type="button" onClick={() => copy(`http://${status.lanIp}:${status.apiPort}`, "serverUrl")}>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => copy(`http://${status.lanIp}:${status.apiPort}`, "serverUrl")}
+            >
               Copiar serverUrl
             </button>
             <button className="btn ghost" type="button" onClick={() => copy(stationUrl, "estação")}>
