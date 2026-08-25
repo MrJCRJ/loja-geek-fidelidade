@@ -15,6 +15,8 @@ export function useReveal() {
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const seen = new WeakSet<Element>();
     let io: IntersectionObserver | null = null;
+    let mo: MutationObserver | null = null;
+    let debounceTimer = 0;
 
     const observeAll = () => {
       const nodes = root.querySelectorAll<HTMLElement>(".reveal");
@@ -22,6 +24,8 @@ export function useReveal() {
 
       if (reduced) {
         nodes.forEach((n) => n.classList.add("is-visible"));
+        mo?.disconnect();
+        mo = null;
         return;
       }
 
@@ -34,6 +38,11 @@ export function useReveal() {
                 io?.unobserve(e.target);
               }
             }
+            const pending = root.querySelectorAll(".reveal:not(.is-visible)");
+            if (pending.length === 0) {
+              mo?.disconnect();
+              mo = null;
+            }
           },
           { rootMargin: "0px 0px -8% 0px", threshold: 0.12 },
         );
@@ -44,15 +53,26 @@ export function useReveal() {
         seen.add(n);
         io!.observe(n);
       });
+
+      if (root.querySelectorAll(".reveal:not(.is-visible)").length === 0) {
+        mo?.disconnect();
+        mo = null;
+      }
+    };
+
+    const scheduleObserve = () => {
+      window.clearTimeout(debounceTimer);
+      debounceTimer = window.setTimeout(observeAll, 120);
     };
 
     observeAll();
 
-    const mo = new MutationObserver(() => observeAll());
+    mo = new MutationObserver(scheduleObserve);
     mo.observe(root, { childList: true, subtree: true });
 
     return () => {
-      mo.disconnect();
+      window.clearTimeout(debounceTimer);
+      mo?.disconnect();
       io?.disconnect();
     };
   }, []);

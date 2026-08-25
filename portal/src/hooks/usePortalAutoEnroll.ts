@@ -8,7 +8,7 @@ import {
   type PoseId,
 } from "../facePose";
 
-const LOOP_MS = 280;
+const LOOP_MS = 400;
 const CONSECUTIVE_OK = 3;
 /** Frames ruins seguidos necessários para zerar o streak (histerese). */
 const FAIL_RESET = 2;

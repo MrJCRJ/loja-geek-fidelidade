@@ -1,5 +1,5 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { type ReactNode } from "react";
+import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { getToken } from "./api";
 import LandingPage from "./pages/LandingPage";
 import RegisterPage from "./pages/RegisterPage";
@@ -17,25 +17,20 @@ function Private({ children }: { children: ReactNode }) {
   return children;
 }
 
-function RouteFade({ children }: { children: ReactNode }) {
+/** Anima só o conteúdo da rota — não remonta o router inteiro. */
+function PageTransition() {
   const location = useLocation();
-  const [tick, setTick] = useState(0);
-
-  useEffect(() => {
-    setTick((t) => t + 1);
-  }, [location.pathname]);
-
   return (
-    <div className="route-fade" key={tick}>
-      {children}
+    <div className="route-fade" key={location.pathname}>
+      <Outlet />
     </div>
   );
 }
 
 export default function App() {
   return (
-    <RouteFade>
-      <Routes>
+    <Routes>
+      <Route element={<PageTransition />}>
         <Route path="/" element={<LandingPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -75,7 +70,7 @@ export default function App() {
           }
         />
         <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </RouteFade>
+      </Route>
+    </Routes>
   );
 }

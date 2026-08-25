@@ -60,6 +60,12 @@ body {
   position: relative;
 }
 
+@media (max-width: 768px), (pointer: coarse) {
+  body {
+    background-attachment: scroll;
+  }
+}
+
 .shell--ambient {
   position: relative;
   isolation: isolate;
@@ -88,6 +94,16 @@ body {
 
   .shell--ambient::before {
     animation: plate-grid-drift 36s ease-in-out infinite alternate;
+  }
+}
+
+@media (max-width: 768px), (pointer: coarse) {
+  body,
+  .shell--ambient::before,
+  .hero-plate-grid,
+  .section::after,
+  .reveal.is-visible .steps-editorial li::before {
+    animation: none !important;
   }
 }
 
@@ -383,10 +399,14 @@ a:hover {
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  transition: background 0.22s ease-out, border-color 0.22s ease-out, color 0.22s ease-out,
-    transform 0.22s ease-out;
+  transition: background 0.28s ease-out, border-color 0.28s ease-out, color 0.28s ease-out;
   position: relative;
-  will-change: transform;
+}
+
+@media (pointer: fine) {
+  .btn.prox:not(:disabled) {
+    transition: background 0.28s ease-out, border-color 0.28s ease-out, color 0.28s ease-out;
+  }
 }
 
 /* Magnetic pull via proximity field (fine pointer only) */
@@ -553,7 +573,7 @@ a:hover {
   gap: 0.75rem;
   padding: 0.85rem 0;
   border-bottom: 1px solid var(--geek-line);
-  transition: transform 0.15s ease-out, border-color 0.15s ease-out;
+  transition: transform 0.25s ease-out, border-color 0.25s ease-out;
 }
 
 .pack:hover,
@@ -1142,7 +1162,7 @@ a:hover {
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  animation: banner-in 0.2s ease-out both;
+  animation: banner-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes banner-in {
@@ -1252,7 +1272,7 @@ a:hover {
   background: rgba(0, 0, 0, 0.75);
   color: var(--geek-ink);
   opacity: 0;
-  transition: opacity 0.15s;
+  transition: opacity 0.28s ease-out;
 }
 
 .enroll-overlay.ready,
@@ -1317,7 +1337,7 @@ a:hover {
 .page-in .page-in-cta,
 .page-in .greeting,
 .page-in .page-top {
-  animation: hero-in 0.45s ease both;
+  animation: hero-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .hero-animate .brand-header,
@@ -1345,7 +1365,8 @@ a:hover {
 .reveal {
   opacity: 0;
   transform: translateY(16px);
-  transition: opacity 0.45s ease, transform 0.45s ease;
+  transition: opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .reveal.is-visible {
@@ -1418,15 +1439,17 @@ a:hover {
 
 /* Page transition */
 .route-fade {
-  animation: route-in 0.18s ease-out both;
+  animation: route-in 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 @keyframes route-in {
   from {
     opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
+    transform: translateY(0);
   }
 }
 

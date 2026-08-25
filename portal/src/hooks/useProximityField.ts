@@ -76,6 +76,12 @@ export function useProximityField(
       });
     };
 
+    let measureTimer = 0;
+    const scheduleMeasure = () => {
+      window.clearTimeout(measureTimer);
+      measureTimer = window.setTimeout(measure, 150);
+    };
+
     const tick = () => {
       raf = 0;
       if (disabled) return;
@@ -127,7 +133,7 @@ export function useProximityField(
     ro.observe(root);
     root.querySelectorAll<HTMLElement>(selector).forEach((el) => ro.observe(el));
 
-    const mo = new MutationObserver(measure);
+    const mo = new MutationObserver(scheduleMeasure);
     mo.observe(root, { childList: true, subtree: true });
 
     document.addEventListener("pointermove", onPointerMove, { passive: true });
@@ -147,6 +153,7 @@ export function useProximityField(
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(scrollEndTimer);
+      window.clearTimeout(measureTimer);
       ro.disconnect();
       mo.disconnect();
       reducedMq.removeEventListener("change", onPrefChange);

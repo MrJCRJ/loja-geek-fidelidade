@@ -75,7 +75,7 @@ function usePriceCount(active: boolean, target = 10) {
     }
     done.current = true;
     const start = performance.now();
-    const duration = 420;
+    const duration = 720;
     let raf = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - start) / duration);
