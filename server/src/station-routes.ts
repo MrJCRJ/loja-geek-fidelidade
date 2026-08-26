@@ -68,6 +68,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
       ok: true,
       station: { id: station.id, name: station.name },
       sessionSafety: sessionSafetySettingsPayload(),
+      portalPublicUrl: config.portalPublicUrl,
     };
   });
 

@@ -40,11 +40,11 @@ export const CAMERA_ERROR_COPY = {
   },
   kiosk: {
     insecure: "Contexto inseguro para câmera.",
-    denied: "Permissão da câmera negada. Permita o acesso à webcam no app.",
+    denied: "Permissão da câmera negada. Permita o acesso à webcam no GeekLock.",
     notFound:
-      "Nenhuma câmera encontrada. DroidCam conectado? Rode: bash scripts/linux-loja.sh droidcam IP",
-    busy: "Câmera ocupada por outro app. Feche e tente de novo.",
-    overconstrained: "A webcam não aceitou as restrições de vídeo.",
+      "Nenhuma webcam encontrada. Conecte a Logitech C270 no USB e confira se o LED acende.",
+    busy: "Webcam ocupada (Zoom, Discord, browser…). Feche esses apps e tente de novo.",
+    overconstrained: "A Logitech C270 não aceitou as restrições de vídeo. Tentando fallback…",
     security: "Câmera bloqueada por segurança.",
     noApi: "getUserMedia indisponível neste ambiente.",
   },
@@ -107,7 +107,29 @@ export type OpenCameraOptions = {
   formatError: (err: unknown) => string;
   /** Browser: exige HTTPS/localhost. Electron: false. */
   requireSecureContext?: boolean;
+  /**
+   * Prefere device cujo label casa com o regex (ex.: Logitech C270 no GeekLock).
+   * Default: Logitech/C270, depois qualquer USB webcam (evita virtual/DroidCam).
+   */
+  preferLabel?: RegExp;
+  preferredWidth?: number;
+  preferredHeight?: number;
 };
+
+const DEFAULT_KIOSK_CAM =
+  /logitech|c270|c920|c922|hd\s*webcam|usb.?camera|webcam/i;
+const VIRTUAL_CAM = /droidcam|obs|virtual|loopback|snap|manycam/i;
+
+function pickPreferredCam(
+  cams: MediaDeviceInfo[],
+  preferLabel?: RegExp,
+): MediaDeviceInfo | undefined {
+  const prefer = preferLabel || DEFAULT_KIOSK_CAM;
+  const byPrefer = cams.find((d) => prefer.test(d.label));
+  if (byPrefer) return byPrefer;
+  const physical = cams.find((d) => d.label && !VIRTUAL_CAM.test(d.label));
+  return physical || cams[0];
+}
 
 export async function openUserCamera(opts: OpenCameraOptions): Promise<MediaStream> {
   if (opts.requireSecureContext !== false && !window.isSecureContext) {
@@ -118,6 +140,8 @@ export async function openUserCamera(opts: OpenCameraOptions): Promise<MediaStre
   }
 
   const timeoutMs = opts.timeoutMs ?? 15_000;
+  const widthIdeal = opts.preferredWidth ?? 1280;
+  const heightIdeal = opts.preferredHeight ?? 720;
   let probe: MediaStream | null = null;
   try {
     probe = await withMediaTimeout(
@@ -131,22 +155,31 @@ export async function openUserCamera(opts: OpenCameraOptions): Promise<MediaStre
 
   const devices = await navigator.mediaDevices.enumerateDevices();
   const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
-  const droidcam = cams.find((d) => /droidcam|loopback|dc/i.test(d.label));
+  const preferred = pickPreferredCam(cams, opts.preferLabel);
 
   probe.getTracks().forEach((t) => t.stop());
 
   const attempts: MediaStreamConstraints[] = [];
-  if (droidcam?.deviceId) {
+  if (preferred?.deviceId) {
     attempts.push({
       audio: false,
       video: {
-        deviceId: { ideal: droidcam.deviceId },
+        deviceId: { ideal: preferred.deviceId },
+        width: { ideal: widthIdeal },
+        height: { ideal: heightIdeal },
+      },
+    });
+    attempts.push({
+      audio: false,
+      video: {
+        deviceId: { ideal: preferred.deviceId },
         width: { ideal: 640 },
         height: { ideal: 480 },
       },
     });
   }
   attempts.push(
+    { audio: false, video: { width: { ideal: widthIdeal }, height: { ideal: heightIdeal } } },
     { audio: false, video: { width: { ideal: 640 }, height: { ideal: 480 } } },
     { audio: false, video: true },
   );

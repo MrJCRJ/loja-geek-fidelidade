@@ -1,16 +1,19 @@
 /**
  * Mini-HUD de sessão — canto, bem transparente; legível no hover.
- * Mostra saldo restante, aviso de fim e pausa de cobrança (ausência).
+ * Soft lock (ausência ≤15s): janela maior + alerta forte no desktop.
  */
 const { BrowserWindow, screen } = require("electron");
 
 const HUD_W = 300;
 const HUD_H = 52;
+const HUD_SOFT_W = 360;
+const HUD_SOFT_H = 88;
 
 class SessionHud {
   constructor() {
     /** @type {BrowserWindow | null} */
     this.win = null;
+    this.softLock = false;
   }
 
   ensure() {
@@ -52,14 +55,15 @@ class SessionHud {
     box-sizing: border-box;
     height: 100%;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 0.45rem;
     padding: 0 0.7rem;
-    border-radius: 10px;
+    border-radius: 12px;
     background: rgba(15, 17, 21, 0.28);
     border: 1px solid rgba(42, 51, 68, 0.35);
     color: #f4f1ea;
-    font: 600 12px/1.2 system-ui, "Segoe UI", sans-serif;
+    font: 600 12px/1.2 "Segoe UI", system-ui, sans-serif;
     user-select: none;
     opacity: 0.55;
     transition: opacity 0.25s ease, background 0.25s ease, border-color 0.25s ease;
@@ -70,6 +74,16 @@ class SessionHud {
     border-color: rgba(42, 51, 68, 0.85);
   }
   #bar.alert { border-color: rgba(245, 185, 66, 0.85); }
+  #bar.soft {
+    opacity: 1;
+    background: rgba(120, 48, 0, 0.94);
+    border-color: rgba(245, 158, 11, 0.95);
+    animation: softPulse 1.1s ease-in-out infinite;
+  }
+  @keyframes softPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.015); }
+  }
   #dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: #2dd4bf; flex-shrink: 0;
@@ -93,13 +107,22 @@ class SessionHud {
     font-weight: 500;
     color: #9aa3b5;
     flex-shrink: 0;
-    max-width: 110px;
+    max-width: 140px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   #state.warn { color: #f5b942; }
   #state.danger { color: #f87171; }
+  #soft {
+    display: none;
+    width: 100%;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: #fff7ed;
+  }
+  #bar.soft #soft { display: block; }
 </style>
 </head>
 <body>
@@ -108,6 +131,7 @@ class SessionHud {
     <span id="name">VIP</span>
     <span id="time">0m 00s</span>
     <span id="state">Presente</span>
+    <span id="soft">Volte à cadeira — trava em breve</span>
   </div>
   <script>
     var peekTimer = null;
@@ -139,6 +163,7 @@ class SessionHud {
       var bal = p && p.balanceSeconds != null ? p.balanceSeconds : null;
       var low = !!(p && p.lowBalanceWarn);
       var paused = !!(p && p.billingPaused);
+      var soft = !!(p && p.softLock);
       document.getElementById("name").textContent = name;
       var timeEl = document.getElementById("time");
       var balTxt = fmtBal(bal);
@@ -146,21 +171,33 @@ class SessionHud {
       timeEl.className = low ? "warn" : "";
       var state = document.getElementById("state");
       var dot = document.getElementById("dot");
-      bar.classList.toggle("alert", low || !present || paused);
-      if (!present) {
+      var softEl = document.getElementById("soft");
+      bar.classList.toggle("alert", low || !present || paused || soft);
+      bar.classList.toggle("soft", soft);
+      if (soft) {
+        softEl.textContent = "Volte à cadeira — o PC trava em " + (absent != null ? absent + "s" : "…");
+        state.textContent = paused ? "crédito pausado" : "ausente";
+        state.className = "danger";
+        dot.className = "danger";
+        setPeek(true);
+      } else if (!present) {
+        softEl.textContent = "";
         state.textContent = "Ausente " + (absent != null ? absent + "s" : "…") + (paused ? " · pausa" : "");
         state.className = "warn";
         dot.className = "warn";
       } else if (low) {
+        softEl.textContent = "";
         state.textContent = "Saldo baixo";
         state.className = "danger";
         dot.className = "danger";
         setPeek(true);
       } else if (paused) {
+        softEl.textContent = "";
         state.textContent = "Crédito pausado";
         state.className = "warn";
         dot.className = "warn";
       } else {
+        softEl.textContent = "";
         state.textContent = "Presente";
         state.className = "";
         dot.className = "";
@@ -180,9 +217,11 @@ class SessionHud {
   positionBottomRight() {
     if (!this.win || this.win.isDestroyed()) return;
     const { workArea } = screen.getPrimaryDisplay();
-    const x = Math.max(workArea.x, workArea.x + workArea.width - HUD_W - 16);
-    const y = Math.max(workArea.y, workArea.y + workArea.height - HUD_H - 16);
-    this.win.setPosition(x, y);
+    const w = this.softLock ? HUD_SOFT_W : HUD_W;
+    const h = this.softLock ? HUD_SOFT_H : HUD_H;
+    const x = Math.max(workArea.x, workArea.x + workArea.width - w - 16);
+    const y = Math.max(workArea.y, workArea.y + workArea.height - h - 16);
+    this.win.setBounds({ x, y, width: w, height: h });
   }
 
   formatTime(seconds) {
@@ -195,10 +234,17 @@ class SessionHud {
   }
 
   /**
-   * @param {{ name?: string, elapsed?: number, present?: boolean, absentLeft?: number | null, balanceSeconds?: number | null, lowBalanceWarn?: boolean, billingPaused?: boolean }} payload
+   * @param {{ name?: string, elapsed?: number, present?: boolean, absentLeft?: number | null, balanceSeconds?: number | null, lowBalanceWarn?: boolean, billingPaused?: boolean, softLock?: boolean }} payload
    */
   update(payload) {
     const win = this.ensure();
+    const softLock =
+      Boolean(payload?.softLock) ||
+      (payload?.absentLeft != null && payload.absentLeft > 0 && payload.absentLeft <= 15);
+    if (softLock !== this.softLock) {
+      this.softLock = softLock;
+      this.positionBottomRight();
+    }
     const data = {
       name: payload?.name || "VIP",
       time: this.formatTime(payload?.elapsed),
@@ -207,6 +253,7 @@ class SessionHud {
       balanceSeconds: payload?.balanceSeconds ?? null,
       lowBalanceWarn: Boolean(payload?.lowBalanceWarn),
       billingPaused: Boolean(payload?.billingPaused),
+      softLock,
     };
     const run = () => {
       if (win.isDestroyed()) return;
@@ -223,8 +270,8 @@ class SessionHud {
 
   show(payload) {
     const win = this.ensure();
-    this.positionBottomRight();
     this.update(payload);
+    this.positionBottomRight();
     if (!win.isVisible()) {
       win.showInactive();
     }
@@ -232,6 +279,7 @@ class SessionHud {
 
   hide() {
     if (!this.win || this.win.isDestroyed()) return;
+    this.softLock = false;
     this.win.hide();
   }
 

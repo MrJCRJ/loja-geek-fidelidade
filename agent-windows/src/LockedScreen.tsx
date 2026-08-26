@@ -1,6 +1,8 @@
 import type { ReactNode, RefObject } from "react";
 import type { Customer, GeekLockConfig } from "./vite-env";
-import { statusIcon } from "./kiosk-helpers";
+import { scanStatusHint, statusIcon } from "./kiosk-helpers";
+import { PinPad } from "./PinPad";
+import { PortalQr } from "./PortalQr";
 
 type PinMode = "unlock" | "quit" | null;
 
@@ -17,13 +19,17 @@ type Props = {
   welcomeCustomer: Customer | null;
   pin: string;
   pinMode: PinMode;
+  portalQrUrl: string;
+  logoutNudge: boolean;
   videoRef: RefObject<HTMLVideoElement | null>;
   banner: ReactNode;
   lastFailure?: { kind: string; message: string; at: string } | null;
   onClearFailure?: () => void;
+  onRetryCam: () => void;
   onPinChange: (v: string) => void;
   onOpenPin: (mode: "unlock" | "quit") => void;
   onSubmitPin: () => void;
+  onClosePin: () => void;
 };
 
 export function LockedScreen({
@@ -39,45 +45,98 @@ export function LockedScreen({
   welcomeCustomer,
   pin,
   pinMode,
+  portalQrUrl,
+  logoutNudge,
   videoRef,
   banner,
   lastFailure,
   onClearFailure,
+  onRetryCam,
   onPinChange,
   onOpenPin,
   onSubmitPin,
+  onClosePin,
 }: Props) {
+  const hint = scanStatusHint(scanReason, scanning);
+  const pillTone = scanReason === "no_gallery" || ovalClass === "error" ? "bad" : "warn";
+
   return (
     <div className="screen screen-locked">
       {banner}
-      <header className="locked-topbar">
-        <div className="locked-topbar-brand">
-          <strong>GeekLock</strong>
-          <span className="muted locked-topbar-station">{config?.stationName}</span>
+
+      <div className="locked-stage">
+        <video ref={videoRef} muted playsInline className="locked-cam" />
+        {!camReady && (
+          <div className="video-placeholder locked-cam-placeholder">
+            <p>Webcam indisponível</p>
+            <p className="muted">Confira a Logitech C270 no USB ou use PIN Admin</p>
+            <button className="btn" type="button" onClick={onRetryCam}>
+              Tentar câmera de novo
+            </button>
+          </div>
+        )}
+        <div className={`face-guide scan-${ovalClass}`} aria-hidden />
+
+        <header className="locked-chrome">
+          <div className="locked-chrome-brand">
+            <strong>GeekLock</strong>
+            <span className="muted">{config?.stationName || "Estação"}</span>
+          </div>
+          <span className={`pill ${pillTone} kiosk-status-pill`}>
+            {statusIcon(scanReason)} {status}
+          </span>
+          <button className="btn ghost locked-chrome-pin" type="button" onClick={() => onOpenPin("unlock")}>
+            PIN
+          </button>
+        </header>
+
+        <PortalQr value={portalQrUrl} caption="Cadastre-se / compre horas" />
+
+        <div className="locked-footer">
+          <p className="face-guide-label locked-guide">
+            {scanning ? "Analisando rosto…" : "Centralize o rosto na oval"}
+          </p>
+          <p className="locked-hint">{hint}</p>
+          {showScore && score != null ? (
+            <p className="score-line">
+              Confiança: <strong>{(score * 100).toFixed(0)}%</strong>
+            </p>
+          ) : null}
+          {error ? <p className="error-text">{error}</p> : null}
+          <div className="row locked-actions">
+            {!camReady ? (
+              <button className="btn" type="button" onClick={onRetryCam}>
+                Reconectar webcam
+              </button>
+            ) : null}
+            <button className="btn ghost" type="button" onClick={() => onOpenPin("unlock")}>
+              PIN Admin
+            </button>
+            <button className="btn ghost" type="button" onClick={() => onOpenPin("quit")}>
+              Sair do app
+            </button>
+          </div>
         </div>
-        <span className={`pill ${scanReason === "no_gallery" ? "bad" : "warn"} kiosk-status-pill`}>
-          {statusIcon(scanReason)} {status}
-        </span>
-        <button
-          className="btn ghost locked-topbar-pin"
-          type="button"
-          onClick={() => onOpenPin("unlock")}
-        >
-          PIN Admin
-        </button>
-      </header>
-      <p className="muted locked-conn-hint">
-        Conectado ao PC controle
-        {score != null && score > 0 ? ` · score ${(score * 100).toFixed(0)}%` : ""}
-      </p>
+      </div>
+
       {lastFailure ? (
-        <div className="banner warn" style={{ margin: "0.5rem 1rem" }}>
+        <div className="banner warn locked-failure">
           Última falha ({new Date(lastFailure.at).toLocaleString("pt-BR")}): {lastFailure.message}
           {onClearFailure ? (
-            <button className="btn ghost" type="button" style={{ marginLeft: 8 }} onClick={onClearFailure}>
+            <button className="btn ghost" type="button" onClick={onClearFailure}>
               Ok
             </button>
           ) : null}
+        </div>
+      ) : null}
+
+      {logoutNudge ? (
+        <div className="logout-nudge" role="alert">
+          <p className="logout-nudge-kicker">Sessão encerrada</p>
+          <h2 className="logout-nudge-title">Faça logout do Steam e do Discord</h2>
+          <p className="muted">
+            Se a conta não for sua, saia agora — o próximo VIP herda o que ficar logado no Windows.
+          </p>
         </div>
       ) : null}
 
@@ -88,84 +147,28 @@ export function LockedScreen({
           <span className={`level-badge lg ${welcomeCustomer.level}`}>{welcomeCustomer.level}</span>
           {welcomeCustomer.timeBalanceSeconds != null ? (
             <p className="welcome-balance">
-              Saldo:{" "}
-              {Math.floor(welcomeCustomer.timeBalanceSeconds / 60)}m{" "}
+              Saldo: {Math.floor(welcomeCustomer.timeBalanceSeconds / 60)}m{" "}
               {String(welcomeCustomer.timeBalanceSeconds % 60).padStart(2, "0")}s
             </p>
           ) : null}
           <p className="muted">Liberando máquina…</p>
-          <p className="muted welcome-hint">Ao sair, encerre Steam/Discord se não for sua conta.</p>
+          <p className="muted welcome-hint">
+            Ao sair, faça logout do Steam e Discord se a conta não for sua.
+          </p>
         </div>
       )}
 
-      <div className="card">
-        <div className="row" style={{ justifyContent: "space-between" }}>
-          <div>
-            <h1 className="brand">GeekLock</h1>
-            <p className="muted kiosk-sub" style={{ margin: 0 }}>
-              {config?.stationName} · só VIP libera a máquina
-            </p>
-          </div>
-          <span className={`pill ${scanReason === "no_gallery" ? "bad" : "warn"} kiosk-status-pill`}>
-            {statusIcon(scanReason)} {status}
-          </span>
+      {pinMode ? (
+        <div className="pin-overlay">
+          <PinPad
+            value={pin}
+            label={pinMode === "quit" ? "PIN para sair do GeekLock" : "PIN Admin — desbloquear"}
+            onChange={onPinChange}
+            onSubmit={onSubmitPin}
+            onCancel={onClosePin}
+          />
         </div>
-
-        <p className="muted kiosk-sub" style={{ margin: "0.35rem 0 0" }}>
-          Conectado ao PC controle
-          {showScore && score != null ? ` · score ${(score * 100).toFixed(0)}%` : ""}
-        </p>
-
-        <div className="grid" style={{ marginTop: "1rem" }}>
-          <div className="video-wrap">
-            <video ref={videoRef} muted playsInline />
-            {!camReady && (
-              <div className="video-placeholder">
-                <p>Câmera indisponível</p>
-                <p className="muted">Use PIN Admin ou reconecte o DroidCam</p>
-              </div>
-            )}
-            <div className={`face-guide scan-${ovalClass}`} aria-hidden />
-            <p className="face-guide-label">
-              {scanning ? "Analisando rosto…" : "Centralize o rosto"}
-            </p>
-          </div>
-          <div>
-            <p className="kiosk-lead">
-              Olhe para a câmera. O PC só destrava se o servidor confirmar que você é VIP.
-            </p>
-            {showScore && score != null && (
-              <p className="muted score-line">
-                Score: <strong>{(score * 100).toFixed(0)}%</strong>
-              </p>
-            )}
-            {error && <p className="error-text">{error}</p>}
-            <div className="row">
-              <button className="btn ghost" type="button" onClick={() => onOpenPin("unlock")}>
-                PIN Admin
-              </button>
-              <button className="btn ghost" type="button" onClick={() => onOpenPin("quit")}>
-                Sair do app
-              </button>
-            </div>
-            {pinMode && (
-              <div className="field">
-                <label>PIN Admin ({pinMode === "quit" ? "sair" : "desbloquear"})</label>
-                <input
-                  type="password"
-                  value={pin}
-                  onChange={(e) => onPinChange(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && onSubmitPin()}
-                  autoFocus
-                />
-                <button className="btn" type="button" onClick={onSubmitPin}>
-                  Confirmar
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PinPad } from "./PinPad";
 
 type PinMode = "unlock" | "quit" | null;
 
@@ -12,6 +13,7 @@ type Props = {
   onPinChange: (v: string) => void;
   onOpenPin: () => void;
   onSubmitPin: () => void;
+  onClosePin: () => void;
 };
 
 export function OfflineScreen({
@@ -24,11 +26,12 @@ export function OfflineScreen({
   onPinChange,
   onOpenPin,
   onSubmitPin,
+  onClosePin,
 }: Props) {
   return (
     <div className="screen">
       {banner}
-      <div className="card">
+      <div className="card offline-card">
         <h1 className="brand">GeekLock</h1>
         <span className="pill bad">Sem conexão</span>
         <p className="kiosk-lead">PC bloqueado. Conecte-se ao servidor da loja (PC controle).</p>
@@ -42,21 +45,18 @@ export function OfflineScreen({
             PIN Admin
           </button>
         </div>
-        {pinMode && (
-          <div className="field">
-            <label>PIN Admin</label>
-            <input
-              type="password"
-              value={pin}
-              onChange={(e) => onPinChange(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && onSubmitPin()}
-            />
-            <button className="btn" type="button" onClick={onSubmitPin}>
-              Confirmar
-            </button>
-          </div>
-        )}
       </div>
+      {pinMode ? (
+        <div className="pin-overlay">
+          <PinPad
+            value={pin}
+            label="PIN Admin — desbloquear"
+            onChange={onPinChange}
+            onSubmit={onSubmitPin}
+            onCancel={onClosePin}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

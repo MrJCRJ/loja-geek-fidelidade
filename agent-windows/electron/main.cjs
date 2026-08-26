@@ -232,6 +232,10 @@ function applyTrayUpdate(payload) {
         balanceSeconds: lastTrayPayload.balanceSeconds,
         lowBalanceWarn: lastTrayPayload.lowBalanceWarn,
         billingPaused: lastTrayPayload.billingPaused,
+        softLock:
+          lastTrayPayload.absentLeft != null &&
+          lastTrayPayload.absentLeft > 0 &&
+          lastTrayPayload.absentLeft <= 15,
       });
     }
   } else {
@@ -316,7 +320,8 @@ function createWindow() {
   mainWindow.on("close", (e) => {
     if (!app.isQuitting) {
       e.preventDefault();
-      lock.lock();
+      // Pede ao renderer (pinta LockedScreen antes do fullscreen) — evita tela preta
+      mainWindow.webContents.send("session:request-lock");
     }
   });
 
@@ -370,10 +375,9 @@ function registerAppShortcuts() {
 
 if (gotSingleInstanceLock) {
   app.on("second-instance", () => {
-    focusMainWindow();
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      lock.lock();
-    }
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    // Mesmo caminho do F11/bandeja: renderer pinta reconhecimento antes do overlay
+    mainWindow.webContents.send("session:request-lock");
   });
 }
 
@@ -424,8 +428,11 @@ app.whenReady().then(() => {
     /* ignore */
   }
 
+  // Não chama lock.lock() direto: na fase unlocked a UI é tela “vazia” e
+  // aparecer fullscreen antes do React pintar o reconhecimento = tela preta.
   globalShortcut.register("F11", () => {
-    lock.lock();
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send("session:request-lock");
   });
 
   registerAppShortcuts();

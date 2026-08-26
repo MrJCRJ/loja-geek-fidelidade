@@ -15,7 +15,7 @@ export function SetupWizard({ onDone }: Props) {
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
   const [camOk, setCamOk] = useState(false);
-  const [camMsg, setCamMsg] = useState("Teste a câmera antes de conectar.");
+  const [camMsg, setCamMsg] = useState("Teste a Logitech C270 antes de conectar.");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -49,7 +49,7 @@ export function SetupWizard({ onDone }: Props) {
       streamRef.current = stream;
       if (videoRef.current) await attachCameraStream(videoRef.current, stream);
       setCamOk(true);
-      setCamMsg("Câmera ok — luz de frente, sem contraluz forte.");
+      setCamMsg("Logitech C270 ok — luz de frente, sem contraluz forte.");
     } catch (err) {
       setCamOk(false);
       setCamMsg(err instanceof Error ? err.message : "Falha na câmera");
@@ -118,10 +118,11 @@ export function SetupWizard({ onDone }: Props) {
             {!camOk && <div className="video-placeholder">{camMsg}</div>}
           </div>
           <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
-            Dica: rosto iluminado de frente; evite janela atrás da cabeça e óculos escuros.
+            Use a Logitech C270 no USB. Rosto iluminado de frente; evite janela atrás da cabeça e óculos
+            escuros.
           </p>
           <button className="btn ghost" type="button" onClick={testCamera}>
-            {camOk ? "Testar de novo" : "Abrir câmera"}
+            {camOk ? "Testar de novo" : "Abrir webcam"}
           </button>
         </div>
 

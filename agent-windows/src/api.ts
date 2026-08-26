@@ -71,6 +71,7 @@ export async function heartbeat(config: GeekLockConfig) {
     ok: boolean;
     station?: { id: string; name: string };
     sessionSafety?: SessionSafetyConfig;
+    portalPublicUrl?: string;
   }>(config, "/api/stations/heartbeat", {
     method: "POST",
     body: JSON.stringify({ token: config.stationToken }),
@@ -204,6 +205,13 @@ export async function sessionHeartbeat(
   });
 }
 
+export async function endSession(config: GeekLockConfig, sessionId?: string, reason?: string) {
+  return apiFetch<{ ok: boolean; session: Session | null }>(config, "/api/sessions/end", {
+    method: "POST",
+    body: JSON.stringify({ sessionId, reason }),
+  });
+}
+
 export async function reportStaffUnlock(config: GeekLockConfig, reason = "pin") {
   try {
     await apiFetch<{ ok: boolean }>(config, "/api/stations/staff-unlock", {
@@ -226,15 +234,18 @@ export function cameraErrorMessage(err: unknown): string {
 export async function openUserCamera(): Promise<MediaStream> {
   return openUserCameraShared({
     requireSecureContext: false,
+    preferLabel: /logitech|c270|c920|c922|hd\s*webcam/i,
+    preferredWidth: 1280,
+    preferredHeight: 720,
     timeoutMessage:
-      "Timeout ao abrir câmera (15s). DroidCam conectado no PC? Feche outros apps usando a câmera.",
+      "Timeout ao abrir a webcam (15s). Logitech C270 no USB? Feche Zoom/Discord/browser usando a câmera.",
     formatError: cameraErrorMessage,
   });
 }
 
 export async function attachCameraStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
   return attachCameraStreamShared(video, stream, {
-    timeoutMessage: "Vídeo não iniciou (10s). DroidCam conectado?",
+    timeoutMessage: "Vídeo não iniciou (10s). Confira a Logitech C270 (LED / cabo USB).",
   });
 }
 

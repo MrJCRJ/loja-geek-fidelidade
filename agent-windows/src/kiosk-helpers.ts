@@ -46,6 +46,33 @@ export function statusIcon(reason?: string) {
   return "◉";
 }
 
+/** Copy curta sob a oval — linguagem de loja, não código. */
+export function scanStatusHint(reason?: string, scanning?: boolean): string {
+  if (scanning) return "Olhe para a Logitech C270 — estamos confirmando seu VIP.";
+  switch (reason) {
+    case "no_gallery":
+      return "Nenhum VIP cadastrado no servidor. Avise o balcão.";
+    case "no_face":
+      return "Não vejo um rosto. Chegue mais perto e ilumine de frente.";
+    case "face_too_far":
+      return "Rosto longe demais — aproxime-se da webcam.";
+    case "low_quality":
+      return "Imagem escura ou borrada. Melhore a luz da frente.";
+    case "unknown":
+      return "Rosto não reconhecido. Cadastre-se no portal ou fale no caixa.";
+    case "ambiguous":
+      return "Quase reconheci — olhe de frente e tente de novo.";
+    case "no_credit":
+      return "VIP sem crédito. Passe no caixa ou compre horas no site.";
+    case "no_consent":
+      return "Falta consentimento LGPD — refaça o cadastro facial no portal.";
+    case "service_down":
+      return "Serviço facial reiniciando. Aguarde alguns segundos.";
+    default:
+      return "Olhe para a câmera. Só VIP cadastrado libera a máquina.";
+  }
+}
+
 export function playUnlockChime() {
   try {
     const ctx = new AudioContext();
@@ -66,6 +93,73 @@ export function playUnlockChime() {
   } catch {
     /* ignore */
   }
+}
+
+/** Soft lock: aviso urgente (entrada) ou tick curto (contagem). */
+export function playSoftLockBeep(kind: "enter" | "tick" | "final" = "tick") {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    osc.type = kind === "enter" ? "triangle" : "sine";
+    if (kind === "enter") {
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(380, now + 0.28);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.stop(now + 0.35);
+    } else if (kind === "final") {
+      osc.frequency.setValueAtTime(240, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+      osc.stop(now + 0.45);
+    } else {
+      osc.frequency.setValueAtTime(520, now);
+      gain.gain.setValueAtTime(0.12, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.stop(now + 0.12);
+    }
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.onended = () => {
+      ctx.close().catch(() => undefined);
+    };
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Hard lock: tom descendente + lembrete de apps logados. */
+export function playLockWarnChime() {
+  try {
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const now = ctx.currentTime;
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(660, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.4);
+    gain.gain.setValueAtTime(0.16, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.5);
+    osc.onended = () => {
+      ctx.close().catch(() => undefined);
+    };
+  } catch {
+    /* ignore */
+  }
+}
+
+export const DEFAULT_PORTAL_URL = "https://loja-geek-portal.vercel.app";
+
+export function portalRegisterUrl(portalBase: string) {
+  const base = (portalBase || DEFAULT_PORTAL_URL).replace(/\/$/, "");
+  return `${base}/register`;
 }
 
 export function sessionStartErrorMessage(err: unknown): { reason: string; status: string } {

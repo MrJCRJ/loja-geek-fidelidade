@@ -71,12 +71,12 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | D3 | Auto-trava modo Admin/PIN | `[x]` |
 | D4 | Pausar cobrança quando VIP ausente | `[x]` |
 | D5 | Atualização automática do .exe | `[~]` electron-updater base |
-| D6 | Fechar / avisar Steam-Discord ao travar (integração) | `[ ]` |
+| D6 | Fechar / avisar Steam-Discord ao travar (integração) | `[x]` splash + banner ao hard lock |
 | D7 | Modo quiosque Windows (Assigned Access) documentado | `[~]` docs/quiosque-windows.md |
 | D8 | Indicador claro “crédito pausado” / “ausente Xs” | `[x]` HUD |
-| D9 | Soft lock (aviso) antes do hard lock por ausência | `[ ]` |
-| D10 | Teste de câmera no wizard (preview + tip de luz) | `[~]` wizard existe |
-| D11 | Relatório local de última falha (para balcão ver no PC) | `[ ]` |
+| D9 | Soft lock (aviso) antes do hard lock por ausência | `[x]` HUD + sons 15s |
+| D10 | Teste de câmera no wizard (preview + tip de luz) | `[~]` wizard + tip C270 |
+| D11 | Relatório local de última falha (para balcão ver no PC) | `[x]` banner lastFailure |
 
 ---
 
