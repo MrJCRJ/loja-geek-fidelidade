@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import path from "node:path";
 import fastifyStatic from "@fastify/static";
 import { buildApp } from "./app.js";
 import { config } from "./config.js";
@@ -7,10 +6,14 @@ import { assertProductionSecrets } from "./security.js";
 import { markStaleStationsOffline } from "./stations.js";
 import { startTelemetryProbe } from "./telemetry.js";
 import { startBackupScheduler } from "./backup-scheduler.js";
+import { initSentry, captureException } from "./sentry.js";
+import { ensurePushTable } from "./push.js";
 
 async function main() {
+  await initSentry();
   assertProductionSecrets();
   const app = await buildApp({ logger: true });
+  ensurePushTable();
 
   if (config.staticDir && fs.existsSync(config.staticDir)) {
     await app.register(fastifyStatic, {
@@ -34,6 +37,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  captureException(err);
   console.error(err);
   process.exit(1);
 });

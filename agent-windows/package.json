@@ -11,10 +11,12 @@
     "start:linux": "npm run build:web && cross-env ELECTRON_DISABLE_SANDBOX=1 electron . --no-sandbox",
     "build:web": "vite build",
     "build": "vite build && electron-builder --win dir --x64",
+    "build:nsis": "vite build && electron-builder --win nsis --x64",
     "build:linux": "vite build && electron-builder --linux AppImage --x64",
     "pack:pendrive": "bash ../scripts/pack-pendrive.sh"
   },
   "dependencies": {
+    "electron-updater": "^6.8.9",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
@@ -68,6 +70,13 @@
       "icon": "../portal/public/brand/icon-256.png",
       "category": "Utility",
       "artifactName": "GeekLock-${version}.AppImage"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "MrJCRJ",
+        "repo": "loja-geek-fidelidade"
+      }
+    ]
   }
 }

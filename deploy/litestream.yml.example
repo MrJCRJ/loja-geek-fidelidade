@@ -1,0 +1,22 @@
+# Exemplo Litestream para o banco do GeekCentral.
+# Copie para /etc/litestream.yml (Linux) ou C:\geek\litestream.yml (Windows)
+# e preencha as credenciais. Nunca commite chaves reais.
+#
+# Docs: https://litestream.io/ — ver também docs/litestream.md
+
+access-key-id:     SUBSTITUA_ACCESS_KEY
+secret-access-key: SUBSTITUA_SECRET_KEY
+
+dbs:
+  - path: /caminho/absoluto/para/data/fidelidade.db
+    replicas:
+      - type: s3
+        bucket: geek-loja-db
+        path: fidelidade.db
+        # Cloudflare R2 (troque ACCOUNT_ID):
+        endpoint: https://ACCOUNT_ID.r2.cloudflarestorage.com
+        region: auto
+        # sync quase em tempo real; snapshot periódico acelera restore
+        sync-interval: 1s
+        snapshot-interval: 6h
+        retention: 720h

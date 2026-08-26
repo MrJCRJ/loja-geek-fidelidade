@@ -225,6 +225,13 @@ app.whenReady().then(async () => {
   createWindow({ show: !startHidden });
 
   try {
+    const { setupAutoUpdate } = require("./auto-update.cjs");
+    setupAutoUpdate(console);
+  } catch {
+    /* ignore */
+  }
+
+  try {
     if (!peek.firewallRuleDone && isWin && peek.setupComplete) {
       const fw = await ensureApiFirewallRule(peek.apiPort || 8787);
       services.markFirewallAttempt(fw);

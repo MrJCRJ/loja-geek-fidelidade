@@ -1,6 +1,6 @@
 # Ferramentas e projetos úteis — Loja Geek
 
-Atualizado em **2026-08-25**.
+Atualizado em **2026-08-26** (pesquisa + implementação parcial no código).
 
 Este texto é um **guia em português simples**: o que cada coisa faz na prática da loja, sem jargão.
 
@@ -11,30 +11,32 @@ Pense assim:
 
 Não precisa instalar tudo. Use a ordem de prioridade no final.
 
+**Legenda de status:** `[x]` no código · `[~]` base pronta / falta conta · `[ ]` só doc · `[ops]` só na loja
+
 ---
 
 ## 1. O que o Geek já tem (não precisa trocar)
 
-| Nome | Em uma frase |
-|------|----------------|
-| **GeekCentral** | O PC da loja que controla tudo (cadastro, estações, config). |
-| **GeekLock** | O app em cada PC de jogo que trava até reconhecer o VIP. |
-| **Portal (site)** | O site do cliente (saldo, Pix, cadastro facial). |
-| **Mercado Pago** | Já está no código para receber Pix / checkout. |
-| **Cloudflare Tunnel** | “Túnel” para o site na internet falar com o PC da loja. |
-| **Vercel** | Onde o site do cliente fica hospedado. |
-| **SQLite** | O arquivo de banco de dados na pasta `data/` do Central. |
+| Nome | Em uma frase | Status |
+|------|----------------|--------|
+| **GeekCentral** | O PC da loja que controla tudo (cadastro, estações, config). | `[x]` |
+| **GeekLock** | O app em cada PC de jogo que trava até reconhecer o VIP. | `[x]` |
+| **Portal (site)** | O site do cliente (saldo, Pix, cadastro facial). | `[x]` |
+| **Mercado Pago** | Já está no código para receber Pix / checkout. | `[~]` falta token live |
+| **Cloudflare Tunnel** | “Túnel” para o site na internet falar com o PC da loja. | `[ops]` nome fixo |
+| **Vercel** | Onde o site do cliente fica hospedado. | `[x]` |
+| **SQLite** | O arquivo de banco de dados na pasta `data/` do Central. | `[x]` |
 
 ---
 
 ## 2. Dinheiro (Pix e cartão)
 
-| Nome | Para que serve na loja | Quando vale a pena |
-|------|------------------------|--------------------|
-| **Mercado Pago (ativar de verdade)** | Cliente paga no site e o saldo sobe sozinho. | **Agora** — já está pronto no código; falta só a conta + token. |
-| **Asaas** | Bom para cobrança mensal (assinatura) e boleto/Pix. | Se a assinatura for o produto principal. |
-| **Pagar.me / Stone** | Outro meio de receber; às vezes taxa melhor no cartão. | Se a loja crescer e negociar taxa. |
-| **InfinitePay / Cora** | Pix barato no celular/maquininha. | Mais para **balcão**, não substitui o site sozinho. |
+| Nome | Para que serve na loja | Quando vale a pena | Status |
+|------|------------------------|--------------------|--------|
+| **Mercado Pago (ativar de verdade)** | Cliente paga no site e o saldo sobe sozinho. | **Agora** — código pronto; falta conta + `MP_ACCESS_TOKEN` + webhook HTTPS. | `[ops]` |
+| **Asaas** | Cobrança mensal (assinatura) e boleto/Pix. | Se a assinatura for o produto principal. | `[ ]` |
+| **Pagar.me / Stone** | Outro meio de receber; às vezes taxa melhor no cartão. | Se a loja crescer e negociar taxa. | `[ ]` |
+| **InfinitePay / Cora** | Pix barato no celular/maquininha. | Mais para **balcão**, não substitui o site. | `[ ]` |
 
 **Resumo:** continue com **Mercado Pago**. Os outros só se a taxa ou a assinatura pedirem.
 
@@ -42,12 +44,12 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 ## 3. Deixar os PCs da loja mais “à prova de cliente”
 
-| Nome | Para que serve | Em português simples |
-|------|----------------|----------------------|
-| **Modo quiosque do Windows** (Assigned Access) | O PC só abre o GeekLock (ou quase). | Impede o cliente de abrir Chrome e bagunçar o Windows. |
-| **AutoHotkey** | Atalhos no teclado / scripts no Windows. | Ex.: staff aperta uma tecla e força logout do Steam. |
-| **Playnite** (ou launcher parecido) | Organiza jogos e pode fechar tudo ao sair. | Ajuda quando um VIP sai e o próximo herda o Steam logado. |
-| **nssm** ou serviço Windows | Mantém a API / túnel ligados mesmo se fechar a janela. | O “motor” da loja não cai porque alguém fechou um terminal. |
+| Nome | Para que serve | Em português simples | Status |
+|------|----------------|----------------------|--------|
+| **Modo quiosque do Windows** (Assigned Access) | O PC só abre o GeekLock (ou quase). | Impede o cliente de abrir Chrome e bagunçar o Windows. | `[ ]` doc |
+| **AutoHotkey** | Atalhos no teclado / scripts no Windows. | Ex.: staff aperta uma tecla e força logout do Steam. | `[ ]` |
+| **Playnite** (ou launcher parecido) | Organiza jogos e pode fechar tudo ao sair. | Ajuda quando um VIP sai e o próximo herda o Steam logado. | `[ ]` |
+| **nssm** ou serviço Windows | Mantém a API / túnel ligados mesmo se fechar a janela. | O “motor” da loja não cai porque alguém fechou um terminal. | `[~]` GeekCentral já sobe serviços |
 
 **Resumo:** GeekLock já trava a tela. Essas peças evitam o que o GeekLock **não controla** (Steam, Discord, Windows).
 
@@ -55,11 +57,11 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 ## 4. Rosto / câmera (melhorar o reconhecimento)
 
-| Nome | Para que serve | Precisa trocar o que já temos? |
-|------|----------------|--------------------------------|
-| **OpenCV (YuNet + SFace)** | Já é o que reconhece o VIP. | Não — é o coração atual. |
-| **MediaPipe** (Google) | Ajuda a ver se o rosto está de lado, longe, tapado. | Não obrigatório; seria um “assistente” de qualidade. |
-| **ONNX Runtime** | Roda o modelo de face mais leve em PC fraco. | Só se a estação for muito lenta. |
+| Nome | Para que serve | Precisa trocar o que já temos? | Status |
+|------|----------------|--------------------------------|--------|
+| **OpenCV (YuNet + SFace)** | Já é o que reconhece o VIP. | Não — é o coração atual. | `[x]` |
+| **MediaPipe** (Google) | Ajuda a ver se o rosto está de lado, longe, tapado. | Não obrigatório; portal já usa tasks-vision no enroll. | `[~]` |
+| **ONNX Runtime** | Roda o modelo de face mais leve em PC fraco. | Só se a estação for muito lenta. | `[ ]` |
 
 **Resumo:** o reconhecimento já funciona. Só mexa aqui se a loja reclamar de luz/câmera demais.
 
@@ -67,26 +69,32 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 ## 5. Não perder dados / ver se está online
 
-| Nome | Para que serve | Em português simples |
-|------|----------------|----------------------|
-| **Backup que o Geek já faz** | Copia o banco SQLite de tempos em tempos. | Já existe na Config do Central. |
-| **Litestream** | Copia o banco **o tempo todo** para a nuvem/outro PC. | Seguro extra se o HD do Central queimar. |
-| **Syncthing** | Sincroniza a pasta `data/` com outro computador. | Backup “caseiro” entre dois PCs. |
-| **Uptime Kuma** | Painel “está no ar?” (API, site, túnel). | Você vê no celular se a loja caiu. |
-| **Sentry** | Avisa quando o site ou a API dão erro. | Em vez de o cliente só falar “bugou”. |
+| Nome | Para que serve | Em português simples | Status |
+|------|----------------|----------------------|--------|
+| **Backup que o Geek já faz** | Copia o banco SQLite de tempos em tempos. | Já existe na Config do Central. | `[x]` |
+| **Litestream** | Copia o banco **o tempo todo** para S3/R2. | Seguro extra se o HD do Central queimar. Preferir **Cloudflare R2** (egress barato). | `[~]` ver [`litestream.md`](./litestream.md) |
+| **Syncthing** | Sincroniza a pasta `data/` com outro computador. | Backup “caseiro” entre dois PCs. | `[ ]` |
+| **Uptime Kuma** | Painel “está no ar?” (API, site, túnel). | Você vê no celular se a loja caiu. Self-host leve. | `[ ]` ops |
+| **Sentry** | Avisa quando o site ou a API dão erro. | Liga com `SENTRY_DSN` / `VITE_SENTRY_DSN`. | `[~]` no código |
 
-**Resumo:** backup local já tem. Litestream/Syncthing = não perder a loja. Uptime/Sentry = saber rápido quando cai.
+**Notas 2026 (pesquisa):**
+
+- Litestream replica o WAL do SQLite para storage S3-compatível; em produção use systemd/Docker e teste `litestream restore`.
+- Sentry: SDK Node (Fastify) + React (Vite). Sem DSN = desligado (zero custo).
+- Uptime Kuma continua a melhor opção caseira de “está no ar?” — não precisa de código no monorepo.
+
+**Resumo:** backup local já tem. Litestream = não perder a loja. Uptime/Sentry = saber rápido quando cai.
 
 ---
 
 ## 6. Site do cliente (portal)
 
-| Nome | Para que serve |
-|------|----------------|
-| **Avisos no celular (web-push)** | “Seu saldo está acabando” mesmo com o site fechado. |
-| **Workbox** | Deixa o app do site (PWA) mais estável offline. |
-| **Evolution API** ou **Baileys** | Robô de **WhatsApp** (saldo, Pix, “PC livre”). |
-| **QR Code** | Cliente escaneia no balcão para pagar / ver saldo. |
+| Nome | Para que serve | Status |
+|------|----------------|--------|
+| **Avisos no celular (web-push)** | “Seu saldo está acabando” com o site fechado. VAPID; no **iPhone** só funciona se o PWA estiver na Tela de Início. | `[~]` base no código |
+| **Workbox** | PWA mais estável offline. | `[~]` SW mínimo já existe; Workbox opcional depois |
+| **Evolution API** ou **Baileys** | Robô de **WhatsApp** (saldo, Pix, “PC livre”). | `[ ]` |
+| **QR Code** | Cliente escaneia no balcão. | `[x]` estações no Central |
 
 **Resumo:** WhatsApp automático e aviso de saldo no celular são os que mais melhoram a experiência do cliente.
 
@@ -94,10 +102,10 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 ## 7. Internet da loja ↔ site
 
-| Nome | Para que serve |
-|------|----------------|
-| **Cloudflare Tunnel com nome fixo** | O site sempre acha a mesma URL da API (não muda toda vez). |
-| **Tailscale** ou **ZeroTier** | Plano B: uma “VPN” simples se o túnel Cloudflare falhar. |
+| Nome | Para que serve | Status |
+|------|----------------|--------|
+| **Cloudflare Tunnel com nome fixo** | O site sempre acha a mesma URL da API. | `[ops]` P0 |
+| **Tailscale** ou **ZeroTier** | Plano B: VPN simples se o túnel falhar. | `[ ]` |
 
 **Resumo:** o P0 da loja é o **túnel com nome fixo**. Sem isso, Pix e portal quebram quando a URL muda.
 
@@ -105,12 +113,14 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 ## 8. Atualizar GeekLock / GeekCentral sem pendrive
 
-| Nome | Para que serve |
-|------|----------------|
-| **electron-updater** | O app baixa atualização sozinho (como um app de celular). |
-| **Assinatura de código (code signing)** | Windows reclama menos de “app desconhecido / vírus”. |
+| Nome | Para que serve | Status |
+|------|----------------|--------|
+| **electron-updater** | O app baixa atualização sozinho via GitHub Releases (`latest.yml`). | `[~]` base no código |
+| **Assinatura de código (code signing)** | Windows reclama menos de “app desconhecido / vírus”. | `[ops]` certificado |
 
-**Resumo:** hoje você copia pasta/pendrive. Com updater, a loja atualiza com bem menos trabalho.
+**Notas 2026:** no Windows o update confiável precisa de build **NSIS** (não só pasta `dir` do pendrive) + release no GitHub. Código assinado reduz falso positivo do Defender.
+
+**Resumo:** hoje você copia pasta/pendrive. Com updater + release, a loja atualiza com bem menos trabalho.
 
 ---
 
@@ -135,14 +145,14 @@ Isso **não** aparece para o cliente da loja. Ajuda você a editar o código:
 
 Faça nesta ordem — do que destrava a loja para o que é “nice to have”:
 
-1. **Mercado Pago real** + webhook (cliente paga e ganha hora).  
-2. **Túnel Cloudflare com nome fixo** (site sempre encontra a loja).  
-3. **Regenerar GeekLock/Central** com as mitigações novas (saldo, ausência, etc.).  
-4. **Backup extra** (Litestream ou Syncthing) — não perder o banco.  
-5. **Sentry** ou **Uptime Kuma** — saber quando cai.  
-6. **electron-updater** — atualizar sem pendrive.  
-7. **WhatsApp automático** — se a loja já usa muito WhatsApp.  
-8. Só depois: Asaas, MediaPipe, modo quiosque Windows avançado.
+1. **Mercado Pago real** + webhook (cliente paga e ganha hora). `[ops]`  
+2. **Túnel Cloudflare com nome fixo** (site sempre encontra a loja). `[ops]`  
+3. **Regenerar GeekLock/Central** com as mitigações novas (saldo, ausência, etc.). `[ops]`  
+4. **Backup extra** (Litestream → R2) — não perder o banco. `[~]` docs + exemplo  
+5. **Sentry** (e/ou Uptime Kuma) — saber quando cai. `[~]` Sentry no código  
+6. **electron-updater** + release NSIS — atualizar sem pendrive. `[~]` base  
+7. **Web-push** (saldo baixo) + depois WhatsApp automático. `[~]` / `[ ]`  
+8. Só depois: Asaas, MediaPipe extra, modo quiosque Windows avançado.
 
 ---
 
@@ -150,12 +160,15 @@ Faça nesta ordem — do que destrava a loja para o que é “nice to have”:
 
 - Trocar OpenCV por outra face “mágica” na nuvem (custa, LGPD, internet).  
 - Stripe (foco Brasil / Pix → Mercado Pago basta).  
-- Microserviços / Redis / Kubernetes (o monorepo local já resolve a loja).
+- Microserviços / Redis / Kubernetes (o monorepo local já resolve a loja).  
+- Firebase Cloud Messaging só para push — **web-push + VAPID** basta (Chrome/Firefox/Safari).
 
 ---
 
 ## Relacionados
 
 - Checklist da loja: [`loja-ready.md`](./loja-ready.md)  
+- Litestream (passo a passo): [`litestream.md`](./litestream.md)  
 - Problemas de sessão e mitigações: [`teorias-producao.md`](./teorias-producao.md)  
-- Melhorias gerais: [`MELHORIAS.md`](./MELHORIAS.md)
+- Melhorias gerais: [`MELHORIAS.md`](./MELHORIAS.md)  
+- Lista completa: [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md)

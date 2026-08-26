@@ -63,6 +63,7 @@ Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
 | 28 | ~~Retenção LGPD fina (apagar face sem apagar conta)~~ **feito** (parte 15) |
 | 30 | ~~UX: Feed histórico top 15 + compra portal hora/R$~~ **feito** — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md) (U1–U14) |
 | 31 | ~~Pacotes editáveis + faturamento 30d + PDV caixa + FAQ~~ **feito** |
+| 32 | ~~Ecossistema: Sentry + Litestream doc + electron-updater + web-push~~ **base** — [`ECOSSISTEMA.md`](./ECOSSISTEMA.md) |
 
 ---
 

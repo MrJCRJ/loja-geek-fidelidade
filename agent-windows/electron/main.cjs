@@ -409,6 +409,13 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
 
+  try {
+    const { setupAutoUpdate } = require("./auto-update.cjs");
+    setupAutoUpdate(debug);
+  } catch {
+    /* ignore */
+  }
+
   globalShortcut.register("F11", () => {
     lock.lock();
   });

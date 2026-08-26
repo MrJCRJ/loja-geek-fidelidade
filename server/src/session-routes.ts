@@ -91,6 +91,13 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         });
         return { ok: true, session: ended, timeDepleted: true };
       }
+      if (session.low_balance_warn) {
+        void import("./push.js")
+          .then((m) =>
+            m.notifyLowBalance(session.customer_id, Number(session.time_balance_seconds || 0)),
+          )
+          .catch(() => undefined);
+      }
       return {
         ok: true,
         session,

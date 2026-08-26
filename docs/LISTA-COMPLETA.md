@@ -57,7 +57,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | C9 | Caixa no balcão: vender horas sem portal (atalho rápido) | `[x]` |
 | C10 | Impressão / compartilhar token de estação (QR) | `[x]` |
 | C11 | Alertas: face-service caiu, estação offline, disco cheio | `[~]` Saúde + telemetria |
-| C12 | Atualização do Central sem reinstalar pasta toda | `[ ]` electron-updater |
+| C12 | Atualização do Central sem reinstalar pasta toda | `[~]` electron-updater base |
 | C13 | Modo “só leitura” para ajudante de balcão (sem config) | `[ ]` |
 
 ---
@@ -70,7 +70,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | D2 | Aviso de saldo baixo + HUD com resto de horas | `[x]` |
 | D3 | Auto-trava modo Admin/PIN | `[x]` |
 | D4 | Pausar cobrança quando VIP ausente | `[x]` |
-| D5 | Atualização automática do .exe | `[ ]` |
+| D5 | Atualização automática do .exe | `[~]` electron-updater base |
 | D6 | Fechar / avisar Steam-Discord ao travar (integração) | `[ ]` |
 | D7 | Modo quiosque Windows (Assigned Access) documentado | `[ ]` |
 | D8 | Indicador claro “crédito pausado” / “ausente Xs” | `[x]` HUD |
@@ -90,7 +90,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | E4 | Seletor multi-Central | `[x]` |
 | E5 | Compra hora ↔ R$ + personalizado | `[x]` |
 | E6 | Histórico de pedidos curto (top 15) | `[x]` |
-| E7 | Push no celular: “saldo acabando” | `[ ]` |
+| E7 | Push no celular: “saldo acabando” | `[~]` VAPID + SW + botão dashboard |
 | E8 | WhatsApp automático (saldo / Pix / PC livre) | `[ ]` |
 | E9 | Cadastro facial: mais dicas de luz / ângulo | `[~]` |
 | E10 | Avaliação Google pós-compra | `[x]` CTA |
@@ -136,9 +136,9 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | H1 | CI GitHub Actions | `[x]` |
 | H2 | Testes server + face | `[x]` |
 | H3 | E2E admin Playwright | `[~]` básico |
-| H4 | Sentry (erros portal + API) | `[ ]` |
+| H4 | Sentry (erros portal + API) | `[~]` DSN opcional |
 | H5 | Uptime Kuma / monitor externo | `[ ]` |
-| H6 | Litestream ou Syncthing do `data/` | `[ ]` |
+| H6 | Litestream ou Syncthing do `data/` | `[~]` docs + exemplo + script restore |
 | H7 | Assinatura de código Windows (menos falso vírus) | `[ ]` |
 | H8 | Script único “loja de pé” pós-reboot | `[~]` linux-loja / exe |
 | H9 | Deploy portal sempre da **raiz do monorepo** (shared/) | `[~]` documentar no loja-ready |
@@ -163,9 +163,9 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 1. **Ops A1–A6** — túnel, Pix, secrets, regenerar apps  
 2. ~~**U1 + U2** — histórico 15 + compra hora/R$~~ **feito** ([`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md))  
 3. ~~**B6 / C9** — caixa e faturamento claros no Central~~ **feito**  
-4. **D5 / C12** — atualizar apps sem pendrive  
-5. **H4 / H6** — erros visíveis + backup contínuo  
-6. **E7 / E8** — push e WhatsApp  
+4. ~~**D5 / C12** — atualizar apps sem pendrive~~ **base** (electron-updater; falta release NSIS)  
+5. ~~**H4 / H6** — erros visíveis + backup contínuo~~ **base** (Sentry DSN + Litestream doc)  
+6. ~~**E7**~~ **base** web-push · **E8** WhatsApp ainda aberto  
 7. **I1–I6** — crescimento e operação humana  
 
 ---

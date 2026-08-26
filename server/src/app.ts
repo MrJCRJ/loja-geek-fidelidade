@@ -48,6 +48,9 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
     if (error.validation) {
       return reply.code(400).send({ error: "Dados inválidos", details: error.validation });
     }
+    if (status >= 500) {
+      void import("./sentry.js").then((m) => m.captureException(error)).catch(() => undefined);
+    }
     const message = error.message || "Erro interno";
     return reply.code(status).send({ error: message });
   });

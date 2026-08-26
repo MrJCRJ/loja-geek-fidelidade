@@ -1,7 +1,9 @@
 import { Link, useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { PortalCustomer, setToken } from "../api";
 import BrandHeader from "../components/BrandHeader";
 import { CentralPicker } from "../components/CentralPicker";
+import { enablePushNotifications } from "../push";
 
 type Props = {
   me: PortalCustomer;
@@ -9,6 +11,7 @@ type Props = {
 
 export function DashboardHeader({ me }: Props) {
   const nav = useNavigate();
+  const [pushMsg, setPushMsg] = useState("");
 
   function logout() {
     setToken(null);
@@ -34,7 +37,20 @@ export function DashboardHeader({ me }: Props) {
         <Link className="btn ghost prox" to="/enroll">
           {me.faceSamples > 0 ? "Cadastro facial" : "Cadastrar rosto"}
         </Link>
+        <button
+          type="button"
+          className="btn ghost prox"
+          onClick={() => {
+            setPushMsg("");
+            enablePushNotifications()
+              .then((m) => setPushMsg(m))
+              .catch((e) => setPushMsg(e instanceof Error ? e.message : "Falha no push"));
+          }}
+        >
+          Avisos no celular
+        </button>
       </div>
+      {pushMsg ? <p className="muted tip-box">{pushMsg}</p> : null}
     </>
   );
 }

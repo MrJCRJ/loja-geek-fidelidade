@@ -82,4 +82,16 @@ export const config = {
   get unitId() {
     return (process.env.UNIT_ID || "unit-1").trim();
   },
+  get sentryDsn() {
+    return (process.env.SENTRY_DSN || "").trim();
+  },
+  get vapidPublicKey() {
+    return (process.env.VAPID_PUBLIC_KEY || "").trim();
+  },
+  get vapidPrivateKey() {
+    return (process.env.VAPID_PRIVATE_KEY || "").trim();
+  },
+  get vapidSubject() {
+    return (process.env.VAPID_SUBJECT || "mailto:admin@localhost").trim();
+  },
 };
