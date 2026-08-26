@@ -24,6 +24,9 @@ beforeEach(() => {
   delete process.env.PORTAL_ORIGIN;
   delete process.env.FACE_SERVICE_TOKEN;
   delete process.env.MP_WEBHOOK_SECRET;
+  delete process.env.CLERK_PASSWORD;
+  delete process.env.VAPID_PUBLIC_KEY;
+  delete process.env.VAPID_PRIVATE_KEY;
 });
 
 afterEach(async () => {

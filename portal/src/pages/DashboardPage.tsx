@@ -10,6 +10,7 @@ import { DashboardCheckoutSection } from "../dashboard/DashboardCheckoutSection"
 import { DashboardHeader } from "../dashboard/DashboardHeader";
 import { DashboardHistory } from "../dashboard/DashboardHistory";
 import { DashboardSkeleton } from "../dashboard/DashboardSkeleton";
+import { PaymentReceipt } from "../dashboard/PaymentReceipt";
 
 export default function DashboardPage() {
   const rootRef = useReveal();
@@ -20,7 +21,7 @@ export default function DashboardPage() {
 
   const onPaid = useCallback(() => setShowReview(true), []);
 
-  const { msg, busy, pix, setPix, buyHours, buySub } = useDashboardCheckout({
+  const { msg, busy, pix, setPix, buyHours, buySub, receipt, setReceipt } = useDashboardCheckout({
     load,
     setMe,
     setError,
@@ -49,6 +50,17 @@ export default function DashboardPage() {
         onDismissReview={() => setShowReview(false)}
         onClosePix={() => setPix(null)}
       />
+      {receipt ? (
+        <PaymentReceipt
+          me={me}
+          orderLabel={receipt.label}
+          amountReais={receipt.amountReais}
+          hoursApprox={receipt.hoursApprox}
+          demo={receipt.demo}
+          paidAt={receipt.paidAt}
+          onClose={() => setReceipt(null)}
+        />
+      ) : null}
       <DashboardBalancePanel me={me} />
       <DashboardCheckoutSection
         me={me}

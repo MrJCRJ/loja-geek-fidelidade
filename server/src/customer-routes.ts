@@ -27,8 +27,9 @@ import {
 } from "./customers.js";
 import { extractEmbedding } from "./face-client.js";
 import { facePreviewFromEmbed } from "./face-preview.js";
-import { adminGuard, stationFromHeader } from "./http-guards.js";
+import { adminGuard, ownerGuard, getAuthRole, stationFromHeader } from "./http-guards.js";
 import { broadcastAdmins, sendToStation } from "./hub.js";
+import { logEvent } from "./telemetry.js";
 
 export async function registerCustomerRoutes(app: FastifyInstance) {
   app.get("/api/customers/:id/export", async (req, reply) => {
@@ -98,7 +99,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api/customers/:id", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     if (!deleteCustomer(id)) return reply.code(404).send({ error: "Não encontrado" });
     return { ok: true };
@@ -156,7 +157,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/customers/:id/lgpd/revoke-biometrics", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const { revokeBiometrics } = await import("./lgpd.js");
     const result = revokeBiometrics(id);
@@ -222,6 +223,18 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
       .parse(req.body);
     try {
       const result = sellTime({ customerId: id, hours: body.hours, amountReais: body.amountReais });
+      logEvent({
+        level: "info",
+        source: "caixa",
+        kind: "time.sale",
+        message: `Venda de horas para ${id}`,
+        meta: {
+          customerId: id,
+          hours: body.hours ?? null,
+          amountReais: body.amountReais ?? result.amountReais ?? null,
+          actor: getAuthRole(req) || "admin",
+        },
+      });
       broadcastAdmins({ type: "time_updated", customer: result.customer });
       return { ok: true, ...result };
     } catch (err) {
@@ -266,6 +279,13 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
         priceReais: body.priceReais,
         notes: body.notes,
       });
+      logEvent({
+        level: "info",
+        source: "caixa",
+        kind: "subscription",
+        message: `Assinatura ${body.status} — cliente ${id}`,
+        meta: { customerId: id, status: body.status, actor: getAuthRole(req) || "admin" },
+      });
       broadcastAdmins({ type: "subscription_updated", customer: result.customer });
       return { ok: true, ...result };
     } catch (err) {
@@ -300,7 +320,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/rewards", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const body = z
       .object({
         title: z.string().min(2),
@@ -312,7 +332,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.patch("/api/rewards/:id", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const body = z
       .object({
@@ -328,7 +348,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api/rewards/:id", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     if (!deleteReward(id)) return reply.code(404).send({ error: "Não encontrado" });
     return { ok: true };

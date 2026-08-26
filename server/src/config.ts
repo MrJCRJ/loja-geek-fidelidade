@@ -94,4 +94,17 @@ export const config = {
   get vapidSubject() {
     return (process.env.VAPID_SUBJECT || "mailto:admin@localhost").trim();
   },
+  get clerkPassword() {
+    return (process.env.CLERK_PASSWORD || "").trim();
+  },
+  /** Evolution API (ou compatível) — vazio = desligado */
+  get whatsappApiUrl() {
+    return (process.env.WHATSAPP_API_URL || "").trim();
+  },
+  get whatsappApiKey() {
+    return (process.env.WHATSAPP_API_KEY || "").trim();
+  },
+  get whatsappInstance() {
+    return (process.env.WHATSAPP_INSTANCE || "loja-geek").trim();
+  },
 };

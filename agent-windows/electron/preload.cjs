@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld("geeklock", {
   unlock: () => ipcRenderer.invoke("lock:unlock"),
   quitWithPin: (pin) => ipcRenderer.invoke("app:quit", pin),
   staffUnlock: (pin) => ipcRenderer.invoke("staff:unlock", pin),
+  getLastFailure: () => ipcRenderer.invoke("failure:get"),
+  clearLastFailure: () => ipcRenderer.invoke("failure:clear"),
+  writeLastFailure: (payload) => ipcRenderer.invoke("failure:write", payload),
   onLockState: (cb) => {
     const handler = (_e, data) => cb(data);
     ipcRenderer.on("lock:state", handler);

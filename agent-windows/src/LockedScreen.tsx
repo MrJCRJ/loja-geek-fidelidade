@@ -19,6 +19,8 @@ type Props = {
   pinMode: PinMode;
   videoRef: RefObject<HTMLVideoElement | null>;
   banner: ReactNode;
+  lastFailure?: { kind: string; message: string; at: string } | null;
+  onClearFailure?: () => void;
   onPinChange: (v: string) => void;
   onOpenPin: (mode: "unlock" | "quit") => void;
   onSubmitPin: () => void;
@@ -39,6 +41,8 @@ export function LockedScreen({
   pinMode,
   videoRef,
   banner,
+  lastFailure,
+  onClearFailure,
   onPinChange,
   onOpenPin,
   onSubmitPin,
@@ -66,6 +70,16 @@ export function LockedScreen({
         Conectado ao PC controle
         {score != null && score > 0 ? ` · score ${(score * 100).toFixed(0)}%` : ""}
       </p>
+      {lastFailure ? (
+        <div className="banner warn" style={{ margin: "0.5rem 1rem" }}>
+          Última falha ({new Date(lastFailure.at).toLocaleString("pt-BR")}): {lastFailure.message}
+          {onClearFailure ? (
+            <button className="btn ghost" type="button" style={{ marginLeft: 8 }} onClick={onClearFailure}>
+              Ok
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {welcomeCustomer && (
         <div className="welcome-splash">

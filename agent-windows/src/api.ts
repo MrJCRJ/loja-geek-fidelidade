@@ -204,11 +204,15 @@ export async function sessionHeartbeat(
   });
 }
 
-export async function endSession(config: GeekLockConfig, sessionId?: string, reason?: string) {
-  return apiFetch<{ ok: boolean; session: Session | null }>(config, "/api/sessions/end", {
-    method: "POST",
-    body: JSON.stringify({ sessionId, reason }),
-  });
+export async function reportStaffUnlock(config: GeekLockConfig, reason = "pin") {
+  try {
+    await apiFetch<{ ok: boolean }>(config, "/api/stations/staff-unlock", {
+      method: "POST",
+      body: JSON.stringify({ reason }),
+    });
+  } catch {
+    /* auditoria best-effort */
+  }
 }
 
 export function captureFrame(video: HTMLVideoElement, quality = 0.85): string {

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { claimStation, checkHealth } from "./api";
+import { useEffect, useRef, useState } from "react";
+import { claimStation, checkHealth, openUserCamera, attachCameraStream } from "./api";
 import type { DiscoveryPeer, GeekLockConfig } from "./vite-env";
 
 type Props = {
@@ -14,6 +14,10 @@ export function SetupWizard({ onDone }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
+  const [camOk, setCamOk] = useState(false);
+  const [camMsg, setCamMsg] = useState("Teste a câmera antes de conectar.");
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,8 +36,29 @@ export function SetupWizard({ onDone }: Props) {
       cancelled = true;
       if (timer) window.clearTimeout(timer);
       window.geeklock.stopDiscovery().catch(() => undefined);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  const testCamera = async () => {
+    setCamMsg("Abrindo câmera…");
+    setCamOk(false);
+    try {
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      const stream = await openUserCamera();
+      streamRef.current = stream;
+      if (videoRef.current) await attachCameraStream(videoRef.current, stream);
+      setCamOk(true);
+      setCamMsg("Câmera ok — luz de frente, sem contraluz forte.");
+    } catch (err) {
+      setCamOk(false);
+      setCamMsg(err instanceof Error ? err.message : "Falha na câmera");
+      window.geeklock.writeLastFailure({
+        kind: "camera",
+        message: err instanceof Error ? err.message : "Falha no teste de câmera",
+      });
+    }
+  };
 
   const submit = async () => {
     setError("");
@@ -66,10 +91,13 @@ export function SetupWizard({ onDone }: Props) {
       cfg = await window.geeklock.saveToken(claimed.token);
       cfg = await window.geeklock.saveConfig({ setupComplete: true });
       await window.geeklock.stopDiscovery();
+      streamRef.current?.getTracks().forEach((t) => t.stop());
       setScanning(false);
       onDone(cfg);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Falha ao conectar / claim");
+      const msg = err instanceof Error ? err.message : "Falha ao conectar / claim";
+      setError(msg);
+      window.geeklock.writeLastFailure({ kind: "setup", message: msg });
     } finally {
       setBusy(false);
     }
@@ -84,7 +112,21 @@ export function SetupWizard({ onDone }: Props) {
         <p className="muted">Assistente da 1ª vez — escolha o PC controle na rede.</p>
 
         <div className="field">
-          <label>Centrais encontradas na LAN</label>
+          <label>Teste de câmera</label>
+          <div className="video-wrap" style={{ maxHeight: 180, marginBottom: 8 }}>
+            <video ref={videoRef} muted playsInline />
+            {!camOk && <div className="video-placeholder">{camMsg}</div>}
+          </div>
+          <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+            Dica: rosto iluminado de frente; evite janela atrás da cabeça e óculos escuros.
+          </p>
+          <button className="btn ghost" type="button" onClick={testCamera}>
+            {camOk ? "Testar de novo" : "Abrir câmera"}
+          </button>
+        </div>
+
+        <div className="field">
+          <label>Centrais encontrados na LAN</label>
           {peers.length === 0 ? (
             <p className="muted">{scanning ? "Procurando GeekCentral…" : "Nenhuma encontrada"}</p>
           ) : (

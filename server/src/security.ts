@@ -25,8 +25,8 @@ export function looksLikeBcrypt(value: string): boolean {
   return /^\$2[aby]\$\d{2}\$/.test(value);
 }
 
-export function verifyAdminPassword(input: string): boolean {
-  const stored = config.adminPassword;
+function verifySecret(stored: string, input: string): boolean {
+  if (!stored) return false;
   if (looksLikeBcrypt(stored)) {
     return bcrypt.compareSync(input, stored);
   }
@@ -34,6 +34,14 @@ export function verifyAdminPassword(input: string): boolean {
   const b = Buffer.from(stored);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
+}
+
+export function verifyAdminPassword(input: string): boolean {
+  return verifySecret(config.adminPassword, input);
+}
+
+export function verifyClerkPassword(input: string): boolean {
+  return verifySecret(config.clerkPassword, input);
 }
 
 export function assertProductionSecrets() {

@@ -118,9 +118,22 @@ function resolveApprovedOrder(orderId: string) {
   }
 
   const paid = markOrderPaid(orderId)!;
+  const customer = publicCustomerProfile(order.customer_id);
+  void import("./whatsapp.js")
+    .then((wa) => {
+      const c = customer as { phone?: string | null; name?: string } | null;
+      return wa.notifyWhatsAppPaid({
+        phone: c?.phone,
+        name: c?.name || "VIP",
+        amountReais: Number(paid.amount_reais) || 0,
+        hours: paid.hours != null ? Number(paid.hours) : null,
+        demo: false,
+      });
+    })
+    .catch(() => undefined);
   return {
     order: paid,
-    customer: publicCustomerProfile(order.customer_id),
+    customer,
     alreadyPaid: false,
     demo: false,
     credited: true,

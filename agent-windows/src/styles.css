@@ -464,6 +464,22 @@ body,
   height: 1px;
 }
 
+.soft-lock-banner {
+  position: fixed;
+  left: 50%;
+  bottom: 1.5rem;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(196, 92, 0, 0.92);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+  max-width: min(92vw, 420px);
+  text-align: center;
+}
+
 .remote-banner {
   position: fixed;
   inset: 0;

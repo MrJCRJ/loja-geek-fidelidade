@@ -6,6 +6,7 @@ import {
   endSession,
   heartbeat,
   openUserCamera,
+  reportStaffUnlock,
 } from "./api";
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
@@ -38,6 +39,9 @@ export default function App() {
   const [error, setError] = useState("");
   const [camReady, setCamReady] = useState(false);
   const [remoteBanner, setRemoteBanner] = useState<RemoteBanner | null>(null);
+  const [lastFailure, setLastFailure] = useState<{ kind: string; message: string; at: string } | null>(
+    null,
+  );
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const absentSinceRef = useRef<number | null>(null);
@@ -203,6 +207,8 @@ export default function App() {
       const cfg = await window.geeklock.getConfig();
       if (cancelled) return;
       setConfig(cfg);
+      const fail = await window.geeklock.getLastFailure();
+      if (!cancelled) setLastFailure(fail);
       if (!cfg.setupComplete || !cfg.serverUrl || !cfg.stationName) {
         setPhase("setup");
         setStatus("Configure a estação");
@@ -220,8 +226,10 @@ export default function App() {
         setStatus("Conectado ao servidor");
         await lockUi();
       } catch (err) {
+        const msg = err instanceof Error ? err.message : "Sem conexão com o PC controle";
+        window.geeklock.writeLastFailure({ kind: "boot", message: msg }).catch(() => undefined);
         setPhase("offline");
-        setStatus(err instanceof Error ? err.message : "Sem conexão com o PC controle");
+        setStatus(msg);
         reportTelemetry(cfg.serverUrl, cfg.stationToken, {
           level: "error",
           kind: "boot.offline",
@@ -603,6 +611,7 @@ export default function App() {
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
+      if (config) reportStaffUnlock(config).catch(() => undefined);
       await unlockUi();
       return;
     }
@@ -697,9 +706,15 @@ export default function App() {
   }
 
   if (phase === "unlocked") {
+    const softLock = absentLeft != null && absentLeft > 0 && absentLeft <= 15;
     return (
       <>
         {remoteBannerEl}
+        {softLock ? (
+          <div className="soft-lock-banner" role="alert">
+            Volte à cadeira — o PC trava em {absentLeft}s
+          </div>
+        ) : null}
         <div className="session-hidden">
           <video ref={videoRef} muted playsInline className="session-hidden-cam" />
         </div>
@@ -723,6 +738,10 @@ export default function App() {
       pinMode={pinMode}
       videoRef={videoRef}
       banner={remoteBannerEl}
+      lastFailure={lastFailure}
+      onClearFailure={() => {
+        window.geeklock.clearLastFailure().then(() => setLastFailure(null));
+      }}
       onPinChange={setPin}
       onOpenPin={(mode) => {
         setPinMode(mode);

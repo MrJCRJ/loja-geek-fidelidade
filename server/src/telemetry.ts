@@ -242,12 +242,14 @@ export async function buildDiagnostics() {
       message: "Segredos default ainda em uso — troque antes de produção",
     });
   }
-  const offlineNamed = stations.filter((s) => !s.online && !connected.some((c) => c.stationId === s.id));
-  if (offlineNamed.length >= 2) {
+  if (offlineNamed.length >= 1) {
     alerts.push({
-      severity: "warn",
+      severity: offlineNamed.length >= 3 ? "error" : "warn",
       code: "stations_offline",
-      message: `${offlineNamed.length} estações offline`,
+      message: `${offlineNamed.length} estação(ões) offline: ${offlineNamed
+        .slice(0, 4)
+        .map((s) => s.name)
+        .join(", ")}`,
     });
   }
 

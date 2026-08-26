@@ -9,6 +9,7 @@ import { useAdminSocket } from "../admin/hooks/useAdminSocket";
 import { useToast } from "../admin/hooks/useToast";
 import { CaixaTab } from "../admin/tabs/CaixaTab";
 import { ClientesTab } from "../admin/tabs/ClientesTab";
+import { AjudaTab } from "../admin/tabs/AjudaTab";
 import { ConfigTab } from "../admin/tabs/ConfigTab";
 import { DashboardTab } from "../admin/tabs/DashboardTab";
 import { EstacoesTab } from "../admin/tabs/EstacoesTab";
@@ -33,7 +34,9 @@ export default function AdminPage() {
   const [tab, setTab] = useState<Tab>("dashboard");
   const [live, setLive] = useState<LiveFeedItem[]>([]);
   const [selected, setSelected] = useState<Customer | null>(null);
-  const [confirmState, setConfirmState] = useState<ConfirmState>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [role, setRole] = useState<"admin" | "clerk">("admin");
+  const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
 
   const toast = useToast();
   const data = useAdminData(token);
@@ -74,22 +77,38 @@ export default function AdminPage() {
   useEffect(() => {
     if (!token) return;
     api<{ role: string }>("/api/admin/me")
-      .then(() => data.refreshNow())
+      .then((me) => {
+        setRole(me.role === "clerk" ? "clerk" : "admin");
+        return data.refreshNow();
+      })
       .catch((err) => setError(err instanceof Error ? err.message : "Falha ao validar sessão"));
   }, [token, data.refreshNow]);
+
+  useEffect(() => {
+    if (!token) return;
+    const loadAlerts = () => {
+      api<{ alerts?: Array<{ severity: string; message: string }> }>("/api/admin/diagnostics")
+        .then((d) => setSysAlerts(d.alerts || []))
+        .catch(() => undefined);
+    };
+    loadAlerts();
+    const t = setInterval(loadAlerts, 20_000);
+    return () => clearInterval(t);
+  }, [token]);
 
   const login = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     try {
-      const res = await api<{ token: string }>("/api/admin/login", {
+      const res = await api<{ token: string; role?: "admin" | "clerk" }>("/api/admin/login", {
         method: "POST",
         body: JSON.stringify({ password }),
         token: null,
       });
       setAdminToken(res.token);
       setToken(res.token);
-      toast.push("Login ok", "ok");
+      setRole(res.role === "clerk" ? "clerk" : "admin");
+      toast.push(res.role === "clerk" ? "Modo balcão" : "Login ok", "ok");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login");
     }
@@ -148,6 +167,7 @@ export default function AdminPage() {
         <div>
           <p className="muted" style={{ margin: 0 }}>
             geeks · Celular e Game · {data.settings.unitName}
+            {role === "clerk" ? " · modo balcão" : ""}
           </p>
           <h1 className="brand">GeekCentral</h1>
           {data.health ? (
@@ -173,7 +193,21 @@ export default function AdminPage() {
         </div>
       </div>
 
-      <AdminTabs tab={tab} onChange={setTab} />
+      <AdminTabs
+        tab={tab}
+        clerk={role === "clerk"}
+        onChange={(id) => {
+          if (role === "clerk" && (id === "config" || id === "recompensas")) return;
+          setTab(id);
+        }}
+      />
+
+      {sysAlerts.length > 0 && (
+        <div className={`banner ${sysAlerts.some((a) => a.severity === "error") ? "" : "warn"}`}>
+          {sysAlerts[0].message}
+          {sysAlerts.length > 1 ? ` · +${sysAlerts.length - 1}` : ""}
+        </div>
+      )}
 
       {error && <div className="banner">{error}</div>}
 
@@ -235,7 +269,7 @@ export default function AdminPage() {
         />
       )}
       {tab === "sessoes" && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}
-      {tab === "recompensas" && (
+      {tab === "recompensas" && role !== "clerk" && (
         <RecompensasTab
           rewards={data.rewards}
           refresh={data.refreshNow}
@@ -245,7 +279,8 @@ export default function AdminPage() {
         />
       )}
       {tab === "saude" && <SaudeTab onError={setError} />}
-      {tab === "config" && (
+      {tab === "ajuda" && <AjudaTab clerk={role === "clerk"} />}
+      {tab === "config" && role !== "clerk" && (
         <ConfigTab
           settings={data.settings}
           setSettings={data.setSettings}

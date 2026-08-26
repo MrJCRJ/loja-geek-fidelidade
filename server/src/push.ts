@@ -79,19 +79,41 @@ const lowBalanceCooldownMs = 30 * 60 * 1000;
 const recentlyWarned = new Map<string, number>();
 
 export async function notifyLowBalance(customerId: string, balanceSeconds: number) {
-  if (!pushEnabled()) return { sent: 0, skipped: "push_disabled" as const };
   const now = Date.now();
   const last = recentlyWarned.get(customerId) || 0;
   if (now - last < lowBalanceCooldownMs) return { sent: 0, skipped: "cooldown" as const };
 
   const minutes = Math.max(1, Math.round(balanceSeconds / 60));
-  const result = await sendPushToCustomer(customerId, {
-    title: "Saldo baixo — Lan Geeks",
-    body: `Restam cerca de ${minutes} min de PC. Recarregue no site ou no balcão.`,
-    url: "/dashboard",
-  });
-  if (result.sent > 0) recentlyWarned.set(customerId, now);
-  return result;
+  let sent = 0;
+
+  if (pushEnabled()) {
+    const result = await sendPushToCustomer(customerId, {
+      title: "Saldo baixo — Lan Geeks",
+      body: `Restam cerca de ${minutes} min de PC. Recarregue no site ou no balcão.`,
+      url: "/dashboard",
+    });
+    sent += result.sent;
+  }
+
+  try {
+    const { getCustomer } = await import("./customers.js");
+    const { notifyWhatsAppLowBalance } = await import("./whatsapp.js");
+    const c = getCustomer(customerId) as { name?: string; phone?: string | null } | undefined;
+    if (c?.phone) {
+      const wa = await notifyWhatsAppLowBalance({
+        phone: c.phone,
+        name: c.name || "VIP",
+        minutesLeft: minutes,
+      });
+      if (wa.ok) sent += 1;
+    }
+  } catch {
+    /* ignore */
+  }
+
+  if (sent > 0) recentlyWarned.set(customerId, now);
+  if (!pushEnabled() && sent === 0) return { sent: 0, skipped: "no_channel" as const };
+  return { sent };
 }
 
 export async function sendPushToCustomer(

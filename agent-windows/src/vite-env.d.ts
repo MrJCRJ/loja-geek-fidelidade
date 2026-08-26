@@ -54,6 +54,9 @@ declare global {
       unlock: () => Promise<{ locked: boolean }>;
       quitWithPin: (pin: string) => Promise<{ ok: boolean; error?: string }>;
       staffUnlock: (pin: string) => Promise<{ ok: boolean; error?: string }>;
+      getLastFailure: () => Promise<{ kind: string; message: string; at: string } | null>;
+      clearLastFailure: () => Promise<{ ok: boolean }>;
+      writeLastFailure: (payload: { kind?: string; message?: string }) => Promise<{ ok: boolean }>;
       onLockState: (cb: (data: { locked: boolean }) => void) => () => void;
       onRequestEndSession: (cb: () => void) => () => void;
       onRequestQuit: (cb: () => void) => () => void;

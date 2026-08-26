@@ -29,13 +29,13 @@ import { getRecognitionRetentionDays, pruneRecognitionEvents, setRecognitionRete
 import { faceHealth } from "./face-client.js";
 import { setStationOfflineHook } from "./hub.js";
 import { getStationByToken } from "./stations.js";
-import { adminGuard, stationFromHeader } from "./http-guards.js";
+import { adminGuard, ownerGuard, getAuthRole, stationFromHeader } from "./http-guards.js";
 import { registerStationRoutes } from "./station-routes.js";
 import { registerFaceRoutes } from "./face-routes.js";
 import { registerSessionRoutes } from "./session-routes.js";
 import { registerCustomerRoutes } from "./customer-routes.js";
 import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
-import { rateLimit, verifyAdminPassword } from "./security.js";
+import { rateLimit, verifyAdminPassword, verifyClerkPassword } from "./security.js";
 import { buildDiagnostics, listTelemetryEvents, logEvent } from "./telemetry.js";
 import { buildBusinessMetrics } from "./metrics.js";
 import {
@@ -97,16 +97,19 @@ export async function registerRoutes(app: FastifyInstance) {
       return reply.code(429).send({ error: "Muitas tentativas — aguarde um minuto" });
     }
     const body = z.object({ password: z.string() }).parse(req.body);
-    if (!verifyAdminPassword(body.password)) {
+    let role: "admin" | "clerk" | null = null;
+    if (verifyAdminPassword(body.password)) role = "admin";
+    else if (verifyClerkPassword(body.password)) role = "clerk";
+    if (!role) {
       return reply.code(401).send({ error: "Senha inválida" });
     }
-    const token = app.jwt.sign({ role: "admin" }, { expiresIn: "12h" });
-    return { token };
+    const token = app.jwt.sign({ role }, { expiresIn: "12h" });
+    return { token, role };
   });
 
   app.get("/api/admin/me", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
-    return { role: "admin" };
+    return { role: getAuthRole(req) || "admin" };
   });
 
   app.get("/api/settings", async (req, reply) => {
@@ -115,7 +118,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.put("/api/settings", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerGuard(req, reply))) return;
     const body = z
       .object({
         faceMatchThreshold: z.number().min(0.1).max(0.99).optional(),
@@ -218,6 +221,14 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/admin/metrics", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     return buildBusinessMetrics();
+  });
+
+  app.get("/api/admin/audit", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const events = listTelemetryEvents({ limit: 80 }).filter((e) =>
+      /time\.sale|staff_unlock|subscription|command\./.test(e.kind),
+    );
+    return { events: events.slice(0, 30) };
   });
 
   app.get("/api/admin/telemetry", async (req, reply) => {

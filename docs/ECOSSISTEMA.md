@@ -46,7 +46,7 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 | Nome | Para que serve | Em português simples | Status |
 |------|----------------|----------------------|--------|
-| **Modo quiosque do Windows** (Assigned Access) | O PC só abre o GeekLock (ou quase). | Impede o cliente de abrir Chrome e bagunçar o Windows. | `[ ]` doc |
+| **Modo quiosque do Windows** (Assigned Access) | O PC só abre o GeekLock (ou quase). | Impede o cliente de abrir Chrome e bagunçar o Windows. | `[~]` [`quiosque-windows.md`](./quiosque-windows.md) |
 | **AutoHotkey** | Atalhos no teclado / scripts no Windows. | Ex.: staff aperta uma tecla e força logout do Steam. | `[ ]` |
 | **Playnite** (ou launcher parecido) | Organiza jogos e pode fechar tudo ao sair. | Ajuda quando um VIP sai e o próximo herda o Steam logado. | `[ ]` |
 | **nssm** ou serviço Windows | Mantém a API / túnel ligados mesmo se fechar a janela. | O “motor” da loja não cai porque alguém fechou um terminal. | `[~]` GeekCentral já sobe serviços |
@@ -73,8 +73,8 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 |------|----------------|----------------------|--------|
 | **Backup que o Geek já faz** | Copia o banco SQLite de tempos em tempos. | Já existe na Config do Central. | `[x]` |
 | **Litestream** | Copia o banco **o tempo todo** para S3/R2. | Seguro extra se o HD do Central queimar. Preferir **Cloudflare R2** (egress barato). | `[~]` ver [`litestream.md`](./litestream.md) |
-| **Syncthing** | Sincroniza a pasta `data/` com outro computador. | Backup “caseiro” entre dois PCs. | `[ ]` |
-| **Uptime Kuma** | Painel “está no ar?” (API, site, túnel). | Você vê no celular se a loja caiu. Self-host leve. | `[ ]` ops |
+| **Syncthing** | Sincroniza a pasta `data/` com outro computador. | Backup “caseiro” entre dois PCs. | `[~]` [`syncthing.md`](./syncthing.md) |
+| **Uptime Kuma** | Painel “está no ar?” (API, site, túnel). | Você vê no celular se a loja caiu. Self-host leve. | `[~]` [`uptime-kuma.md`](./uptime-kuma.md) |
 | **Sentry** | Avisa quando o site ou a API dão erro. | Liga com `SENTRY_DSN` / `VITE_SENTRY_DSN`. | `[~]` no código |
 
 **Notas 2026 (pesquisa):**
@@ -91,9 +91,9 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 
 | Nome | Para que serve | Status |
 |------|----------------|--------|
-| **Avisos no celular (web-push)** | “Seu saldo está acabando” com o site fechado. VAPID; no **iPhone** só funciona se o PWA estiver na Tela de Início. | `[~]` base no código |
-| **Workbox** | PWA mais estável offline. | `[~]` SW mínimo já existe; Workbox opcional depois |
-| **Evolution API** ou **Baileys** | Robô de **WhatsApp** (saldo, Pix, “PC livre”). | `[ ]` |
+| **Avisos no celular (web-push)** | “Seu saldo está acabando” com o site fechado. VAPID; no **iPhone** só funciona se o PWA estiver na Tela de Início. | `[~]` VAPID + SW + dashboard |
+| **Workbox / PWA** | Portal mais estável offline (precache + network-first HTML). | `[~]` `portal/public/sw.js` (estratégias estilo Workbox) |
+| **Evolution API** ou **Baileys** | Robô de **WhatsApp** (saldo, Pix pago). | `[~]` código + [`whatsapp-evolution.md`](./whatsapp-evolution.md); falta instância |
 | **QR Code** | Cliente escaneia no balcão. | `[x]` estações no Central |
 
 **Resumo:** WhatsApp automático e aviso de saldo no celular são os que mais melhoram a experiência do cliente.
@@ -149,10 +149,10 @@ Faça nesta ordem — do que destrava a loja para o que é “nice to have”:
 2. **Túnel Cloudflare com nome fixo** (site sempre encontra a loja). `[ops]`  
 3. **Regenerar GeekLock/Central** com as mitigações novas (saldo, ausência, etc.). `[ops]`  
 4. **Backup extra** (Litestream → R2) — não perder o banco. `[~]` docs + exemplo  
-5. **Sentry** (e/ou Uptime Kuma) — saber quando cai. `[~]` Sentry no código  
+5. **Sentry** (e/ou Uptime Kuma) — saber quando cai. `[~]` Sentry + doc Kuma  
 6. **electron-updater** + release NSIS — atualizar sem pendrive. `[~]` base  
-7. **Web-push** (saldo baixo) + depois WhatsApp automático. `[~]` / `[ ]`  
-8. Só depois: Asaas, MediaPipe extra, modo quiosque Windows avançado.
+7. **Web-push** + **WhatsApp Evolution** (saldo / Pix pago). `[~]` falta VAPID + Evolution na loja  
+8. Só depois: Asaas, MediaPipe extra, quiosque Windows (doc já existe).
 
 ---
 
@@ -168,7 +168,7 @@ Faça nesta ordem — do que destrava a loja para o que é “nice to have”:
 ## Relacionados
 
 - Checklist da loja: [`loja-ready.md`](./loja-ready.md)  
-- Litestream (passo a passo): [`litestream.md`](./litestream.md)  
-- Problemas de sessão e mitigações: [`teorias-producao.md`](./teorias-producao.md)  
-- Melhorias gerais: [`MELHORIAS.md`](./MELHORIAS.md)  
-- Lista completa: [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md)
+- Litestream: [`litestream.md`](./litestream.md) · Syncthing: [`syncthing.md`](./syncthing.md) · Uptime: [`uptime-kuma.md`](./uptime-kuma.md)  
+- WhatsApp: [`whatsapp-evolution.md`](./whatsapp-evolution.md) · Quiosque: [`quiosque-windows.md`](./quiosque-windows.md)  
+- Problemas de sessão: [`teorias-producao.md`](./teorias-producao.md)  
+- Melhorias: [`MELHORIAS.md`](./MELHORIAS.md) · Lista: [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md)

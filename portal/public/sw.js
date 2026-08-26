@@ -1,6 +1,6 @@
-/* Service worker — cache de shell + web-push (saldo baixo). */
-const CACHE = "geeks-portal-v2";
-const PRECACHE = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png"];
+/* Service worker — PWA shell + push (estilo Workbox: precache + network-first assets). */
+const CACHE = "geeks-portal-v3";
+const PRECACHE = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-256.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -27,23 +27,40 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.startsWith("/api")) return;
 
+  // HTML: network-first (evita portal velho após deploy)
+  if (req.mode === "navigate" || url.pathname === "/" || url.pathname.endsWith(".html")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((c) => c || caches.match("/index.html"))),
+    );
+    return;
+  }
+
+  // CSS/JS/brand: stale-while-revalidate
   event.respondWith(
     caches.match(req).then((cached) => {
       const network = fetch(req)
         .then((res) => {
           if (
             res.ok &&
-            (url.pathname === "/" ||
-              url.pathname.endsWith(".css") ||
+            (url.pathname.endsWith(".css") ||
               url.pathname.endsWith(".js") ||
-              url.pathname.startsWith("/brand/"))
+              url.pathname.startsWith("/brand/") ||
+              url.pathname.endsWith(".webmanifest"))
           ) {
             const copy = res.clone();
             caches.open(CACHE).then((c) => c.put(req, copy));
           }
           return res;
         })
-        .catch(() => cached || caches.match("/index.html"));
+        .catch(() => cached);
       return cached || network;
     }),
   );

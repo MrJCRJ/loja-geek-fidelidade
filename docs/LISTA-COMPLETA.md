@@ -72,7 +72,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | D4 | Pausar cobrança quando VIP ausente | `[x]` |
 | D5 | Atualização automática do .exe | `[~]` electron-updater base |
 | D6 | Fechar / avisar Steam-Discord ao travar (integração) | `[ ]` |
-| D7 | Modo quiosque Windows (Assigned Access) documentado | `[ ]` |
+| D7 | Modo quiosque Windows (Assigned Access) documentado | `[~]` docs/quiosque-windows.md |
 | D8 | Indicador claro “crédito pausado” / “ausente Xs” | `[x]` HUD |
 | D9 | Soft lock (aviso) antes do hard lock por ausência | `[ ]` |
 | D10 | Teste de câmera no wizard (preview + tip de luz) | `[~]` wizard existe |
@@ -91,7 +91,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | E5 | Compra hora ↔ R$ + personalizado | `[x]` |
 | E6 | Histórico de pedidos curto (top 15) | `[x]` |
 | E7 | Push no celular: “saldo acabando” | `[~]` VAPID + SW + botão dashboard |
-| E8 | WhatsApp automático (saldo / Pix / PC livre) | `[ ]` |
+| E8 | WhatsApp automático (saldo / Pix pago) | `[~]` Evolution hooks; falta instância |
 | E9 | Cadastro facial: mais dicas de luz / ângulo | `[~]` |
 | E10 | Avaliação Google pós-compra | `[x]` CTA |
 | E11 | Página “como funciona a lan” (FAQ curto) | `[x]` |
@@ -137,8 +137,8 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | H2 | Testes server + face | `[x]` |
 | H3 | E2E admin Playwright | `[~]` básico |
 | H4 | Sentry (erros portal + API) | `[~]` DSN opcional |
-| H5 | Uptime Kuma / monitor externo | `[ ]` |
-| H6 | Litestream ou Syncthing do `data/` | `[~]` docs + exemplo + script restore |
+| H5 | Uptime Kuma / monitor externo | `[~]` docs/uptime-kuma.md |
+| H6 | Litestream ou Syncthing do `data/` | `[~]` litestream + syncthing docs |
 | H7 | Assinatura de código Windows (menos falso vírus) | `[ ]` |
 | H8 | Script único “loja de pé” pós-reboot | `[~]` linux-loja / exe |
 | H9 | Deploy portal sempre da **raiz do monorepo** (shared/) | `[~]` documentar no loja-ready |
@@ -165,7 +165,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 3. ~~**B6 / C9** — caixa e faturamento claros no Central~~ **feito**  
 4. ~~**D5 / C12** — atualizar apps sem pendrive~~ **base** (electron-updater; falta release NSIS)  
 5. ~~**H4 / H6** — erros visíveis + backup contínuo~~ **base** (Sentry DSN + Litestream doc)  
-6. ~~**E7**~~ **base** web-push · **E8** WhatsApp ainda aberto  
+6. ~~**E7**~~ **base** web-push · ~~**E8**~~ **base** WhatsApp Evolution (falta conta)  
 7. **I1–I6** — crescimento e operação humana  
 
 ---

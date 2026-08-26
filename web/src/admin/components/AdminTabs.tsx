@@ -1,6 +1,6 @@
 import type { Tab } from "../types";
 
-const TABS: Array<[Tab, string, string]> = [
+const ALL_TABS: Array<[Tab, string, string]> = [
   ["dashboard", "Dashboard", "Dash"],
   ["feed", "Feed VIP", "Feed"],
   ["clientes", "Clientes", "VIPs"],
@@ -9,15 +9,18 @@ const TABS: Array<[Tab, string, string]> = [
   ["sessoes", "Sessões / Horas", "Horas"],
   ["recompensas", "Recompensas", "Prêmios"],
   ["saude", "Saúde", "Saúde"],
+  ["ajuda", "Ajuda", "Ajuda"],
   ["config", "Config", "Config"],
 ];
 
 type Props = {
   tab: Tab;
   onChange: (tab: Tab) => void;
+  clerk?: boolean;
 };
 
-export function AdminTabs({ tab, onChange }: Props) {
+export function AdminTabs({ tab, onChange, clerk }: Props) {
+  const TABS = clerk ? ALL_TABS.filter(([id]) => id !== "config" && id !== "recompensas") : ALL_TABS;
   return (
     <div className="tabs" role="tablist" aria-label="GeekCentral">
       {TABS.map(([id, label, short]) => {

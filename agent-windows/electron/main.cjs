@@ -5,6 +5,14 @@ const { OverlayLockController } = require("./lock-controller.cjs");
 const { SessionHud } = require("./session-hud.cjs");
 const { loadConfig, saveStationToken, saveConfig } = require("./config.cjs");
 const { startListener } = require("../../shared/lan-discovery.cjs");
+const { writeLastFailure, readLastFailure, clearLastFailure } = require("./last-failure.cjs");
+
+process.on("uncaughtException", (err) => {
+  writeLastFailure("uncaught", err instanceof Error ? err.message : String(err));
+});
+process.on("unhandledRejection", (err) => {
+  writeLastFailure("unhandled", err instanceof Error ? err.message : String(err));
+});
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -497,9 +505,20 @@ ipcMain.handle("app:quit", (_e, pin) => {
 ipcMain.handle("staff:unlock", (_e, pin) => {
   const cfg = loadConfig();
   if (String(pin) !== String(cfg.staffPin)) {
+    writeLastFailure("pin", "PIN Admin inválido");
     return { ok: false, error: "PIN inválido" };
   }
   lock.unlock();
+  return { ok: true };
+});
+
+ipcMain.handle("failure:get", () => readLastFailure());
+ipcMain.handle("failure:clear", () => {
+  clearLastFailure();
+  return { ok: true };
+});
+ipcMain.handle("failure:write", (_e, payload) => {
+  writeLastFailure(payload?.kind || "app", payload?.message || "");
   return { ok: true };
 });
 
