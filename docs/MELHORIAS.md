@@ -23,6 +23,7 @@ Portal: https://loja-geek-portal.vercel.app
 - [x] Teorias de produção (sessão órfã, horas sem aviso, etc.) — [`teorias-producao.md`](./teorias-producao.md)
 - [x] Mitigações T1/T4/T6/T8/T10/T19: presença estrita, pauseBilling, aviso saldo, auto-trava staff
 - [x] Guia de ferramentas/projetos úteis — [`ECOSSISTEMA.md`](./ECOSSISTEMA.md)
+- [x] Lista UX (histórico top 15, compra hora↔R$) — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md)
 - [x] Overlay de mensagem remota rico (título / nível / duração)
 - [x] PWA portal (manifest + service worker)
 - [x] Catálogo WhatsApp + unidades no `/api/portal/catalog`
@@ -59,6 +60,7 @@ Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
 | 24 | ~~CI GitHub Actions~~ **feito** (parte 13) |
 | 25 | ~~Multi-unidade GeekLock avançada (vários Centrals no mesmo portal)~~ **feito** (parte 16) |
 | 28 | ~~Retenção LGPD fina (apagar face sem apagar conta)~~ **feito** (parte 15) |
+| 30 | UX: Feed histórico top 15 + compra portal hora/R$ — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md) |
 
 ---
 

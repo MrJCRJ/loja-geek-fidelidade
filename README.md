@@ -144,6 +144,7 @@ Enquanto o PC da loja estiver desligado, o portal não credita nem reconhece.
 | [`docs/loja-ready.md`](docs/loja-ready.md) | Checklist túnel + Pix |
 | [`docs/teorias-producao.md`](docs/teorias-producao.md) | Teorias de incidentes em produção (GeekLock) |
 | [`docs/ECOSSISTEMA.md`](docs/ECOSSISTEMA.md) | Ferramentas/projetos úteis (explicado em português simples) |
+| [`docs/UX-LISTAS-E-COMPRA.md`](docs/UX-LISTAS-E-COMPRA.md) | UX: histórico top 15, compra por hora ou R$ |
 | [`docs/portal-api-tunnel.md`](docs/portal-api-tunnel.md) | Cloudflare Tunnel |
 
 ```bash
