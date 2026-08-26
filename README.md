@@ -143,6 +143,7 @@ Enquanto o PC da loja estiver desligado, o portal não credita nem reconhece.
 | [`docs/portal-backlog.md`](docs/portal-backlog.md) | Pendências do portal |
 | [`docs/loja-ready.md`](docs/loja-ready.md) | Checklist túnel + Pix |
 | [`docs/teorias-producao.md`](docs/teorias-producao.md) | Teorias de incidentes em produção (GeekLock) |
+| [`docs/ECOSSISTEMA.md`](docs/ECOSSISTEMA.md) | Ferramentas/projetos úteis (explicado em português simples) |
 | [`docs/portal-api-tunnel.md`](docs/portal-api-tunnel.md) | Cloudflare Tunnel |
 
 ```bash
