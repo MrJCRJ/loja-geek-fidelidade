@@ -1,5 +1,6 @@
 import { getUnitSettings } from "./admin-ops.js";
 import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
+import { buildCentralsCatalog } from "./centrals.js";
 import { config } from "./config.js";
 import { MAX_FACE_SAMPLES } from "./customer-auth.js";
 import { mercadopagoEnabled } from "./payments.js";
@@ -8,6 +9,7 @@ export function buildPortalCatalog() {
   const mode = config.portalCheckoutMode;
   const mp = mercadopagoEnabled();
   const unit = getUnitSettings();
+  const centrals = buildCentralsCatalog();
   return {
     baseHourPrice: getHourPriceReais(),
     subscriberDiscountPct: getSubscriberDiscountPct(),
@@ -28,6 +30,7 @@ export function buildPortalCatalog() {
     whatsappLan: "5575988603747",
     whatsappShop: "5575991869502",
     unit,
+    centrals,
     units: [
       {
         id: "loja-geeks",

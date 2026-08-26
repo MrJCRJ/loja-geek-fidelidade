@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
+import { getApiBase } from "../api";
 
 const WA_LAN = "https://wa.me/5575988603747?text=Oi%20Geeks%20—%20portal%20offline";
-
-function apiBase() {
-  const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8787";
-  return String(raw).replace(/\/$/, "");
-}
 
 export default function OfflineBanner() {
   const [offline, setOffline] = useState(false);
@@ -16,7 +12,7 @@ export default function OfflineBanner() {
       try {
         const ctrl = new AbortController();
         const t = window.setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(`${apiBase()}/api/portal/health`, { signal: ctrl.signal });
+        const res = await fetch(`${getApiBase()}/api/portal/health`, { signal: ctrl.signal });
         window.clearTimeout(t);
         if (!cancelled) setOffline(!res.ok);
       } catch {
@@ -25,9 +21,12 @@ export default function OfflineBanner() {
     };
     check();
     const id = window.setInterval(check, 20000);
+    const onCentral = () => check();
+    window.addEventListener("lg-central-changed", onCentral);
     return () => {
       cancelled = true;
       window.clearInterval(id);
+      window.removeEventListener("lg-central-changed", onCentral);
     };
   }, []);
 

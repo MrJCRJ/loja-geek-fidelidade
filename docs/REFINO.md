@@ -56,6 +56,11 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] LGPD: `revoke-biometrics` (apaga face + consent, mantém conta)
 - [x] Retenção `recognition_events` (config + purge agendado / manual)
 
+## Feito (parte 16)
+
+- [x] Multi-Central: `publicApiUrl` + peers no settings/catálogo
+- [x] Portal: seletor de Central (landing/login/register/dashboard) + `VITE_CENTRALS`
+
 ---
 
 ## Backlog encontrado
@@ -95,10 +100,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 | P1 | ~~Admin responsivo no celular~~ | — | **feito parte 14** |
 | P2 | ~~CI GitHub Actions~~ | — | **feito parte 13** (`.github/workflows/ci.yml`) |
 | P3 | ~~LGPD retenção fina~~ | — | **feito parte 15** (revogar biometria + purge eventos) |
-| P4 | Multi-Central no mesmo portal |
+| P4 | ~~Multi-Central no mesmo portal~~ | — | **feito parte 16** (peers + seletor portal) |
 
 ---
 
 ## Próxima parte sugerida
 
-**Parte 16:** Multi-Central no mesmo portal (P4) **ou** ops loja (`docs/loja-ready.md`).
+**Ops loja** (`docs/loja-ready.md`) **ou** dashboard métricas GeekCentral (MELHORIAS #20).

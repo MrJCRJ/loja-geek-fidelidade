@@ -2,6 +2,7 @@ import { FormEvent, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { api, setToken } from "../api";
 import BrandHeader from "../components/BrandHeader";
+import { CentralPicker } from "../components/CentralPicker";
 import OfflineBanner from "../components/OfflineBanner";
 import { useProximityField } from "../hooks/useProximityField";
 import { useReveal } from "../hooks/useReveal";
@@ -68,6 +69,7 @@ export default function RegisterPage() {
     <div className="shell shell--ambient page-in" ref={rootRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
+      <CentralPicker />
       <h1 className="display display--lg" style={{ marginBottom: "0.5rem" }}>
         Criar conta
       </h1>

@@ -16,6 +16,13 @@ import {
   runScheduledBackupIfDue,
   setBackupSchedule,
 } from "./backup-scheduler.js";
+import {
+  getPublicApiUrl,
+  listPeerCentrals,
+  setPeerCentrals,
+  setPublicApiUrl,
+  type PeerCentral,
+} from "./centrals.js";
 import { getSetting, setSetting } from "./customers.js";
 import { getRecognitionRetentionDays, pruneRecognitionEvents, setRecognitionRetentionDays } from "./lgpd.js";
 import { faceHealth } from "./face-client.js";
@@ -54,6 +61,8 @@ function settingsPayload() {
     backupIntervalHours: backup.intervalHours,
     backupKeep: backup.keep,
     recognitionEventsKeepDays: getRecognitionRetentionDays(),
+    publicApiUrl: getPublicApiUrl(),
+    peerCentrals: listPeerCentrals(),
   };
 }
 
@@ -109,6 +118,17 @@ export async function registerRoutes(app: FastifyInstance) {
         backupIntervalHours: z.number().min(1).max(168).optional(),
         backupKeep: z.number().min(3).max(50).optional(),
         recognitionEventsKeepDays: z.number().min(7).max(730).optional(),
+        publicApiUrl: z.string().max(300).optional(),
+        peerCentrals: z
+          .array(
+            z.object({
+              unitId: z.string().min(1).max(64),
+              unitName: z.string().min(1).max(80),
+              publicApiUrl: z.string().url().max(300),
+            }),
+          )
+          .max(12)
+          .optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -139,6 +159,12 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     if (body.recognitionEventsKeepDays !== undefined) {
       setRecognitionRetentionDays(body.recognitionEventsKeepDays);
+    }
+    if (body.publicApiUrl !== undefined) {
+      setPublicApiUrl(body.publicApiUrl);
+    }
+    if (body.peerCentrals !== undefined) {
+      setPeerCentrals(body.peerCentrals as PeerCentral[]);
     }
     return settingsPayload();
   });

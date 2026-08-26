@@ -91,6 +91,18 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
           </p>
         </div>
         <div className="field">
+          <label>URL pública da API (túnel)</label>
+          <input
+            placeholder="https://sua-loja.trycloudflare.com"
+            value={settings.publicApiUrl}
+            onChange={(e) => setSettings({ ...settings, publicApiUrl: e.target.value })}
+          />
+          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+            URL que o portal Vercel usa para falar com este GeekCentral. Aparece no catálogo
+            multi-Central.
+          </p>
+        </div>
+        <div className="field">
           <label>Limiar de match facial (0.1–0.99)</label>
           <input
             type="number"
@@ -152,6 +164,101 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
         >
           Salvar
         </button>
+      </section>
+
+      <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
+        <h2>Multi-Central (portal)</h2>
+        <p className="muted">
+          Cadastre outros GeekCentrals (URL do túnel) para o mesmo portal Vercel listar e o cliente
+          escolher a loja. Contas e saldo são por Central.
+        </p>
+        {(settings.peerCentrals || []).map((peer, idx) => (
+          <div key={idx} className="panel" style={{ marginBottom: "0.75rem", boxShadow: "none" }}>
+            <div className="field">
+              <label>Nome</label>
+              <input
+                value={peer.unitName}
+                onChange={(e) => {
+                  const next = [...settings.peerCentrals];
+                  next[idx] = { ...peer, unitName: e.target.value };
+                  setSettings({ ...settings, peerCentrals: next });
+                }}
+              />
+            </div>
+            <div className="field">
+              <label>unitId</label>
+              <input
+                value={peer.unitId}
+                onChange={(e) => {
+                  const next = [...settings.peerCentrals];
+                  next[idx] = { ...peer, unitId: e.target.value };
+                  setSettings({ ...settings, peerCentrals: next });
+                }}
+              />
+            </div>
+            <div className="field">
+              <label>URL pública da API</label>
+              <input
+                value={peer.publicApiUrl}
+                onChange={(e) => {
+                  const next = [...settings.peerCentrals];
+                  next[idx] = { ...peer, publicApiUrl: e.target.value };
+                  setSettings({ ...settings, peerCentrals: next });
+                }}
+              />
+            </div>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() =>
+                setSettings({
+                  ...settings,
+                  peerCentrals: settings.peerCentrals.filter((_, i) => i !== idx),
+                })
+              }
+            >
+              Remover
+            </button>
+          </div>
+        ))}
+        <div className="row">
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() =>
+              setSettings({
+                ...settings,
+                peerCentrals: [
+                  ...settings.peerCentrals,
+                  {
+                    unitId: `unit-${settings.peerCentrals.length + 2}`,
+                    unitName: "Outra loja",
+                    publicApiUrl: "https://",
+                  },
+                ],
+              })
+            }
+          >
+            + Central parceiro
+          </button>
+          <button
+            className="btn"
+            type="button"
+            onClick={() =>
+              api<AdminSettings>("/api/settings", {
+                method: "PUT",
+                body: JSON.stringify(settings),
+              })
+                .then((s) => {
+                  setSettings(normalizeAdminSettings(s));
+                  onToast("Multi-Central salvo", "ok");
+                })
+                .catch((e) => onError(e.message))
+            }
+          >
+            Salvar Centrals
+          </button>
+        </div>
       </section>
 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>

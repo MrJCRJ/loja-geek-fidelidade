@@ -39,4 +39,8 @@ Export futuro (opcional): backup SQLite já inclui `system_events`; para central
 
 ## Multi-unidade
 
-Cada PC controle = uma `unitId` / `unitName` (Config). O portal lista as 3 unidades comerciais + catálogo WhatsApp; o GeekLock da lan aponta só para o Central da lan.
+Cada PC controle = uma `unitId` / `unitName` (Config). No admin: **URL pública da API** + **Multi-Central** (peers).
+
+O catálogo `/api/portal/catalog` devolve `centrals[]`. O portal Vercel deixa o cliente escolher a loja; contas/saldo são por Central. Opcional no build: `VITE_CENTRALS='[{"unitId":"…","unitName":"…","publicApiUrl":"https://…"}]'`.
+
+O GeekLock de cada lan continua apontando só para o Central local.

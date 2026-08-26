@@ -28,6 +28,13 @@ export type PortalCustomer = {
   subscriberDiscountPct: number;
 };
 
+export type CatalogCentral = {
+  unitId: string;
+  unitName: string;
+  publicApiUrl: string;
+  self?: boolean;
+};
+
 export type Catalog = {
   baseHourPrice: number;
   subscriberDiscountPct: number;
@@ -40,6 +47,8 @@ export type Catalog = {
   payments?: { mode: string; pixEnabled: boolean };
   whatsappLan?: string;
   whatsappShop?: string;
+  unit?: { unitId: string; unitName: string };
+  centrals?: CatalogCentral[];
   shopCatalog?: Array<{
     id: string;
     title: string;
@@ -74,13 +83,120 @@ import { ApiError } from "../../shared/api-error";
 
 export { ApiError };
 
-function apiBase() {
+const API_BASE_KEY = "lg_portal_api_base";
+const CENTRALS_CACHE_KEY = "lg_portal_centrals";
+
+function defaultApiBase() {
   const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8787";
   return String(raw).replace(/\/$/, "");
 }
 
+function centralsFromEnv(): CatalogCentral[] {
+  const raw = import.meta.env.VITE_CENTRALS;
+  if (!raw || typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((row) => {
+        const r = row as Record<string, unknown>;
+        const unitId = String(r.unitId || "").trim();
+        const unitName = String(r.unitName || "").trim();
+        const publicApiUrl = String(r.publicApiUrl || r.apiUrl || "")
+          .trim()
+          .replace(/\/$/, "");
+        if (!unitId || !unitName || !publicApiUrl) return null;
+        return { unitId, unitName, publicApiUrl };
+      })
+      .filter((x): x is CatalogCentral => Boolean(x));
+  } catch {
+    return [];
+  }
+}
+
 export function getApiBase() {
-  return apiBase();
+  try {
+    const stored = localStorage.getItem(API_BASE_KEY);
+    if (stored) return stored.replace(/\/$/, "");
+  } catch {
+    /* ignore */
+  }
+  return defaultApiBase();
+}
+
+/** Troca o GeekCentral alvo. Contas são por loja — limpa o token. */
+export function setApiBase(url: string, opts?: { clearSession?: boolean }) {
+  const next = String(url || "")
+    .trim()
+    .replace(/\/$/, "");
+  if (!next) {
+    localStorage.removeItem(API_BASE_KEY);
+  } else {
+    localStorage.setItem(API_BASE_KEY, next);
+  }
+  if (opts?.clearSession !== false) setToken(null);
+  window.dispatchEvent(new CustomEvent("lg-central-changed", { detail: { apiBase: getApiBase() } }));
+}
+
+export function cacheCentrals(centrals: CatalogCentral[]) {
+  const merged = mergeCentrals(centralsFromEnv(), centrals);
+  try {
+    localStorage.setItem(CENTRALS_CACHE_KEY, JSON.stringify(merged));
+  } catch {
+    /* ignore */
+  }
+  return merged;
+}
+
+export function listCachedCentrals(): CatalogCentral[] {
+  const fromEnv = centralsFromEnv();
+  try {
+    const raw = localStorage.getItem(CENTRALS_CACHE_KEY);
+    if (!raw) return fromEnv;
+    const parsed = JSON.parse(raw) as CatalogCentral[];
+    return mergeCentrals(fromEnv, Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return fromEnv;
+  }
+}
+
+function mergeCentrals(...lists: CatalogCentral[][]): CatalogCentral[] {
+  const map = new Map<string, CatalogCentral>();
+  for (const list of lists) {
+    for (const c of list) {
+      if (!c?.unitId) continue;
+      const url = (c.publicApiUrl || "").replace(/\/$/, "");
+      const prev = map.get(c.unitId);
+      map.set(c.unitId, {
+        unitId: c.unitId,
+        unitName: c.unitName || prev?.unitName || c.unitId,
+        publicApiUrl: url || prev?.publicApiUrl || "",
+        self: Boolean(c.self || prev?.self),
+      });
+    }
+  }
+  return [...map.values()].filter((c) => c.publicApiUrl);
+}
+
+export function rememberCentralsFromCatalog(catalog: Catalog) {
+  const current = getApiBase();
+  const fromCatalog = (catalog.centrals || []).map((c) => ({
+    ...c,
+    publicApiUrl: (c.publicApiUrl || (c.self ? current : "")).replace(/\/$/, ""),
+  }));
+  if (catalog.unit && !fromCatalog.some((c) => c.unitId === catalog.unit!.unitId)) {
+    fromCatalog.unshift({
+      unitId: catalog.unit.unitId,
+      unitName: catalog.unit.unitName,
+      publicApiUrl: current,
+      self: true,
+    });
+  }
+  return cacheCentrals(fromCatalog);
+}
+
+function apiBase() {
+  return getApiBase();
 }
 
 export function getToken() {

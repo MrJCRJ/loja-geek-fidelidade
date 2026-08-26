@@ -4,6 +4,7 @@ import {
   api,
   Catalog,
   PortalCustomer,
+  rememberCentralsFromCatalog,
   setToken,
   TimeLedgerEntry,
   WebOrder,
@@ -16,6 +17,7 @@ export function useDashboardData() {
   const [orders, setOrders] = useState<WebOrder[]>([]);
   const [timeLedger, setTimeLedger] = useState<TimeLedgerEntry[]>([]);
   const [loadError, setLoadError] = useState("");
+  const [centralTick, setCentralTick] = useState(0);
 
   const load = useCallback(async () => {
     const [profile, cat, ord, ledger] = await Promise.all([
@@ -28,8 +30,19 @@ export function useDashboardData() {
     ]);
     setMe(profile);
     setCatalog(cat);
+    rememberCentralsFromCatalog(cat);
     setOrders(ord.orders);
     setTimeLedger(ledger.ledger);
+  }, []);
+
+  useEffect(() => {
+    const onCentral = () => {
+      setMe(null);
+      setLoadError("");
+      setCentralTick((n) => n + 1);
+    };
+    window.addEventListener("lg-central-changed", onCentral);
+    return () => window.removeEventListener("lg-central-changed", onCentral);
   }, []);
 
   useEffect(() => {
@@ -41,7 +54,7 @@ export function useDashboardData() {
         nav("/login");
       }
     });
-  }, [load, nav]);
+  }, [load, nav, centralTick]);
 
   return { me, setMe, catalog, orders, timeLedger, loadError, load };
 }

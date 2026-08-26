@@ -11,6 +11,8 @@ const DEFAULTS: AdminSettings = {
   backupIntervalHours: 24,
   backupKeep: 20,
   recognitionEventsKeepDays: 90,
+  publicApiUrl: "",
+  peerCentrals: [],
 };
 
 /** Normaliza resposta parcial da API / estado local. */
@@ -26,6 +28,8 @@ export function normalizeAdminSettings(s: Partial<AdminSettings> | null | undefi
     backupIntervalHours: s?.backupIntervalHours ?? DEFAULTS.backupIntervalHours,
     backupKeep: s?.backupKeep ?? DEFAULTS.backupKeep,
     recognitionEventsKeepDays: s?.recognitionEventsKeepDays ?? DEFAULTS.recognitionEventsKeepDays,
+    publicApiUrl: s?.publicApiUrl ?? DEFAULTS.publicApiUrl,
+    peerCentrals: Array.isArray(s?.peerCentrals) ? s.peerCentrals : DEFAULTS.peerCentrals,
   };
 }
 

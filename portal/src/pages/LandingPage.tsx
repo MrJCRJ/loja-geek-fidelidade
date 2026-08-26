@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, getToken, type Catalog } from "../api";
+import { api, getToken, rememberCentralsFromCatalog, type Catalog } from "../api";
 import BrandHeader from "../components/BrandHeader";
+import { CentralPicker } from "../components/CentralPicker";
 import OfflineBanner from "../components/OfflineBanner";
 import { useProximityField } from "../hooks/useProximityField";
 import { useReveal } from "../hooks/useReveal";
@@ -105,9 +106,23 @@ export default function LandingPage() {
   useEffect(() => {
     api<Catalog>("/api/portal/catalog")
       .then((c) => {
+        rememberCentralsFromCatalog(c);
         if (c.shopCatalog?.length) setShopCatalog(c.shopCatalog);
       })
       .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    const onCentral = () => {
+      api<Catalog>("/api/portal/catalog")
+        .then((c) => {
+          rememberCentralsFromCatalog(c);
+          if (c.shopCatalog?.length) setShopCatalog(c.shopCatalog);
+        })
+        .catch(() => undefined);
+    };
+    window.addEventListener("lg-central-changed", onCentral);
+    return () => window.removeEventListener("lg-central-changed", onCentral);
   }, []);
 
   useEffect(() => {
@@ -129,6 +144,7 @@ export default function LandingPage() {
   return (
     <div className="shell shell--landing shell--ambient" ref={rootRef}>
       <OfflineBanner />
+      <CentralPicker className="central-picker central-picker--landing" />
 
       <section className="hero hero-animate hero-parallax" ref={heroRef} aria-label="Início">
         <div className="hero-copy">

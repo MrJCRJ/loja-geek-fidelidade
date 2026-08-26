@@ -260,6 +260,25 @@ a:hover {
   min-width: 0;
 }
 
+.central-picker {
+  margin: 0.75rem 0 1rem;
+  max-width: 22rem;
+}
+
+.central-picker select {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--geek-line, rgba(255, 255, 255, 0.14));
+  background: color-mix(in srgb, var(--geek-navy, #0c1e3d) 70%, transparent);
+  color: inherit;
+  padding: 0.5rem 0.75rem;
+}
+
+.central-picker--landing {
+  margin: 0.5rem 0 0;
+}
+
 /* ——— Painéis glass (formulários / cards) ——— */
 
 .card {

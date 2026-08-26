@@ -54,7 +54,7 @@ Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
 | 20 | Dashboard métricas no GeekCentral (além da aba Saúde) |
 | 23 | ~~Backup automático SQLite (agendado)~~ **feito** (Config → intervalo + retenção) |
 | 24 | ~~CI GitHub Actions~~ **feito** (parte 13) |
-| 25 | Multi-unidade GeekLock avançada (vários Centrals no mesmo portal) |
+| 25 | ~~Multi-unidade GeekLock avançada (vários Centrals no mesmo portal)~~ **feito** (parte 16) |
 | 28 | ~~Retenção LGPD fina (apagar face sem apagar conta)~~ **feito** (parte 15) |
 
 ---

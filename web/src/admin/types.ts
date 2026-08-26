@@ -40,6 +40,8 @@ export type AdminSettings = {
   backupIntervalHours: number;
   backupKeep: number;
   recognitionEventsKeepDays: number;
+  publicApiUrl: string;
+  peerCentrals: Array<{ unitId: string; unitName: string; publicApiUrl: string }>;
 };
 
 export type TimeLedgerRow = {
