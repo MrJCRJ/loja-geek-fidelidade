@@ -4,7 +4,8 @@ Atualizado em 2026-08-25.
 Portal: https://loja-geek-portal.vercel.app  
 Projeto: `loja-geek-fidelidade`
 
-**Backlog de melhorias priorizado:** [`MELHORIAS.md`](./MELHORIAS.md) (fonte para “o que fazer no código”).  
+**Backlog de melhorias priorizado:** [`MELHORIAS.md`](./MELHORIAS.md) (resumo do ciclo).  
+**Lista do projeto todo:** [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md).  
 Este arquivo resume arquitetura, o que já existe e prioridade de negócio/ops.
 
 Planos Cursor antigos (GeekLock, portal, Melhorias Loja Geek, etc.) ficam supersedidos por estes docs.

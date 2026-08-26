@@ -24,6 +24,7 @@ Portal: https://loja-geek-portal.vercel.app
 - [x] Mitigações T1/T4/T6/T8/T10/T19: presença estrita, pauseBilling, aviso saldo, auto-trava staff
 - [x] Guia de ferramentas/projetos úteis — [`ECOSSISTEMA.md`](./ECOSSISTEMA.md)
 - [x] Lista UX (histórico top 15, compra hora↔R$) — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md)
+- [x] Lista completa do projeto — [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md)
 - [x] Overlay de mensagem remota rico (título / nível / duração)
 - [x] PWA portal (manifest + service worker)
 - [x] Catálogo WhatsApp + unidades no `/api/portal/catalog`
