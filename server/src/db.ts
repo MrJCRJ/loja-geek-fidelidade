@@ -27,10 +27,12 @@ export function initDb(databasePath?: string) {
   const resolvedPath = databasePath ?? config.databasePath;
   fs.mkdirSync(path.dirname(resolvedPath), { recursive: true });
   db = new Database(resolvedPath);
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+  // Local const so nested helpers keep a narrowed Database (module `db` is `| undefined`).
+  const conn = db;
+  conn.pragma("journal_mode = WAL");
+  conn.pragma("foreign_keys = ON");
 
-  db.exec(`
+  conn.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -135,12 +137,12 @@ export function initDb(databasePath?: string) {
   `);
 
   // Migrações leves (colunas novas em DBs já existentes)
-  const customerCols = (db.prepare("PRAGMA table_info(customers)").all() as TableInfoRow[]).map(
+  const customerCols = (conn.prepare("PRAGMA table_info(customers)").all() as TableInfoRow[]).map(
     (c) => c.name,
   );
   const ensureCol = (name: string, ddl: string) => {
     if (!customerCols.includes(name)) {
-      db.exec(`ALTER TABLE customers ADD COLUMN ${ddl}`);
+      conn.exec(`ALTER TABLE customers ADD COLUMN ${ddl}`);
     }
   };
   ensureCol("time_balance_seconds", "time_balance_seconds INTEGER NOT NULL DEFAULT 0");
@@ -151,7 +153,7 @@ export function initDb(databasePath?: string) {
   ensureCol("password_hash", "password_hash TEXT");
   ensureCol("email_verified_at", "email_verified_at TEXT");
 
-  db.exec(`
+  conn.exec(`
     CREATE TABLE IF NOT EXISTS web_orders (
       id TEXT PRIMARY KEY,
       customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -170,10 +172,10 @@ export function initDb(databasePath?: string) {
       ON customers(email) WHERE email IS NOT NULL AND email != '';
   `);
 
-  const countRewards = db.prepare("SELECT COUNT(*) AS c FROM rewards").get() as CountRow;
+  const countRewards = conn.prepare("SELECT COUNT(*) AS c FROM rewards").get() as CountRow;
   if (countRewards.c === 0) {
     const now = new Date().toISOString();
-    const insert = db.prepare(
+    const insert = conn.prepare(
       "INSERT INTO rewards (id, title, description, cost_points, active, created_at) VALUES (?, ?, ?, ?, 1, ?)",
     );
     insert.run("rw_pin", "Pin exclusivo", "Pin da loja geek", 50, now);
@@ -182,9 +184,9 @@ export function initDb(databasePath?: string) {
   }
 
   const upsertSetting = (key: string, value: string) => {
-    const row = db.prepare("SELECT value FROM settings WHERE key = ?").get(key);
+    const row = conn.prepare("SELECT value FROM settings WHERE key = ?").get(key);
     if (!row) {
-      db.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(key, value);
+      conn.prepare("INSERT INTO settings (key, value) VALUES (?, ?)").run(key, value);
     }
   };
   upsertSetting("face_match_threshold", String(config.faceMatchThreshold));
@@ -192,7 +194,7 @@ export function initDb(databasePath?: string) {
   upsertSetting("hour_price_reais", "10");
   upsertSetting("subscriber_hour_discount_pct", "20");
 
-  db.exec(`
+  conn.exec(`
     CREATE TABLE IF NOT EXISTS password_reset_tokens (
       id TEXT PRIMARY KEY,
       customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -205,7 +207,7 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_password_reset_customer ON password_reset_tokens(customer_id);
   `);
 
-  db.exec(`
+  conn.exec(`
     CREATE TABLE IF NOT EXISTS system_events (
       id TEXT PRIMARY KEY,
       created_at TEXT NOT NULL,
@@ -221,5 +223,5 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_system_events_kind ON system_events(kind);
   `);
 
-  return db;
+  return conn;
 }
