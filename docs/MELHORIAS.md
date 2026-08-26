@@ -20,6 +20,7 @@ Portal: https://loja-geek-portal.vercel.app
 - [x] Visual glass (admin, portal, GeekLock, GeekCentral) — commits anteriores
 - [x] Fases 1–3 .exe (autostart, túnel, descoberta LAN / wizard)
 - [x] Telemetria produção + aba Saúde — [`telemetria.md`](./telemetria.md)
+- [x] Teorias de produção (sessão órfã, horas sem aviso, etc.) — [`teorias-producao.md`](./teorias-producao.md)
 - [x] Overlay de mensagem remota rico (título / nível / duração)
 - [x] PWA portal (manifest + service worker)
 - [x] Catálogo WhatsApp + unidades no `/api/portal/catalog`
