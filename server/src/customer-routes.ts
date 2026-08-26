@@ -155,6 +155,15 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
     };
   });
 
+  app.post("/api/customers/:id/lgpd/revoke-biometrics", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const { revokeBiometrics } = await import("./lgpd.js");
+    const result = revokeBiometrics(id);
+    if (!result) return reply.code(404).send({ error: "Não encontrado" });
+    return result;
+  });
+
   app.post("/api/customers/:id/points", async (req, reply) => {
     const station = stationFromHeader(req);
     const isStation = Boolean(station);

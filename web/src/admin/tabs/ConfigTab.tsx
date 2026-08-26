@@ -222,6 +222,7 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
         >
           {busy ? "Gerando…" : "Criar backup agora"}
         </button>
+        <div className="table-scroll">
         <table className="table" style={{ marginTop: "0.75rem" }}>
           <thead>
             <tr>
@@ -259,6 +260,73 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
             )}
           </tbody>
         </table>
+        </div>
+      </section>
+
+      <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
+        <h2>LGPD — retenção</h2>
+        <p className="muted">
+          Apagar face sem apagar conta: use <strong>Revogar biometria</strong> no cliente. Abaixo, purge
+          automático do histórico de reconhecimento (sem embeddings).
+        </p>
+        <div className="field">
+          <label>Manter eventos de reconhecimento (dias)</label>
+          <input
+            type="number"
+            min={7}
+            max={730}
+            value={settings.recognitionEventsKeepDays}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                recognitionEventsKeepDays: Number(e.target.value) || 90,
+              })
+            }
+          />
+        </div>
+        <div className="row">
+          <button
+            className="btn"
+            type="button"
+            onClick={() =>
+              api<AdminSettings>("/api/settings", {
+                method: "PUT",
+                body: JSON.stringify(settings),
+              })
+                .then((s) => {
+                  setSettings(normalizeAdminSettings(s));
+                  onToast("Retenção salva", "ok");
+                })
+                .catch((e) => onError(e.message))
+            }
+          >
+            Salvar retenção
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              try {
+                const res = await api<{ deleted: number; keepDays: number }>(
+                  "/api/admin/lgpd/prune-recognition",
+                  {
+                    method: "POST",
+                    body: JSON.stringify({ keepDays: settings.recognitionEventsKeepDays }),
+                  },
+                );
+                onToast(`Purge: ${res.deleted} eventos removidos`, "ok");
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha no purge");
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Purge agora
+          </button>
+        </div>
       </section>
 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>

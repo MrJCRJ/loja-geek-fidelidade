@@ -39,6 +39,7 @@ export type AdminSettings = {
   backupAutoEnabled: boolean;
   backupIntervalHours: number;
   backupKeep: number;
+  recognitionEventsKeepDays: number;
 };
 
 export type TimeLedgerRow = {

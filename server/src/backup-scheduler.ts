@@ -1,5 +1,6 @@
 import { getSetting, setSetting } from "./customers.js";
 import { createSqliteBackup, listBackupFiles } from "./admin-ops.js";
+import { pruneRecognitionEvents } from "./lgpd.js";
 import { logEvent } from "./telemetry.js";
 
 export type BackupSchedule = {
@@ -93,12 +94,22 @@ export function startBackupScheduler(checkMs = 15 * 60_000) {
     } catch {
       /* já logado */
     }
+    try {
+      pruneRecognitionEvents();
+    } catch {
+      /* ignore */
+    }
   }, 45_000);
   timer = setInterval(() => {
     try {
       runScheduledBackupIfDue();
     } catch {
       /* já logado */
+    }
+    try {
+      pruneRecognitionEvents();
+    } catch {
+      /* ignore */
     }
   }, checkMs);
 }

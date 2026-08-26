@@ -143,7 +143,7 @@ export default function AdminPage() {
         }}
       />
 
-      <div className="row" style={{ justifyContent: "space-between" }}>
+      <div className="admin-topbar">
         <div>
           <p className="muted" style={{ margin: 0 }}>
             geeks · Celular e Game · {data.settings.unitName}
@@ -162,7 +162,7 @@ export default function AdminPage() {
             </p>
           )}
         </div>
-        <div className="row">
+        <div className="admin-topbar-actions">
           <button className="btn ghost" type="button" onClick={() => data.refreshNow()}>
             Atualizar
           </button>

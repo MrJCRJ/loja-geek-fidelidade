@@ -50,12 +50,12 @@ Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
 
 | # | Item |
 |---|------|
-| 18 | Admin responsivo no celular |
+| 18 | ~~Admin responsivo no celular~~ **feito** (parte 14) |
 | 20 | Dashboard métricas no GeekCentral (além da aba Saúde) |
 | 23 | ~~Backup automático SQLite (agendado)~~ **feito** (Config → intervalo + retenção) |
-| 24 | CI GitHub Actions |
+| 24 | ~~CI GitHub Actions~~ **feito** (parte 13) |
 | 25 | Multi-unidade GeekLock avançada (vários Centrals no mesmo portal) |
-| 28 | Retenção LGPD fina (apagar face sem apagar conta) |
+| 28 | ~~Retenção LGPD fina (apagar face sem apagar conta)~~ **feito** (parte 15) |
 
 ---
 

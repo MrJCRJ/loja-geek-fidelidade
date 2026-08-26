@@ -81,57 +81,59 @@ export function ClientesListPanel({
         <label>Buscar</label>
         <input placeholder="Nome, WhatsApp, e-mail…" value={query} onChange={(e) => onQueryChange(e.target.value)} />
       </div>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Nível</th>
-            <th>Saldo</th>
-            <th>Pts</th>
-            <th>Faces</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((c) => (
-            <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => onSelect(c)}>
-              <td>
-                {c.name}
-                {c.email ? (
-                  <span className="tag web" style={{ marginLeft: 6 }} title={c.email}>
-                    Web
-                  </span>
-                ) : null}
-                {(c.face_samples ?? 0) === 0 ? (
-                  <span className="tag noface" style={{ marginLeft: 6 }}>
-                    Sem face
-                  </span>
-                ) : null}
-                {c.subscription_status === "active" && (
-                  <span className="tag ouro" style={{ marginLeft: 6 }}>
-                    Assinante
-                  </span>
-                )}
-              </td>
-              <td>
-                <span className={`tag ${c.level}`}>{c.level}</span>
-              </td>
-              <td>{formatHours(c.time_balance_seconds ?? 0)}</td>
-              <td>{c.points}</td>
-              <td>{c.face_samples ?? 0}</td>
-            </tr>
-          ))}
-          {filtered.length === 0 && (
+      <div className="table-scroll">
+        <table className="table">
+          <thead>
             <tr>
-              <td colSpan={5}>
-                <div className="empty-state">
-                  <strong>Nenhum VIP aqui</strong>
-                  <p>Cadastre um cliente ao lado ou ajuste a busca.</p>
-                </div>
-              </td>
+              <th>Nome</th>
+              <th>Nível</th>
+              <th>Saldo</th>
+              <th>Pts</th>
+              <th>Faces</th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {filtered.map((c) => (
+              <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => onSelect(c)}>
+                <td>
+                  {c.name}
+                  {c.email ? (
+                    <span className="tag web" style={{ marginLeft: 6 }} title={c.email}>
+                      Web
+                    </span>
+                  ) : null}
+                  {(c.face_samples ?? 0) === 0 ? (
+                    <span className="tag noface" style={{ marginLeft: 6 }}>
+                      Sem face
+                    </span>
+                  ) : null}
+                  {c.subscription_status === "active" && (
+                    <span className="tag ouro" style={{ marginLeft: 6 }}>
+                      Assinante
+                    </span>
+                  )}
+                </td>
+                <td>
+                  <span className={`tag ${c.level}`}>{c.level}</span>
+                </td>
+                <td>{formatHours(c.time_balance_seconds ?? 0)}</td>
+                <td>{c.points}</td>
+                <td>{c.face_samples ?? 0}</td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <strong>Nenhum VIP aqui</strong>
+                    <p>Cadastre um cliente ao lado ou ajuste a busca.</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

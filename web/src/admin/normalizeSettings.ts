@@ -10,6 +10,7 @@ const DEFAULTS: AdminSettings = {
   backupAutoEnabled: true,
   backupIntervalHours: 24,
   backupKeep: 20,
+  recognitionEventsKeepDays: 90,
 };
 
 /** Normaliza resposta parcial da API / estado local. */
@@ -24,6 +25,7 @@ export function normalizeAdminSettings(s: Partial<AdminSettings> | null | undefi
     backupAutoEnabled: s?.backupAutoEnabled !== false,
     backupIntervalHours: s?.backupIntervalHours ?? DEFAULTS.backupIntervalHours,
     backupKeep: s?.backupKeep ?? DEFAULTS.backupKeep,
+    recognitionEventsKeepDays: s?.recognitionEventsKeepDays ?? DEFAULTS.recognitionEventsKeepDays,
   };
 }
 

@@ -92,6 +92,32 @@ export function ClienteManagePanel({
           Exportar LGPD
         </button>
         <button
+          className="btn ghost"
+          type="button"
+          onClick={async () => {
+            const ok = await askConfirm({
+              title: "Revogar biometria",
+              message:
+                "Apagar amostras faciais e revogar consentimento LGPD? A conta, pontos e horas permanecem.",
+              danger: true,
+              confirmLabel: "Revogar",
+            });
+            if (!ok) return;
+            api<{ customer?: Customer; removed?: number }>(
+              `/api/customers/${selected.id}/lgpd/revoke-biometrics`,
+              { method: "POST" },
+            )
+              .then((res) => {
+                if (res.customer) setSelected(res.customer);
+                onToast(`Biometria revogada (${res.removed ?? 0} amostras)`, "ok");
+                return refresh();
+              })
+              .catch((e) => onError(e.message));
+          }}
+        >
+          Revogar biometria
+        </button>
+        <button
           className="btn danger"
           type="button"
           onClick={async () => {

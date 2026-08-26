@@ -1,14 +1,14 @@
 import type { Tab } from "../types";
 
-const TABS: Array<[Tab, string]> = [
-  ["feed", "Feed VIP"],
-  ["clientes", "Clientes"],
-  ["caixa", "Caixa"],
-  ["estacoes", "Estações"],
-  ["sessoes", "Sessões / Horas"],
-  ["recompensas", "Recompensas"],
-  ["saude", "Saúde"],
-  ["config", "Config"],
+const TABS: Array<[Tab, string, string]> = [
+  ["feed", "Feed VIP", "Feed"],
+  ["clientes", "Clientes", "VIPs"],
+  ["caixa", "Caixa", "Caixa"],
+  ["estacoes", "Estações", "PCs"],
+  ["sessoes", "Sessões / Horas", "Horas"],
+  ["recompensas", "Recompensas", "Prêmios"],
+  ["saude", "Saúde", "Saúde"],
+  ["config", "Config", "Config"],
 ];
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
 export function AdminTabs({ tab, onChange }: Props) {
   return (
     <div className="tabs" role="tablist" aria-label="GeekCentral">
-      {TABS.map(([id, label]) => {
+      {TABS.map(([id, label, short]) => {
         const selected = tab === id;
         return (
           <button
@@ -28,6 +28,7 @@ export function AdminTabs({ tab, onChange }: Props) {
             id={`tab-${id}`}
             aria-selected={selected}
             aria-controls={`panel-${id}`}
+            aria-label={label}
             tabIndex={selected ? 0 : -1}
             className={`btn ${selected ? "active" : "ghost"}`}
             type="button"
@@ -49,7 +50,8 @@ export function AdminTabs({ tab, onChange }: Props) {
               }
             }}
           >
-            {label}
+            <span className="tab-label-full">{label}</span>
+            <span className="tab-label-short">{short}</span>
           </button>
         );
       })}

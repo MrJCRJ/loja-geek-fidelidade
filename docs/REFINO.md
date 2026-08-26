@@ -47,6 +47,15 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 - [x] GitHub Actions: server test/build, web, portal, GeekLock tsc, face-service pytest
 
+## Feito (parte 14)
+
+- [x] Admin responsivo: topbar, tabs com scroll + labels curtos, tabelas scrolláveis, toque 44px
+
+## Feito (parte 15)
+
+- [x] LGPD: `revoke-biometrics` (apaga face + consent, mantém conta)
+- [x] Retenção `recognition_events` (config + purge agendado / manual)
+
 ---
 
 ## Backlog encontrado
@@ -83,13 +92,13 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 | # | Item |
 |---|------|
-| P1 | Admin responsivo no celular |
+| P1 | ~~Admin responsivo no celular~~ | — | **feito parte 14** |
 | P2 | ~~CI GitHub Actions~~ | — | **feito parte 13** (`.github/workflows/ci.yml`) |
-| P3 | LGPD retenção fina |
+| P3 | ~~LGPD retenção fina~~ | — | **feito parte 15** (revogar biometria + purge eventos) |
 | P4 | Multi-Central no mesmo portal |
 
 ---
 
 ## Próxima parte sugerida
 
-**Parte 14:** admin mobile (P1) **ou** LGPD retenção fina (P3).
+**Parte 16:** Multi-Central no mesmo portal (P4) **ou** ops loja (`docs/loja-ready.md`).

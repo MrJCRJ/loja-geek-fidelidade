@@ -117,6 +117,7 @@ export function EstacoesTab({
           </div>
         )}
 
+        <div className="table-scroll">
         <table className="table">
           <thead>
             <tr>
@@ -216,6 +217,7 @@ export function EstacoesTab({
             })}
           </tbody>
         </table>
+        </div>
       </section>
       <section className="panel">
         <h2>Comando global</h2>

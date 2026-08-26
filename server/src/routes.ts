@@ -17,6 +17,7 @@ import {
   setBackupSchedule,
 } from "./backup-scheduler.js";
 import { getSetting, setSetting } from "./customers.js";
+import { getRecognitionRetentionDays, pruneRecognitionEvents, setRecognitionRetentionDays } from "./lgpd.js";
 import { faceHealth } from "./face-client.js";
 import { setStationOfflineHook } from "./hub.js";
 import { getStationByToken } from "./stations.js";
@@ -52,6 +53,7 @@ function settingsPayload() {
     backupAutoEnabled: backup.enabled,
     backupIntervalHours: backup.intervalHours,
     backupKeep: backup.keep,
+    recognitionEventsKeepDays: getRecognitionRetentionDays(),
   };
 }
 
@@ -106,6 +108,7 @@ export async function registerRoutes(app: FastifyInstance) {
         backupAutoEnabled: z.boolean().optional(),
         backupIntervalHours: z.number().min(1).max(168).optional(),
         backupKeep: z.number().min(3).max(50).optional(),
+        recognitionEventsKeepDays: z.number().min(7).max(730).optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -133,6 +136,9 @@ export async function registerRoutes(app: FastifyInstance) {
         intervalHours: body.backupIntervalHours,
         keep: body.backupKeep,
       });
+    }
+    if (body.recognitionEventsKeepDays !== undefined) {
+      setRecognitionRetentionDays(body.recognitionEventsKeepDays);
     }
     return settingsPayload();
   });
@@ -233,5 +239,21 @@ export async function registerRoutes(app: FastifyInstance) {
       .header("content-type", "application/octet-stream")
       .header("content-disposition", `attachment; filename="${path.basename(full)}"`)
       .send(buf);
+  });
+
+  app.post("/api/admin/lgpd/prune-recognition", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const body = z
+      .object({ keepDays: z.number().int().min(7).max(730).optional() })
+      .parse(req.body ?? {});
+    const result = pruneRecognitionEvents(body.keepDays);
+    logEvent({
+      level: "info",
+      source: "api",
+      kind: "lgpd.prune_recognition",
+      message: `Prune recognition_events: ${result.deleted} removidos (keep ${result.keepDays}d)`,
+      meta: result,
+    });
+    return result;
   });
 }
