@@ -560,6 +560,15 @@ a:hover {
   font-size: 0.9rem;
 }
 
+.tip-box {
+  margin: 0.55rem 0 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-panel, 10px);
+  border: 1px solid color-mix(in srgb, var(--geek-teal, #2dd4bf) 28%, transparent);
+  background: color-mix(in srgb, var(--geek-teal, #2dd4bf) 10%, transparent);
+  line-height: 1.35;
+}
+
 .banner {
   background: color-mix(in srgb, var(--geek-bad) 12%, var(--geek-navy-deep));
   border: 1px solid color-mix(in srgb, var(--geek-bad) 45%, transparent);

@@ -135,8 +135,15 @@ export function useRecognizeLoop({
             return;
           }
 
-          setStatus(`VIP ${res.customer.name} reconhecido — liberando`);
-          setWelcomeCustomer(res.customer);
+          setStatus(
+            bal != null
+              ? `VIP ${res.customer.name} — saldo ~${Math.floor(bal / 60)}m`
+              : `VIP ${res.customer.name} reconhecido — liberando`,
+          );
+          setWelcomeCustomer({
+            ...res.customer,
+            timeBalanceSeconds: bal ?? undefined,
+          });
 
           try {
             const started = await startSession(config, res.customer.id);

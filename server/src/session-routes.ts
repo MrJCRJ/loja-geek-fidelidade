@@ -61,10 +61,21 @@ export async function registerSessionRoutes(app: FastifyInstance) {
     const station = stationFromHeader(req);
     if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
     heartbeatStationById(station.id, req.ip);
-    const body = z.object({ sessionId: z.string().min(1) }).parse(req.body);
+    const body = z
+      .object({
+        sessionId: z.string().min(1),
+        pauseBilling: z.boolean().optional(),
+      })
+      .parse(req.body);
     try {
-      const session = heartbeatSession(body.sessionId, station.id) as {
+      const session = heartbeatSession(body.sessionId, station.id, {
+        pauseBilling: body.pauseBilling,
+      }) as {
         time_depleted?: boolean;
+        billing_paused?: boolean;
+        low_balance_warn?: boolean;
+        low_balance_warn_seconds?: number;
+        time_balance_seconds?: number;
         customer_id: string;
         id: string;
       };
@@ -80,7 +91,14 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         });
         return { ok: true, session: ended, timeDepleted: true };
       }
-      return { ok: true, session };
+      return {
+        ok: true,
+        session,
+        billingPaused: Boolean(session.billing_paused),
+        lowBalanceWarn: Boolean(session.low_balance_warn),
+        lowBalanceWarnSeconds: session.low_balance_warn_seconds,
+        timeBalanceSeconds: session.time_balance_seconds,
+      };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
     }

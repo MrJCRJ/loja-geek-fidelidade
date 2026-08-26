@@ -10,12 +10,25 @@ export type RemoteBanner = {
   until: number;
 };
 
-export const DEFAULT_ABSENT_SEC = 90;
+export const DEFAULT_ABSENT_SEC = 60;
 export const PRESENCE_MS = 1800;
 export const SESSION_HB_MS = 8000;
-/** Match único forte libera; senão precisa de 2 frames. */
-export const STRONG_MATCH_SCORE = 0.55;
+/** Match único forte libera; senão precisa de 2 frames. Mais alto reduz T14 (quase-gêmeos). */
+export const STRONG_MATCH_SCORE = 0.62;
 export const KEEP_STREAK_MIN_SCORE = 0.4;
+/** Modo staff sem sessão VIP — auto-trava (T6). */
+export const DEFAULT_STAFF_UNLOCK_MAX_SEC = 600;
+
+export function formatBalanceShort(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m >= 60) {
+    const h = Math.floor(m / 60);
+    return `${h}h ${m % 60}m`;
+  }
+  return `${m}m ${String(r).padStart(2, "0")}s`;
+}
 
 export function scanVisualFromReason(reason?: string, scanning?: boolean): ScanVisual {
   if (scanning) return "scanning";

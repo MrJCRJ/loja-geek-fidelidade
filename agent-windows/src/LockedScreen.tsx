@@ -72,7 +72,15 @@ export function LockedScreen({
           <p className="welcome-kicker">Bem-vindo</p>
           <h2 className="welcome-name">{welcomeCustomer.name}</h2>
           <span className={`level-badge lg ${welcomeCustomer.level}`}>{welcomeCustomer.level}</span>
+          {welcomeCustomer.timeBalanceSeconds != null ? (
+            <p className="welcome-balance">
+              Saldo:{" "}
+              {Math.floor(welcomeCustomer.timeBalanceSeconds / 60)}m{" "}
+              {String(welcomeCustomer.timeBalanceSeconds % 60).padStart(2, "0")}s
+            </p>
+          ) : null}
           <p className="muted">Liberando máquina…</p>
+          <p className="muted welcome-hint">Ao sair, encerre Steam/Discord se não for sua conta.</p>
         </div>
       )}
 

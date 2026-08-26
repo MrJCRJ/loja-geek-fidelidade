@@ -25,6 +25,9 @@ export type LiveStationStatus = {
   elapsed?: number;
   present?: boolean;
   absentLeft?: number | null;
+  balanceSeconds?: number | null;
+  lowBalanceWarn?: boolean;
+  billingPaused?: boolean;
   at?: string;
 };
 
@@ -43,6 +46,9 @@ export type AdminSettings = {
   recognitionEventsKeepDays: number;
   publicApiUrl: string;
   peerCentrals: Array<{ unitId: string; unitName: string; publicApiUrl: string }>;
+  lowBalanceWarnSeconds: number;
+  staffUnlockMaxSeconds: number;
+  presenceMinFaceRatio: number;
 };
 
 export type TimeLedgerRow = {

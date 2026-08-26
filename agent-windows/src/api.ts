@@ -60,8 +60,18 @@ export async function claimStation(config: GeekLockConfig) {
   });
 }
 
+export type SessionSafetyConfig = {
+  lowBalanceWarnSeconds: number;
+  staffUnlockMaxSeconds: number;
+  presenceMinFaceRatio: number;
+};
+
 export async function heartbeat(config: GeekLockConfig) {
-  return apiFetch(config, "/api/stations/heartbeat", {
+  return apiFetch<{
+    ok: boolean;
+    station?: { id: string; name: string };
+    sessionSafety?: SessionSafetyConfig;
+  }>(config, "/api/stations/heartbeat", {
     method: "POST",
     body: JSON.stringify({ token: config.stationToken }),
   });
@@ -167,14 +177,30 @@ export async function startSession(config: GeekLockConfig, customerId: string) {
   });
 }
 
-export async function sessionHeartbeat(config: GeekLockConfig, sessionId: string) {
+export async function sessionHeartbeat(
+  config: GeekLockConfig,
+  sessionId: string,
+  opts?: { pauseBilling?: boolean },
+) {
   return apiFetch<{
     ok: boolean;
-    session: Session & { time_balance_seconds?: number; time_depleted?: boolean };
+    session: Session & {
+      time_balance_seconds?: number;
+      time_depleted?: boolean;
+      billing_paused?: boolean;
+      low_balance_warn?: boolean;
+    };
     timeDepleted?: boolean;
+    billingPaused?: boolean;
+    lowBalanceWarn?: boolean;
+    lowBalanceWarnSeconds?: number;
+    timeBalanceSeconds?: number;
   }>(config, "/api/sessions/heartbeat", {
     method: "POST",
-    body: JSON.stringify({ sessionId }),
+    body: JSON.stringify({
+      sessionId,
+      pauseBilling: Boolean(opts?.pauseBilling),
+    }),
   });
 }
 

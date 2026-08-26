@@ -16,6 +16,7 @@ import {
   registerStation,
   renameStation,
 } from "./stations.js";
+import { sessionSafetySettingsPayload } from "./session-safety.js";
 import { logEvent } from "./telemetry.js";
 
 const stationCommandBody = z.object({
@@ -63,7 +64,11 @@ export async function registerStationRoutes(app: FastifyInstance) {
     const station = heartbeatStation(body.token, req.ip);
     if (!station) return reply.code(401).send({ error: "Token de estação inválido" });
     broadcastAdmins({ type: "station_heartbeat", station });
-    return { ok: true, station: { id: station.id, name: station.name } };
+    return {
+      ok: true,
+      station: { id: station.id, name: station.name },
+      sessionSafety: sessionSafetySettingsPayload(),
+    };
   });
 
   app.post("/api/stations/:id/command", async (req, reply) => {

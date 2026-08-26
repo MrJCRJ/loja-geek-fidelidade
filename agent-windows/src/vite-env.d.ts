@@ -25,6 +25,7 @@ export type Customer = {
   name: string;
   level: string;
   points: number;
+  timeBalanceSeconds?: number;
 };
 
 export type Session = {
@@ -65,6 +66,9 @@ declare global {
         elapsed?: number;
         present?: boolean;
         absentLeft?: number | null;
+        balanceSeconds?: number | null;
+        lowBalanceWarn?: boolean;
+        billingPaused?: boolean;
       }) => void;
     };
   }

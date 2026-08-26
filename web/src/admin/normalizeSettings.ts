@@ -13,6 +13,9 @@ const DEFAULTS: AdminSettings = {
   recognitionEventsKeepDays: 90,
   publicApiUrl: "",
   peerCentrals: [],
+  lowBalanceWarnSeconds: 300,
+  staffUnlockMaxSeconds: 600,
+  presenceMinFaceRatio: 0.12,
 };
 
 /** Normaliza resposta parcial da API / estado local. */
@@ -30,6 +33,9 @@ export function normalizeAdminSettings(s: Partial<AdminSettings> | null | undefi
     recognitionEventsKeepDays: s?.recognitionEventsKeepDays ?? DEFAULTS.recognitionEventsKeepDays,
     publicApiUrl: s?.publicApiUrl ?? DEFAULTS.publicApiUrl,
     peerCentrals: Array.isArray(s?.peerCentrals) ? s.peerCentrals : DEFAULTS.peerCentrals,
+    lowBalanceWarnSeconds: s?.lowBalanceWarnSeconds ?? DEFAULTS.lowBalanceWarnSeconds,
+    staffUnlockMaxSeconds: s?.staffUnlockMaxSeconds ?? DEFAULTS.staffUnlockMaxSeconds,
+    presenceMinFaceRatio: s?.presenceMinFaceRatio ?? DEFAULTS.presenceMinFaceRatio,
   };
 }
 

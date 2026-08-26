@@ -14,6 +14,10 @@ import { broadcastAdmins, sendToStation } from "./hub.js";
 import { rateLimit } from "./security.js";
 import { heartbeatStationById } from "./stations.js";
 import { getTimeBalance } from "./billing.js";
+import {
+  getPresenceMatchThreshold,
+  getPresenceMinFaceRatio,
+} from "./session-safety.js";
 import { logEvent } from "./telemetry.js";
 
 export async function registerFaceRoutes(app: FastifyInstance) {
@@ -56,13 +60,29 @@ export async function registerFaceRoutes(app: FastifyInstance) {
       return { present: true, reason: "face", code: "ok" };
     }
 
+    // VIP longe / no fundo: embedding pode passar, mas não conta como "dono na cadeira" (T4/T28).
+    const minFaceRatio = getPresenceMinFaceRatio();
+    const faceRatio = typeof embedded.face_ratio === "number" ? embedded.face_ratio : null;
+    if (faceRatio != null && faceRatio < minFaceRatio) {
+      return {
+        present: false,
+        reason: "face_too_far",
+        code: "face_too_far",
+        faceRatio,
+        minFaceRatio,
+      };
+    }
+
     const galleryRaw = listFaceEmbeddings();
     const gallery = parseGalleryEmbeddings(galleryRaw);
     if (gallery.length === 0) {
       return { present: false, reason: "no_gallery", code: "no_gallery" };
     }
 
-    const threshold = Number(getSetting("face_match_threshold", String(config.faceMatchThreshold)));
+    const baseThreshold = Number(
+      getSetting("face_match_threshold", String(config.faceMatchThreshold)),
+    );
+    const threshold = getPresenceMatchThreshold(baseThreshold);
     const matched = await matchEmbedding(embedded.embedding, gallery, threshold);
     if (!matched.ok) {
       if (matched.code === "service_down") {
@@ -102,6 +122,7 @@ export async function registerFaceRoutes(app: FastifyInstance) {
       reason: "face",
       code: "ok",
       score: matched.match.score,
+      faceRatio: faceRatio ?? undefined,
     };
   });
 

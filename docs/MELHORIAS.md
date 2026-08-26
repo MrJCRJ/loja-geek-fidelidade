@@ -21,6 +21,7 @@ Portal: https://loja-geek-portal.vercel.app
 - [x] Fases 1–3 .exe (autostart, túnel, descoberta LAN / wizard)
 - [x] Telemetria produção + aba Saúde — [`telemetria.md`](./telemetria.md)
 - [x] Teorias de produção (sessão órfã, horas sem aviso, etc.) — [`teorias-producao.md`](./teorias-producao.md)
+- [x] Mitigações T1/T4/T6/T8/T10/T19: presença estrita, pauseBilling, aviso saldo, auto-trava staff
 - [x] Overlay de mensagem remota rico (título / nível / duração)
 - [x] PWA portal (manifest + service worker)
 - [x] Catálogo WhatsApp + unidades no `/api/portal/catalog`

@@ -114,6 +114,51 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
           />
         </div>
         <div className="field">
+          <label>Aviso de saldo baixo (segundos restantes)</label>
+          <input
+            type="number"
+            step="30"
+            min={60}
+            max={3600}
+            value={settings.lowBalanceWarnSeconds}
+            onChange={(e) =>
+              setSettings({ ...settings, lowBalanceWarnSeconds: Number(e.target.value) || 300 })
+            }
+          />
+          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+            GeekLock avisa no HUD antes de zerar horas (padrão 5 min).
+          </p>
+        </div>
+        <div className="field">
+          <label>Auto-trava modo Admin/PIN (segundos)</label>
+          <input
+            type="number"
+            step="60"
+            min={60}
+            max={7200}
+            value={settings.staffUnlockMaxSeconds}
+            onChange={(e) =>
+              setSettings({ ...settings, staffUnlockMaxSeconds: Number(e.target.value) || 600 })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>Presença: rosto mínimo no frame (0.06–0.4)</label>
+          <input
+            type="number"
+            step="0.01"
+            min={0.06}
+            max={0.4}
+            value={settings.presenceMinFaceRatio}
+            onChange={(e) =>
+              setSettings({ ...settings, presenceMinFaceRatio: Number(e.target.value) || 0.12 })
+            }
+          />
+          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+            Rosto menor que isso na presença = VIP longe/fundo — inicia countdown (anti troca de cadeira).
+          </p>
+        </div>
+        <div className="field">
           <label>Pontos por R$ 1 (fidelidade)</label>
           <input
             type="number"

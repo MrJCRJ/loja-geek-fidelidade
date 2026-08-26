@@ -272,6 +272,21 @@ body,
   font-weight: 800;
 }
 
+.welcome-balance {
+  margin: 0.25rem 0 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--accent, #2dd4bf);
+  font-variant-numeric: tabular-nums;
+}
+
+.welcome-hint {
+  max-width: 22rem;
+  text-align: center;
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;

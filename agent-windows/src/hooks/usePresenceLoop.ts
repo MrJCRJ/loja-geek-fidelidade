@@ -39,7 +39,21 @@ type Args = {
   setElapsed: (v: number) => void;
   setAbsentLeft: (v: number | null) => void;
   setStatus: (v: string) => void;
+  setBalanceSeconds: (v: number | null) => void;
+  setLowBalanceWarn: (v: boolean) => void;
+  setBillingPaused: (v: boolean) => void;
+  onLowBalanceWarn?: (balanceSeconds: number) => void;
 };
+
+/** Motivos em que outra pessoa está na cadeira — countdown imediato (T1/T19). */
+function isStrangerReason(reason?: string) {
+  return (
+    reason === "other_vip" ||
+    reason === "unknown" ||
+    reason === "ambiguous" ||
+    reason === "face_too_far"
+  );
+}
 
 export function usePresenceLoop({
   phase,
@@ -62,8 +76,19 @@ export function usePresenceLoop({
   setElapsed,
   setAbsentLeft,
   setStatus,
+  setBalanceSeconds,
+  setLowBalanceWarn,
+  setBillingPaused,
+  onLowBalanceWarn,
 }: Args) {
   const presenceTimerRef = useRef<number | null>(null);
+  const warnedLowRef = useRef(false);
+  const onLowBalanceWarnRef = useRef(onLowBalanceWarn);
+  onLowBalanceWarnRef.current = onLowBalanceWarn;
+
+  useEffect(() => {
+    warnedLowRef.current = false;
+  }, [session?.id]);
 
   useEffect(() => {
     if (phase !== "unlocked" || !config?.stationToken) return;
@@ -77,6 +102,20 @@ export function usePresenceLoop({
     let cancelled = false;
     let lastHb = 0;
 
+    const markAbsent = (immediate: boolean) => {
+      if (immediate) {
+        presenceMissStreakRef.current = 3;
+        if (absentSinceRef.current == null) {
+          absentSinceRef.current = Date.now();
+        }
+        return;
+      }
+      presenceMissStreakRef.current += 1;
+      if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
+        absentSinceRef.current = Date.now();
+      }
+    };
+
     const tick = async () => {
       if (cancelled) return;
       const cfg = configRef.current;
@@ -84,11 +123,27 @@ export function usePresenceLoop({
       if (!cfg) return;
 
       const now = Date.now();
+      const pauseBilling = absentSinceRef.current != null;
+      setBillingPaused(pauseBilling);
+
       if (sess && now - lastHb >= SESSION_HB_MS) {
         lastHb = now;
         try {
-          const hb = await sessionHeartbeat(cfg, sess.id);
+          const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling });
           setSession(hb.session);
+          const bal =
+            typeof hb.timeBalanceSeconds === "number"
+              ? hb.timeBalanceSeconds
+              : typeof hb.session?.time_balance_seconds === "number"
+                ? hb.session.time_balance_seconds
+                : null;
+          if (bal != null) setBalanceSeconds(bal);
+          const low = Boolean(hb.lowBalanceWarn) || (bal != null && bal > 0 && bal <= 300);
+          setLowBalanceWarn(low);
+          if (low && bal != null && !warnedLowRef.current) {
+            warnedLowRef.current = true;
+            onLowBalanceWarnRef.current?.(bal);
+          }
           if (hb.timeDepleted || hb.session?.time_depleted) {
             await doEndSession("no_credit");
             return;
@@ -102,10 +157,7 @@ export function usePresenceLoop({
       const limitMs = limitSec * 1000;
 
       if (!videoRef.current || videoRef.current.readyState < 2) {
-        presenceMissStreakRef.current += 1;
-        if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-          absentSinceRef.current = Date.now();
-        }
+        markAbsent(false);
       } else {
         try {
           const imageBase64 = captureFrame(videoRef.current, 0.85);
@@ -118,6 +170,7 @@ export function usePresenceLoop({
             handoffStreakRef.current = null;
             absentSinceRef.current = null;
             setAbsentLeft(null);
+            setBillingPaused(false);
           } else {
             const otherId = res.bestCustomerId || null;
             const otherScore = res.bestScore ?? 0;
@@ -156,6 +209,7 @@ export function usePresenceLoop({
                   handoffStreakRef.current = null;
                   absentSinceRef.current = null;
                   setAbsentLeft(null);
+                  setBillingPaused(false);
                   setStatus(`Sessão: ${started.session.customer_name || "VIP"}`);
                   playUnlockChime();
                 } catch (err) {
@@ -164,33 +218,28 @@ export function usePresenceLoop({
                   if (mapped.reason === "no_credit") {
                     setStatus("Outro VIP sem crédito — aguardando ausência");
                   }
-                  presenceMissStreakRef.current += 1;
-                  if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-                    absentSinceRef.current = Date.now();
-                  }
+                  markAbsent(true);
                 } finally {
                   handoffBusyRef.current = false;
                 }
+              } else {
+                // Outro VIP detectado: inicia countdown sem esperar 3 misses (T19).
+                markAbsent(true);
               }
             } else {
               handoffStreakRef.current = null;
-              presenceMissStreakRef.current += 1;
-              if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-                absentSinceRef.current = Date.now();
-              }
+              markAbsent(isStrangerReason(res.reason));
             }
           }
         } catch {
-          presenceMissStreakRef.current += 1;
-          if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
-            absentSinceRef.current = Date.now();
-          }
+          markAbsent(false);
         }
       }
 
       if (absentSinceRef.current != null) {
         const left = Math.ceil((limitMs - (Date.now() - absentSinceRef.current)) / 1000);
         setAbsentLeft(Math.max(0, left));
+        setBillingPaused(true);
         if (left <= 0) {
           await doEndSession("absent");
           return;
@@ -236,5 +285,8 @@ export function usePresenceLoop({
     setElapsed,
     setAbsentLeft,
     setStatus,
+    setBalanceSeconds,
+    setLowBalanceWarn,
+    setBillingPaused,
   ]);
 }

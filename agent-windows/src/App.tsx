@@ -13,7 +13,7 @@ import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
 import { OfflineScreen } from "./OfflineScreen";
 import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
-import { scanVisualFromReason, type Phase, type RemoteBanner } from "./kiosk-helpers";
+import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, DEFAULT_STAFF_UNLOCK_MAX_SEC } from "./kiosk-helpers";
 import { useRecognizeLoop } from "./hooks/useRecognizeLoop";
 import { usePresenceLoop } from "./hooks/usePresenceLoop";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
@@ -30,6 +30,9 @@ export default function App() {
   const [score, setScore] = useState<number | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [absentLeft, setAbsentLeft] = useState<number | null>(null);
+  const [balanceSeconds, setBalanceSeconds] = useState<number | null>(null);
+  const [lowBalanceWarn, setLowBalanceWarn] = useState(false);
+  const [billingPaused, setBillingPaused] = useState(false);
   const [pin, setPin] = useState("");
   const [pinMode, setPinMode] = useState<"unlock" | "quit" | null>(null);
   const [error, setError] = useState("");
@@ -50,6 +53,11 @@ export default function App() {
   const sessionStartedAtRef = useRef<number | null>(null);
   const absentLeftRef = useRef<number | null>(null);
   const stationWsRef = useRef<StationSocket | null>(null);
+  const sessionSafetyRef = useRef({
+    lowBalanceWarnSeconds: 300,
+    staffUnlockMaxSeconds: DEFAULT_STAFF_UNLOCK_MAX_SEC,
+    presenceMinFaceRatio: 0.12,
+  });
 
   useEffect(() => {
     absentLeftRef.current = absentLeft;
@@ -116,6 +124,13 @@ export default function App() {
     setPhase("unlocked");
     setStatus("Sessão ativa");
     setWelcomeCustomer(null);
+    // T7 — apps do Windows ficam logados; aviso curto no HUD overlay
+    setRemoteBanner({
+      title: "Sessão liberada",
+      text: "Ao sair, faça logout do Steam/Discord se não for sua conta. Ausência trava o PC.",
+      level: "info",
+      until: Date.now() + 10_000,
+    });
   }, []);
 
   // Reanexa stream ao <video> após trocar locked ↔ unlocked (remount)
@@ -147,6 +162,9 @@ export default function App() {
       setCustomer(null);
       setScore(null);
       setAbsentLeft(null);
+      setBalanceSeconds(null);
+      setLowBalanceWarn(false);
+      setBillingPaused(false);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
       handoffStreakRef.current = null;
@@ -221,14 +239,27 @@ export default function App() {
   // Heartbeat da estação
   useEffect(() => {
     if (!config?.stationToken) return;
-    const t = setInterval(() => {
-      heartbeat(config).catch(() => {
-        if (phaseRef.current !== "unlocked") {
-          setPhase("offline");
-          setStatus("Perdeu conexão com o servidor");
-        }
-      });
-    }, 8000);
+    const tick = () => {
+      heartbeat(config)
+        .then((res) => {
+          if (res.sessionSafety) {
+            sessionSafetyRef.current = {
+              lowBalanceWarnSeconds: res.sessionSafety.lowBalanceWarnSeconds || 300,
+              staffUnlockMaxSeconds:
+                res.sessionSafety.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC,
+              presenceMinFaceRatio: res.sessionSafety.presenceMinFaceRatio || 0.12,
+            };
+          }
+        })
+        .catch(() => {
+          if (phaseRef.current !== "unlocked") {
+            setPhase("offline");
+            setStatus("Perdeu conexão com o servidor");
+          }
+        });
+    };
+    tick();
+    const t = setInterval(tick, 8000);
     return () => clearInterval(t);
   }, [config]);
 
@@ -267,6 +298,15 @@ export default function App() {
         return;
       }
       if (command === "lock_screen" || command === "end_session") {
+        setRemoteBanner({
+          title: command === "end_session" ? "Sessão encerrada" : "PC travado",
+          text:
+            command === "end_session"
+              ? "A loja encerrou esta sessão pelo GeekCentral — não foi falta de horas."
+              : "A loja pediu para travar este PC.",
+          level: "warn",
+          until: Date.now() + 12_000,
+        });
         const lockFn = (window as unknown as { __geeklockRequestLock?: () => void }).__geeklockRequestLock;
         lockFn?.();
         return;
@@ -281,12 +321,30 @@ export default function App() {
 
     const sock = new StationSocket(config.serverUrl, config.stationToken, {
       onCommand: handleCommand,
+      onOpen: () => {
+        if (phaseRef.current === "offline") {
+          setRemoteBanner({
+            title: "Conexão restaurada",
+            text: "Link com o GeekCentral voltou. Se a sessão travar de novo, avise o balcão.",
+            level: "info",
+            until: Date.now() + 8_000,
+          });
+        }
+      },
       onClose: () => {
         reportTelemetry(config.serverUrl, config.stationToken, {
           level: "warn",
           kind: "ws.close",
           message: "WebSocket da estação fechou",
         });
+        if (phaseRef.current === "unlocked") {
+          setRemoteBanner({
+            title: "Sem link com a central",
+            text: "Rede oscilando — o saldo não deve consumir em lote; aguarde ou chame o balcão.",
+            level: "warn",
+            until: Date.now() + 10_000,
+          });
+        }
       },
     });
     stationWsRef.current = sock;
@@ -318,12 +376,15 @@ export default function App() {
         elapsed: isAdmin ? 0 : elapsed,
         present: isAdmin ? true : absentLeftRef.current == null,
         absentLeft: isAdmin ? null : absentLeftRef.current,
+        balanceSeconds: isAdmin ? null : balanceSeconds,
+        lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
+        billingPaused: isAdmin ? false : billingPaused,
       });
     };
     push();
     const t = window.setInterval(push, 1000);
     return () => clearInterval(t);
-  }, [phase, elapsed, absentLeft, customer?.name, customer?.id]);
+  }, [phase, elapsed, absentLeft, balanceSeconds, lowBalanceWarn, billingPaused, customer?.name, customer?.id]);
 
   // Timer local 1s — fonte do display (não depende de heartbeat)
   useEffect(() => {
@@ -356,12 +417,15 @@ export default function App() {
         elapsed: isAdmin ? 0 : elapsed,
         present: isAdmin ? true : absentLeftRef.current == null,
         absentLeft: isAdmin ? null : absentLeftRef.current,
+        balanceSeconds: isAdmin ? null : balanceSeconds,
+        lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
+        billingPaused: isAdmin ? false : billingPaused,
       });
     };
     pushTray();
     const t = window.setInterval(pushTray, 1000);
     return () => clearInterval(t);
-  }, [phase, elapsed, absentLeft, customer?.name, customer?.id]);
+  }, [phase, elapsed, absentLeft, balanceSeconds, lowBalanceWarn, billingPaused, customer?.name, customer?.id]);
 
   // Tray + lock sync + comandos remotos
   useEffect(() => {
@@ -390,7 +454,7 @@ export default function App() {
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus("Modo Admin — liberado sem limite");
+      setStatus("Modo Admin — auto-trava em alguns minutos");
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
@@ -457,6 +521,15 @@ export default function App() {
     setElapsed,
   });
 
+  const showLowBalanceBanner = useCallback((bal: number) => {
+    setRemoteBanner({
+      title: "Saldo acabando",
+      text: `Restam cerca de ${formatBalanceShort(bal)}. Recarregue no caixa ou no site.`,
+      level: "warn",
+      until: Date.now() + 20_000,
+    });
+  }, []);
+
   usePresenceLoop({
     phase,
     config,
@@ -478,7 +551,34 @@ export default function App() {
     setElapsed,
     setAbsentLeft,
     setStatus,
+    setBalanceSeconds,
+    setLowBalanceWarn,
+    setBillingPaused,
+    onLowBalanceWarn: showLowBalanceBanner,
   });
+
+  // T6 — modo staff não fica aberto para sempre
+  useEffect(() => {
+    if (phase !== "unlocked" || customer?.id !== "staff") return;
+    const started = sessionStartedAtRef.current || Date.now();
+    const tick = () => {
+      const maxSec = sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC;
+      const left = maxSec - Math.floor((Date.now() - started) / 1000);
+      if (left <= 0) {
+        sessionStartedAtRef.current = null;
+        setCustomer(null);
+        setStatus("Admin auto-travado");
+        lockUi().catch(() => undefined);
+        return;
+      }
+      if (left <= 60) {
+        setStatus(`Admin — trava em ${left}s`);
+      }
+    };
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [phase, customer?.id, lockUi]);
 
   const submitPin = async () => {
     setError("");
@@ -499,7 +599,7 @@ export default function App() {
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus("Modo Admin — liberado sem limite");
+      setStatus("Modo Admin — auto-trava em alguns minutos");
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;

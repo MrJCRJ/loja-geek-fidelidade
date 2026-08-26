@@ -1,10 +1,11 @@
 /**
  * Mini-HUD de sessão — canto, bem transparente; legível no hover.
+ * Mostra saldo restante, aviso de fim e pausa de cobrança (ausência).
  */
 const { BrowserWindow, screen } = require("electron");
 
-const HUD_W = 260;
-const HUD_H = 48;
+const HUD_W = 300;
+const HUD_H = 52;
 
 class SessionHud {
   constructor() {
@@ -52,8 +53,8 @@ class SessionHud {
     height: 100%;
     display: flex;
     align-items: center;
-    gap: 0.55rem;
-    padding: 0 0.75rem;
+    gap: 0.45rem;
+    padding: 0 0.7rem;
     border-radius: 10px;
     background: rgba(15, 17, 21, 0.28);
     border: 1px solid rgba(42, 51, 68, 0.35);
@@ -63,34 +64,42 @@ class SessionHud {
     opacity: 0.55;
     transition: opacity 0.25s ease, background 0.25s ease, border-color 0.25s ease;
   }
-  #bar.peek {
-    opacity: 0.92;
-    background: rgba(15, 17, 21, 0.88);
+  #bar.peek, #bar.alert {
+    opacity: 0.94;
+    background: rgba(15, 17, 21, 0.9);
     border-color: rgba(42, 51, 68, 0.85);
   }
+  #bar.alert { border-color: rgba(245, 185, 66, 0.85); }
   #dot {
     width: 8px; height: 8px; border-radius: 50%;
     background: #2dd4bf; flex-shrink: 0;
   }
   #dot.warn { background: #f5b942; }
+  #dot.danger { background: #f87171; }
   #name {
-    max-width: 88px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     color: #e8ecf4;
   }
   #time {
     font-variant-numeric: tabular-nums;
     color: #2dd4bf;
-    font-size: 13px;
+    font-size: 12px;
     margin-left: auto;
     flex-shrink: 0;
   }
+  #time.warn { color: #f5b942; }
   #state {
     font-size: 11px;
     font-weight: 500;
     color: #9aa3b5;
     flex-shrink: 0;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   #state.warn { color: #f5b942; }
+  #state.danger { color: #f87171; }
 </style>
 </head>
 <body>
@@ -115,23 +124,46 @@ class SessionHud {
     }
     bar.addEventListener("mouseenter", function () { setPeek(true); });
     bar.addEventListener("mouseleave", function () { setPeek(false); });
+    function fmtBal(sec) {
+      if (sec == null || !isFinite(sec)) return null;
+      var s = Math.max(0, Math.floor(sec));
+      var m = Math.floor(s / 60);
+      var r = s % 60;
+      if (m >= 60) return Math.floor(m / 60) + "h " + (m % 60) + "m";
+      return m + "m " + String(r).padStart(2, "0") + "s";
+    }
     window.__setHud = function (p) {
       var name = (p && p.name) || "VIP";
-      var time = (p && p.time) || "0m 00s";
       var present = !p || p.present !== false;
       var absent = p && p.absentLeft != null ? p.absentLeft : null;
+      var bal = p && p.balanceSeconds != null ? p.balanceSeconds : null;
+      var low = !!(p && p.lowBalanceWarn);
+      var paused = !!(p && p.billingPaused);
       document.getElementById("name").textContent = name;
-      document.getElementById("time").textContent = time;
+      var timeEl = document.getElementById("time");
+      var balTxt = fmtBal(bal);
+      timeEl.textContent = balTxt != null ? "resta " + balTxt : (p && p.time) || "0m 00s";
+      timeEl.className = low ? "warn" : "";
       var state = document.getElementById("state");
       var dot = document.getElementById("dot");
-      if (present) {
+      bar.classList.toggle("alert", low || !present || paused);
+      if (!present) {
+        state.textContent = "Ausente " + (absent != null ? absent + "s" : "…") + (paused ? " · pausa" : "");
+        state.className = "warn";
+        dot.className = "warn";
+      } else if (low) {
+        state.textContent = "Saldo baixo";
+        state.className = "danger";
+        dot.className = "danger";
+        setPeek(true);
+      } else if (paused) {
+        state.textContent = "Crédito pausado";
+        state.className = "warn";
+        dot.className = "warn";
+      } else {
         state.textContent = "Presente";
         state.className = "";
         dot.className = "";
-      } else {
-        state.textContent = "Ausente " + (absent != null ? absent + "s" : "…");
-        state.className = "warn";
-        dot.className = "warn";
       }
     };
   </script>
@@ -163,7 +195,7 @@ class SessionHud {
   }
 
   /**
-   * @param {{ name?: string, elapsed?: number, present?: boolean, absentLeft?: number | null }} payload
+   * @param {{ name?: string, elapsed?: number, present?: boolean, absentLeft?: number | null, balanceSeconds?: number | null, lowBalanceWarn?: boolean, billingPaused?: boolean }} payload
    */
   update(payload) {
     const win = this.ensure();
@@ -172,6 +204,9 @@ class SessionHud {
       time: this.formatTime(payload?.elapsed),
       present: payload?.present !== false,
       absentLeft: payload?.absentLeft ?? null,
+      balanceSeconds: payload?.balanceSeconds ?? null,
+      lowBalanceWarn: Boolean(payload?.lowBalanceWarn),
+      billingPaused: Boolean(payload?.billingPaused),
     };
     const run = () => {
       if (win.isDestroyed()) return;

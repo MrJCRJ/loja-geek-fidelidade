@@ -92,15 +92,20 @@ function tooltipFromPayload(payload) {
   const elapsed = formatTrayTime(payload?.elapsed);
   const present = payload?.present !== false;
   const absentLeft = payload?.absentLeft;
+  const bal = payload?.balanceSeconds;
+  const balTxt = bal != null ? formatTrayTime(bal) : null;
   const isAdmin = name === "Admin" || payload?.mode === "admin";
 
   if (phase === "offline") return "GeekLock — Sem conexão com o servidor";
   if (phase === "locked" || phase === "boot") return "GeekLock — Aguardando VIP";
   if (phase === "unlocked") {
-    if (isAdmin) return "GeekLock — Admin · liberado (sem limite)";
-    if (present) return `GeekLock — ${name} · ${elapsed} · Presente`;
+    if (isAdmin) return "GeekLock — Admin · auto-trava em alguns minutos";
+    const balPart = balTxt ? ` · resta ${balTxt}` : ` · ${elapsed}`;
+    if (payload?.lowBalanceWarn) return `GeekLock — ${name}${balPart} · SALDO BAIXO`;
+    if (present) return `GeekLock — ${name}${balPart} · Presente`;
     const left = absentLeft != null ? `${absentLeft}s` : "…";
-    return `GeekLock — ${name} · ${elapsed} · Ausente ${left}`;
+    const pause = payload?.billingPaused ? " · crédito pausado" : "";
+    return `GeekLock — ${name}${balPart} · Ausente ${left}${pause}`;
   }
   return "GeekLock VIP";
 }
@@ -216,6 +221,9 @@ function applyTrayUpdate(payload) {
         elapsed: lastTrayPayload.elapsed,
         present,
         absentLeft: lastTrayPayload.absentLeft,
+        balanceSeconds: lastTrayPayload.balanceSeconds,
+        lowBalanceWarn: lastTrayPayload.lowBalanceWarn,
+        billingPaused: lastTrayPayload.billingPaused,
       });
     }
   } else {

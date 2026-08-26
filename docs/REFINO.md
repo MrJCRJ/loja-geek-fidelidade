@@ -65,6 +65,11 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 - [x] Dashboard métricas GeekCentral (`/api/admin/metrics` + aba Dashboard)
 
+## Feito (parte 18)
+
+- [x] Mitigações `teorias-producao.md`: pauseBilling, aviso saldo, face_too_far, staff auto-trava, countdown imediato p/ estranho
+- [x] Continuação: T7/T9/T12–T15/T18–T19/T24–T25 (copy portal, splash saldo, WS banners, delta 45s, absent 60s, score 0.62)
+
 ---
 
 ## Backlog encontrado
@@ -110,4 +115,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Ops loja** (`docs/loja-ready.md`) — túnel, Pix, STRICT_SECRETS, pendrive.
+**Ops loja** (`docs/loja-ready.md`) — túnel, Pix, STRICT_SECRETS, regenerar GeekLock após parte 18.

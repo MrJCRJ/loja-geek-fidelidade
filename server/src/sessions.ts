@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { consumeTime, getTimeBalance } from "./billing.js";
 import { getCustomer } from "./customers.js";
 import { getDb } from "./db.js";
+import { getLowBalanceWarnSeconds } from "./session-safety.js";
 
 export type SessionRow = {
   id: string;
@@ -88,7 +89,11 @@ export function startSession(customerId: string, stationId: string) {
   return enrich(getSession(id)!);
 }
 
-export function heartbeatSession(sessionId: string, stationId: string) {
+export function heartbeatSession(
+  sessionId: string,
+  stationId: string,
+  opts?: { pauseBilling?: boolean },
+) {
   const db = getDb();
   const session = getSession(sessionId);
   if (!session || session.status !== "active") {
@@ -98,10 +103,28 @@ export function heartbeatSession(sessionId: string, stationId: string) {
     throw new Error("Sessão não pertence a esta estação");
   }
 
+  const pauseBilling = Boolean(opts?.pauseBilling);
   const now = Date.now();
-  const last = Date.parse(session.last_seen_at);
-  const deltaSec = Math.max(0, Math.min(120, Math.floor((now - last) / 1000)));
+  const lastMs = Date.parse(session.last_seen_at);
+  const last = Number.isFinite(lastMs) ? lastMs : now;
+  // Cap curto (T12/T24): rede atrasada ou relógio torto não engole minutos de uma vez.
+  const deltaSec = Math.max(0, Math.min(45, Math.floor((now - last) / 1000)));
   const iso = new Date(now).toISOString();
+
+  // Em pausa (VIP ausente): só avança last_seen — evita cobrar o gap da ausência (T10).
+  if (pauseBilling) {
+    db.prepare(`UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?`).run(iso, sessionId);
+    const timeBalance = getTimeBalance(session.customer_id);
+    const warnAt = getLowBalanceWarnSeconds();
+    return {
+      ...enrich(getSession(sessionId)!),
+      time_balance_seconds: timeBalance,
+      time_depleted: false,
+      billing_paused: true,
+      low_balance_warn: timeBalance > 0 && timeBalance <= warnAt,
+      low_balance_warn_seconds: warnAt,
+    };
+  }
 
   db.prepare(
     `UPDATE machine_sessions SET last_seen_at = ?, seconds_total = seconds_total + ? WHERE id = ?`,
@@ -118,10 +141,14 @@ export function heartbeatSession(sessionId: string, stationId: string) {
     timeDepleted = result.depleted;
   }
 
+  const warnAt = getLowBalanceWarnSeconds();
   return {
     ...enrich(getSession(sessionId)!),
     time_balance_seconds: timeBalance,
     time_depleted: timeDepleted,
+    billing_paused: false,
+    low_balance_warn: !timeDepleted && timeBalance > 0 && timeBalance <= warnAt,
+    low_balance_warn_seconds: warnAt,
   };
 }
 
@@ -133,7 +160,7 @@ export function endSession(sessionId: string, _reason = "end") {
 
   const now = Date.now();
   const last = Date.parse(session.last_seen_at);
-  const deltaSec = Math.max(0, Math.min(120, Math.floor((now - last) / 1000)));
+  const deltaSec = Math.max(0, Math.min(45, Math.floor((now - last) / 1000)));
   const iso = new Date(now).toISOString();
 
   db.prepare(

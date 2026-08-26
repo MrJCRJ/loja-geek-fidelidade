@@ -17,6 +17,9 @@ export type StationStatusPayload = {
   elapsed?: number;
   present?: boolean;
   absentLeft?: number | null;
+  balanceSeconds?: number | null;
+  lowBalanceWarn?: boolean;
+  billingPaused?: boolean;
 };
 
 type Handlers = {

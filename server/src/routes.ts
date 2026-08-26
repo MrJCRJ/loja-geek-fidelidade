@@ -37,6 +37,12 @@ import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
 import { rateLimit, verifyAdminPassword } from "./security.js";
 import { buildDiagnostics, listTelemetryEvents, logEvent } from "./telemetry.js";
 import { buildBusinessMetrics } from "./metrics.js";
+import {
+  sessionSafetySettingsPayload,
+  setLowBalanceWarnSeconds,
+  setPresenceMinFaceRatio,
+  setStaffUnlockMaxSeconds,
+} from "./session-safety.js";
 
 setStationOfflineHook((stationId, stationName) => {
   logEvent({
@@ -64,6 +70,7 @@ function settingsPayload() {
     recognitionEventsKeepDays: getRecognitionRetentionDays(),
     publicApiUrl: getPublicApiUrl(),
     peerCentrals: listPeerCentrals(),
+    ...sessionSafetySettingsPayload(),
   };
 }
 
@@ -130,6 +137,9 @@ export async function registerRoutes(app: FastifyInstance) {
           )
           .max(12)
           .optional(),
+        lowBalanceWarnSeconds: z.number().min(60).max(3600).optional(),
+        staffUnlockMaxSeconds: z.number().min(60).max(7200).optional(),
+        presenceMinFaceRatio: z.number().min(0.06).max(0.4).optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -166,6 +176,15 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     if (body.peerCentrals !== undefined) {
       setPeerCentrals(body.peerCentrals as PeerCentral[]);
+    }
+    if (body.lowBalanceWarnSeconds !== undefined) {
+      setLowBalanceWarnSeconds(body.lowBalanceWarnSeconds);
+    }
+    if (body.staffUnlockMaxSeconds !== undefined) {
+      setStaffUnlockMaxSeconds(body.staffUnlockMaxSeconds);
+    }
+    if (body.presenceMinFaceRatio !== undefined) {
+      setPresenceMinFaceRatio(body.presenceMinFaceRatio);
     }
     return settingsPayload();
   });

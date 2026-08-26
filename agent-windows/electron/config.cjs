@@ -7,7 +7,7 @@ const DEFAULTS = {
   stationName: "",
   sharedSecret: "",
   staffPin: "2580",
-  absentSecondsToLock: 90,
+  absentSecondsToLock: 60,
   stationToken: "",
   setupComplete: false,
   openAtLogin: true,
