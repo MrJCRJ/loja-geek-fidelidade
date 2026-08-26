@@ -32,11 +32,11 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | # | Item | Status |
 |---|------|--------|
 | B1 | Checkout portal em **live** (não demo) | `[ ]` |
-| B2 | Pacotes de horas editáveis no GeekCentral (sem mexer código) | `[ ]` |
+| B2 | Pacotes de horas editáveis no GeekCentral (sem mexer código) | `[x]` |
 | B3 | Compra por hora **ou** por R$ + personalizado | `[x]` → detalhe em UX U2 |
-| B4 | Assinatura: deixar claro que é **desconto**, não ilimitado | `[~]` copy no portal |
+| B4 | Assinatura: deixar claro que é **desconto**, não ilimitado | `[x]` |
 | B5 | Recibo / comprovante simples após Pix (e-mail ou PDF) | `[ ]` |
-| B6 | Relatório de faturamento no Central (dia / semana / mês) | `[~]` métricas existem; falta visão “caixa” |
+| B6 | Relatório de faturamento no Central (dia / semana / mês) | `[x]` |
 | B7 | Avaliar Asaas/Pagar.me só se taxa do MP doer | `[ ]` |
 | B8 | Promo sazonal (ex. 2h pelo preço de 1,5h) | `[ ]` |
 
@@ -54,7 +54,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | C6 | Export LGPD / revogar face sem apagar conta | `[x]` |
 | C7 | Mensagem remota rica para estações | `[x]` |
 | C8 | Multi-Central (várias lojas no mesmo portal) | `[x]` base |
-| C9 | Caixa no balcão: vender horas sem portal (atalho rápido) | `[~]` existe fluxo; pode ficar mais “PDV” |
+| C9 | Caixa no balcão: vender horas sem portal (atalho rápido) | `[x]` |
 | C10 | Impressão / compartilhar token de estação (QR) | `[x]` |
 | C11 | Alertas: face-service caiu, estação offline, disco cheio | `[~]` Saúde + telemetria |
 | C12 | Atualização do Central sem reinstalar pasta toda | `[ ]` electron-updater |
@@ -94,7 +94,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | E8 | WhatsApp automático (saldo / Pix / PC livre) | `[ ]` |
 | E9 | Cadastro facial: mais dicas de luz / ângulo | `[~]` |
 | E10 | Avaliação Google pós-compra | `[x]` CTA |
-| E11 | Página “como funciona a lan” (FAQ curto) | `[ ]` |
+| E11 | Página “como funciona a lan” (FAQ curto) | `[x]` |
 | E12 | Idioma / acessibilidade básica (contraste, focus) | `[~]` |
 
 ---
@@ -162,7 +162,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 
 1. **Ops A1–A6** — túnel, Pix, secrets, regenerar apps  
 2. ~~**U1 + U2** — histórico 15 + compra hora/R$~~ **feito** ([`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md))  
-3. **B6 / C9** — caixa e faturamento claros no Central  
+3. ~~**B6 / C9** — caixa e faturamento claros no Central~~ **feito**  
 4. **D5 / C12** — atualizar apps sem pendrive  
 5. **H4 / H6** — erros visíveis + backup contínuo  
 6. **E7 / E8** — push e WhatsApp  

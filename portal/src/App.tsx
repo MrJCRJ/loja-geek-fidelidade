@@ -11,6 +11,7 @@ import EnrollPage from "./pages/EnrollPage";
 import AccountPage from "./pages/AccountPage";
 import CheckoutReturnPage from "./pages/CheckoutReturnPage";
 import TermsPage from "./pages/TermsPage";
+import FaqPage from "./pages/FaqPage";
 
 function Private({ children }: { children: ReactNode }) {
   if (!getToken()) return <Navigate to="/login" replace />;
@@ -37,6 +38,7 @@ export default function App() {
         <Route path="/forgot" element={<ForgotPage />} />
         <Route path="/reset" element={<ResetPage />} />
         <Route path="/termos" element={<TermsPage />} />
+        <Route path="/como-funciona" element={<FaqPage />} />
         <Route
           path="/dashboard"
           element={

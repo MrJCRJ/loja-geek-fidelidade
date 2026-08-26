@@ -157,6 +157,28 @@ export function buildBusinessMetrics() {
   const weekSales = weekDays.reduce((a, d) => a + d.salesReais, 0);
   const weekSessions = weekDays.reduce((a, d) => a + d.sessions, 0);
 
+  const monthSince = daysAgoIso(29);
+  const monthSalesBalcao = sumSince(
+    `SELECT COALESCE(SUM(amount_reais), 0) AS s FROM time_ledger
+     WHERE created_at >= ? AND reason = 'sale' AND amount_reais > 0`,
+    monthSince,
+  );
+  const monthPortalPaid = sumSince(
+    `SELECT COALESCE(SUM(amount_reais), 0) AS s FROM web_orders
+     WHERE paid_at >= ? AND status IN ('paid', 'demo_ok')`,
+    monthSince,
+  );
+  const monthPortalOrders = countSince(
+    `SELECT COUNT(*) AS c FROM web_orders
+     WHERE paid_at >= ? AND status IN ('paid', 'demo_ok')`,
+    monthSince,
+  );
+  const weekPortalPaid = sumSince(
+    `SELECT COALESCE(SUM(amount_reais), 0) AS s FROM web_orders
+     WHERE paid_at >= ? AND status IN ('paid', 'demo_ok')`,
+    weekSince,
+  );
+
   return {
     generatedAt: new Date().toISOString(),
     unit,
@@ -172,6 +194,7 @@ export function buildBusinessMetrics() {
       salesReais: Math.round(salesReaisToday * 100) / 100,
       portalPaidReais: Math.round(portalPaidToday * 100) / 100,
       portalOrdersPaid: portalOrdersToday,
+      totalRevenueReais: Math.round((salesReaisToday + portalPaidToday) * 100) / 100,
     },
     week: {
       since: weekSince,
@@ -179,7 +202,16 @@ export function buildBusinessMetrics() {
       secondsUsed: weekSeconds,
       hoursUsed: Math.round((weekSeconds / 3600) * 100) / 100,
       salesReais: Math.round(weekSales * 100) / 100,
+      portalPaidReais: Math.round(weekPortalPaid * 100) / 100,
+      totalRevenueReais: Math.round((weekSales + weekPortalPaid) * 100) / 100,
       days: weekDays,
+    },
+    month: {
+      since: monthSince,
+      salesReais: Math.round(monthSalesBalcao * 100) / 100,
+      portalPaidReais: Math.round(monthPortalPaid * 100) / 100,
+      portalOrdersPaid: monthPortalOrders,
+      totalRevenueReais: Math.round((monthSalesBalcao + monthPortalPaid) * 100) / 100,
     },
     inventory: {
       customers,

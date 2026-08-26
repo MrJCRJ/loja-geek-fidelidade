@@ -3,6 +3,7 @@ import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
 import { buildCentralsCatalog } from "./centrals.js";
 import { config } from "./config.js";
 import { MAX_FACE_SAMPLES } from "./customer-auth.js";
+import { getHourPacks } from "./hour-packs.js";
 import { mercadopagoEnabled } from "./payments.js";
 
 export function buildPortalCatalog() {
@@ -14,11 +15,7 @@ export function buildPortalCatalog() {
     baseHourPrice: getHourPriceReais(),
     subscriberDiscountPct: getSubscriberDiscountPct(),
     subscriptionMonthlyPrice: config.subscriptionMonthlyPrice,
-    hourPacks: [
-      { amountReais: 10, label: "1 hora" },
-      { amountReais: 20, label: "2 horas" },
-      { amountReais: 50, label: "5 horas" },
-    ],
+    hourPacks: getHourPacks(),
     maxFaceSamples: MAX_FACE_SAMPLES,
     checkoutEnabled: mode !== "off",
     checkoutMode: mode,

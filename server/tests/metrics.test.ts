@@ -27,6 +27,10 @@ describe("Dashboard métricas", () => {
     expect(body.week.days).toHaveLength(7);
     expect(typeof body.today.sessions).toBe("number");
     expect(body.unit.unitId).toBeTruthy();
+    expect(body.month).toBeTruthy();
+    expect(typeof (body as { month: { totalRevenueReais: number } }).month.totalRevenueReais).toBe(
+      "number",
+    );
     await app.close();
   });
 });

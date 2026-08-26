@@ -190,6 +190,73 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
               setSettings({ ...settings, subscriberHourDiscountPct: Number(e.target.value) })
             }
           />
+          <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+            Assinatura = desconto na tarifa — o cliente ainda precisa de saldo de horas.
+          </p>
+        </div>
+        <div className="field">
+          <label>Pacotes do portal (atalhos)</label>
+          <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+            Aparecem no site e como atalho no caixa. Valor em R$; o label é livre (ex. “2 horas”).
+          </p>
+          {(settings.hourPacks || []).map((pack, idx) => (
+            <div className="row" key={idx} style={{ alignItems: "flex-end", gap: 8, marginBottom: 8 }}>
+              <div className="field" style={{ flex: 1, margin: 0 }}>
+                <label>Label</label>
+                <input
+                  value={pack.label}
+                  onChange={(e) => {
+                    const hourPacks = [...settings.hourPacks];
+                    hourPacks[idx] = { ...hourPacks[idx], label: e.target.value };
+                    setSettings({ ...settings, hourPacks });
+                  }}
+                />
+              </div>
+              <div className="field" style={{ width: 110, margin: 0 }}>
+                <label>R$</label>
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={pack.amountReais}
+                  onChange={(e) => {
+                    const hourPacks = [...settings.hourPacks];
+                    hourPacks[idx] = {
+                      ...hourPacks[idx],
+                      amountReais: Number(e.target.value) || 0,
+                    };
+                    setSettings({ ...settings, hourPacks });
+                  }}
+                />
+              </div>
+              <button
+                className="btn ghost"
+                type="button"
+                disabled={(settings.hourPacks || []).length <= 1}
+                onClick={() =>
+                  setSettings({
+                    ...settings,
+                    hourPacks: settings.hourPacks.filter((_, i) => i !== idx),
+                  })
+                }
+              >
+                Remover
+              </button>
+            </div>
+          ))}
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={(settings.hourPacks || []).length >= 12}
+            onClick={() =>
+              setSettings({
+                ...settings,
+                hourPacks: [...settings.hourPacks, { amountReais: 30, label: "R$ 30" }],
+              })
+            }
+          >
+            + Pacote
+          </button>
         </div>
         <button
           className="btn"

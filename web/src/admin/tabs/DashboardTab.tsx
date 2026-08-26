@@ -16,12 +16,21 @@ type Metrics = {
     salesReais: number;
     portalPaidReais: number;
     portalOrdersPaid: number;
+    totalRevenueReais?: number;
   };
   week: {
     hoursUsed: number;
     sessions: number;
     salesReais: number;
+    portalPaidReais?: number;
+    totalRevenueReais?: number;
     days: Array<{ day: string; sessions: number; seconds: number; salesReais: number; matches: number }>;
+  };
+  month?: {
+    salesReais: number;
+    portalPaidReais: number;
+    portalOrdersPaid: number;
+    totalRevenueReais: number;
   };
   inventory: {
     customers: number;
@@ -133,6 +142,29 @@ export function DashboardTab({ onError }: Props) {
               <p className="metric-label">Portal (pago) hoje</p>
               <p className="metric-value">{money(metrics.today.portalPaidReais)}</p>
               <p className="muted">{metrics.today.portalOrdersPaid} pedidos</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">Faturamento hoje</p>
+              <p className="metric-value">
+                {money(metrics.today.totalRevenueReais ?? metrics.today.salesReais + metrics.today.portalPaidReais)}
+              </p>
+              <p className="muted">
+                Semana:{" "}
+                {money(
+                  metrics.week.totalRevenueReais ??
+                    metrics.week.salesReais + (metrics.week.portalPaidReais || 0),
+                )}
+              </p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">Faturamento 30 dias</p>
+              <p className="metric-value">
+                {money(metrics.month?.totalRevenueReais ?? 0)}
+              </p>
+              <p className="muted">
+                Balcão {money(metrics.month?.salesReais ?? 0)} · Portal{" "}
+                {money(metrics.month?.portalPaidReais ?? 0)}
+              </p>
             </article>
             <article className="metric-card">
               <p className="metric-label">Reconhecimentos</p>

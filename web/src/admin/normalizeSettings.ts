@@ -5,6 +5,11 @@ const DEFAULTS: AdminSettings = {
   pointsPerReal: 1,
   hourPriceReais: 10,
   subscriberHourDiscountPct: 20,
+  hourPacks: [
+    { amountReais: 10, label: "R$ 10" },
+    { amountReais: 20, label: "R$ 20" },
+    { amountReais: 50, label: "R$ 50" },
+  ],
   unitName: "Unidade 1",
   unitId: "unit-1",
   backupAutoEnabled: true,
@@ -25,6 +30,8 @@ export function normalizeAdminSettings(s: Partial<AdminSettings> | null | undefi
     pointsPerReal: s?.pointsPerReal ?? DEFAULTS.pointsPerReal,
     hourPriceReais: s?.hourPriceReais ?? DEFAULTS.hourPriceReais,
     subscriberHourDiscountPct: s?.subscriberHourDiscountPct ?? DEFAULTS.subscriberHourDiscountPct,
+    hourPacks:
+      Array.isArray(s?.hourPacks) && s.hourPacks.length > 0 ? s.hourPacks : DEFAULTS.hourPacks,
     unitName: s?.unitName || DEFAULTS.unitName,
     unitId: s?.unitId || DEFAULTS.unitId,
     backupAutoEnabled: s?.backupAutoEnabled !== false,

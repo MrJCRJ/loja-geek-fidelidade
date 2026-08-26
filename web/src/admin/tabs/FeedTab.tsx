@@ -45,26 +45,37 @@ export function FeedTab({ live, events }: { live: LiveFeedItem[]; events: Recogn
               Mostrando os {Math.min(histShown, events.length)} mais recentes
               {events.length > PAGE ? ` (de ${events.length})` : ""}
             </p>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Quando</th>
-                  <th>Cliente</th>
-                  <th>Estação</th>
-                  <th>Score</th>
-                </tr>
-              </thead>
-              <tbody>
-                {histVisible.map((e) => (
-                  <tr key={e.id}>
-                    <td>{new Date(e.created_at).toLocaleString("pt-BR")}</td>
-                    <td>{e.customer_name || "—"}</td>
-                    <td>{e.station_name || "—"}</td>
-                    <td>{e.status === "matched" ? `${(e.score * 100).toFixed(0)}%` : e.status}</td>
+            <div className="table-scroll">
+              <table className="table table-compact">
+                <thead>
+                  <tr>
+                    <th>
+                      <span className="th-full">Quando</span>
+                      <span className="th-short">Hora</span>
+                    </th>
+                    <th>
+                      <span className="th-full">Cliente</span>
+                      <span className="th-short">VIP</span>
+                    </th>
+                    <th>
+                      <span className="th-full">Estação</span>
+                      <span className="th-short">PC</span>
+                    </th>
+                    <th>Score</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {histVisible.map((e) => (
+                    <tr key={e.id}>
+                      <td>{new Date(e.created_at).toLocaleString("pt-BR")}</td>
+                      <td>{e.customer_name || "—"}</td>
+                      <td>{e.station_name || "—"}</td>
+                      <td>{e.status === "matched" ? `${(e.score * 100).toFixed(0)}%` : e.status}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             {histHasMore ? (
               <button
                 className="btn ghost"

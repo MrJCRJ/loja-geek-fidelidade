@@ -38,6 +38,7 @@ export type AdminSettings = {
   pointsPerReal: number;
   hourPriceReais: number;
   subscriberHourDiscountPct: number;
+  hourPacks: Array<{ amountReais: number; label: string }>;
   unitName: string;
   unitId: string;
   backupAutoEnabled: boolean;

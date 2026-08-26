@@ -278,7 +278,8 @@ export default function LandingPage() {
       </section>
 
       <p className="footer-note">
-        geeks · Celular e Game · Paulo Afonso – BA · <Link to="/termos">Termos e LGPD</Link>
+        geeks · Celular e Game · Paulo Afonso – BA · <Link to="/como-funciona">Como funciona</Link> ·{" "}
+        <Link to="/termos">Termos e LGPD</Link>
       </p>
 
       <div className="sticky-cta" role="navigation" aria-label="Ações rápidas">

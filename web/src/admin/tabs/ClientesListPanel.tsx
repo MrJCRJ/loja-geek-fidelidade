@@ -1,4 +1,4 @@
-import type { FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import type { Customer } from "../../api";
 import { formatHours } from "../format";
 
@@ -20,6 +20,8 @@ type Props = {
   onSelect: (c: Customer) => void;
 };
 
+const PAGE_SIZE = 30;
+
 export function ClientesListPanel({
   customers,
   query,
@@ -29,13 +31,22 @@ export function ClientesListPanel({
   onSubmit,
   onSelect,
 }: Props) {
+  const [page, setPage] = useState(0);
   const q = query.trim().toLowerCase();
-  const filtered = q
-    ? customers.filter((c) => {
-        const hay = `${c.name} ${c.phone || ""} ${c.email || ""} ${c.level}`.toLowerCase();
-        return hay.includes(q);
-      })
-    : customers;
+  const filtered = useMemo(
+    () =>
+      q
+        ? customers.filter((c) => {
+            const hay = `${c.name} ${c.phone || ""} ${c.email || ""} ${c.level}`.toLowerCase();
+            return hay.includes(q);
+          })
+        : customers,
+    [customers, q],
+  );
+
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageRows = filtered.slice(safePage * PAGE_SIZE, safePage * PAGE_SIZE + PAGE_SIZE);
 
   return (
     <section className="panel">
@@ -79,10 +90,23 @@ export function ClientesListPanel({
       <h3 style={{ marginTop: "1.5rem" }}>Lista</h3>
       <div className="field">
         <label>Buscar</label>
-        <input placeholder="Nome, WhatsApp, e-mail…" value={query} onChange={(e) => onQueryChange(e.target.value)} />
+        <input
+          placeholder="Nome, WhatsApp, e-mail…"
+          value={query}
+          onChange={(e) => {
+            onQueryChange(e.target.value);
+            setPage(0);
+          }}
+        />
       </div>
+      <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+        {filtered.length} VIP{filtered.length === 1 ? "" : "s"}
+        {filtered.length > PAGE_SIZE
+          ? ` · página ${safePage + 1}/${pageCount} (${PAGE_SIZE} por página)`
+          : ""}
+      </p>
       <div className="table-scroll">
-        <table className="table">
+        <table className="table table-compact">
           <thead>
             <tr>
               <th>Nome</th>
@@ -93,7 +117,7 @@ export function ClientesListPanel({
             </tr>
           </thead>
           <tbody>
-            {filtered.map((c) => (
+            {pageRows.map((c) => (
               <tr key={c.id} style={{ cursor: "pointer" }} onClick={() => onSelect(c)}>
                 <td>
                   {c.name}
@@ -134,6 +158,26 @@ export function ClientesListPanel({
           </tbody>
         </table>
       </div>
+      {filtered.length > PAGE_SIZE ? (
+        <div className="row" style={{ marginTop: "0.75rem", gap: 8 }}>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={safePage <= 0}
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+          >
+            Anterior
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={safePage >= pageCount - 1}
+            onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+          >
+            Próxima
+          </button>
+        </div>
+      ) : null}
     </section>
   );
 }

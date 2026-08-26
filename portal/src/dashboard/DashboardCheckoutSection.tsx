@@ -283,8 +283,8 @@ export function DashboardCheckoutSection({
           {checkoutEnabled
             ? checkoutDemo
               ? "Demonstração — assinatura via Mercado Pago (sem ativar de verdade)."
-              : `−${me.subscriberDiscountPct}% nas horas · R$ ${subPrice.toFixed(2)}/mês`
-            : "Em breve — assine no balcão ou WhatsApp."}
+              : `Desconto de ${me.subscriberDiscountPct}% na tarifa das horas — não é ilimitado. R$ ${subPrice.toFixed(2)}/mês`
+            : "Em breve — assine no balcão ou WhatsApp. Assinatura = desconto, não horas infinitas."}
         </p>
         <div className="row">
           <button

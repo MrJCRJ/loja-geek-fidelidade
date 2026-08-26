@@ -23,6 +23,7 @@ import {
   setPublicApiUrl,
   type PeerCentral,
 } from "./centrals.js";
+import { getHourPacks, setHourPacks, type HourPack } from "./hour-packs.js";
 import { getSetting, setSetting } from "./customers.js";
 import { getRecognitionRetentionDays, pruneRecognitionEvents, setRecognitionRetentionDays } from "./lgpd.js";
 import { faceHealth } from "./face-client.js";
@@ -62,6 +63,7 @@ function settingsPayload() {
     pointsPerReal: Number(getSetting("points_per_real", String(config.pointsPerReal))),
     hourPriceReais: getHourPriceReais(),
     subscriberHourDiscountPct: getSubscriberDiscountPct(),
+    hourPacks: getHourPacks(),
     unitName: unit.unitName,
     unitId: unit.unitId,
     backupAutoEnabled: backup.enabled,
@@ -140,6 +142,16 @@ export async function registerRoutes(app: FastifyInstance) {
         lowBalanceWarnSeconds: z.number().min(60).max(3600).optional(),
         staffUnlockMaxSeconds: z.number().min(60).max(7200).optional(),
         presenceMinFaceRatio: z.number().min(0.06).max(0.4).optional(),
+        hourPacks: z
+          .array(
+            z.object({
+              amountReais: z.number().min(1).max(5000),
+              label: z.string().min(1).max(40),
+            }),
+          )
+          .min(1)
+          .max(12)
+          .optional(),
       })
       .parse(req.body);
     if (body.faceMatchThreshold !== undefined) {
@@ -185,6 +197,9 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     if (body.presenceMinFaceRatio !== undefined) {
       setPresenceMinFaceRatio(body.presenceMinFaceRatio);
+    }
+    if (body.hourPacks !== undefined) {
+      setHourPacks(body.hourPacks as HourPack[]);
     }
     return settingsPayload();
   });

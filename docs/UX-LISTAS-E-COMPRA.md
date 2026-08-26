@@ -108,11 +108,17 @@ Resumo: “Você vai pagar **R$ 25,00** ≈ **2,1 h** na tarifa de R$ X/h” →
 ### U12 — Clientes: busca já existe; garantir que lista não “explode”
 Se a lista de clientes for muito grande, paginar ou virtualizar (ex. 30 por página). Só se a loja passar de ~100 VIP.
 
+- [x] Feito (2026-08-26) — 30 por página
+
 ### U13 — Empty states já feitos; repetir o padrão
 Qualquer lista nova: se vazia, uma frase + o que fazer (não tela em branco).
 
+- [x] Mantido nos fluxos novos (caixa / FAQ)
+
 ### U14 — Labels curtos no celular do admin
 Já melhorou no responsivo; revisar Feed/Sessões para caber sem scroll horizontal na tabela dos 15.
+
+- [x] Feito (2026-08-26) — `table-compact` + labels curtos
 
 ---
 
@@ -125,6 +131,7 @@ Já melhorou no responsivo; revisar Feed/Sessões para caber sem scroll horizont
 | 3 | U5 Histórico portal top 15 | Pequeno — feito |
 | 4 | U3 / U4 / U6 / U7 tetos 15 | Pequeno — feito |
 | 5 | U8–U11 polimento da compra | Pequeno–médio — feito |
+| 6 | U12–U14 paginação / mobile | Pequeno — feito |
 
 ---
 
@@ -134,4 +141,4 @@ Já melhorou no responsivo; revisar Feed/Sessões para caber sem scroll horizont
 - Sessão órfã / saldo sem aviso → [`teorias-producao.md`](./teorias-producao.md)
 - Ferramentas externas → [`ECOSSISTEMA.md`](./ECOSSISTEMA.md)
 
-U1–U11 feitos no código (2026-08-26). Pendentes: U12–U14 e ops da loja (A1–A6).
+U1–U14 feitos no código (2026-08-26). Pendentes: ops da loja (A1–A6).

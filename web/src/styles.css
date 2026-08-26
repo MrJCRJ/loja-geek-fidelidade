@@ -677,6 +677,10 @@ a {
   -webkit-overflow-scrolling: touch;
 }
 
+.th-short {
+  display: none;
+}
+
 .tab-label-short {
   display: none;
 }
@@ -757,6 +761,26 @@ a {
 
   .table-scroll .table {
     min-width: 520px;
+  }
+
+  .table-scroll .table.table-compact {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .table-compact th,
+  .table-compact td {
+    padding: 0.45rem 0.3rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .th-full {
+    display: none;
+  }
+
+  .th-short {
+    display: inline;
   }
 
   .toast-stack {
