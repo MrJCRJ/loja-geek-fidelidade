@@ -214,7 +214,7 @@ export function CaixaTab({
                 Remover
               </button>
             </div>
-            <h3 style={{ marginTop: "1.2rem" }}>Histórico de horas</h3>
+            <h3 style={{ marginTop: "1.2rem" }}>Últimos 15 — histórico de horas</h3>
             <table className="table">
               <thead>
                 <tr>
@@ -225,7 +225,7 @@ export function CaixaTab({
                 </tr>
               </thead>
               <tbody>
-                {timeLedger.map((row) => (
+                {timeLedger.slice(0, 15).map((row) => (
                   <tr key={row.id}>
                     <td>{new Date(row.created_at).toLocaleString("pt-BR")}</td>
                     <td>{row.reason}</td>

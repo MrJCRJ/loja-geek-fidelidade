@@ -52,28 +52,38 @@ export function useDashboardCheckout({ load, setMe, setError, onPaid }: Args) {
     };
   }, [pix, load, setMe, setError, onPaid]);
 
-  async function buyHours(amountReais: number) {
+  async function buyHours(input: { amountReais?: number; hours?: number }) {
     setBusy(true);
     setError("");
     setMsg("");
     try {
+      const body =
+        input.hours != null && input.hours > 0
+          ? { hours: input.hours }
+          : { amountReais: input.amountReais };
       const res = await api<{
         customer: PortalCustomer;
         creditedSeconds?: number;
-        order?: { id?: string; hours?: number | null };
+        order?: { id?: string; hours?: number | null; amount_reais?: number };
         stub?: boolean;
         demo?: boolean;
         pix?: PixInfo | null;
         checkoutUrl?: string | null;
       }>("/api/portal/checkout/hours", {
         method: "POST",
-        body: JSON.stringify({ amountReais }),
+        body: JSON.stringify(body),
       });
       if (res.pix && res.order?.id && !res.stub) {
+        const labelAmt =
+          input.amountReais != null
+            ? `R$ ${input.amountReais.toFixed(2)}`
+            : input.hours != null
+              ? `${input.hours}h`
+              : "horas";
         setPix({
           orderId: res.order.id,
           info: res.pix,
-          label: `Compra de R$ ${amountReais}`,
+          label: `Compra de ${labelAmt}`,
           checkoutUrl: res.checkoutUrl,
           demo: res.demo,
         });

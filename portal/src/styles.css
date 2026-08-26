@@ -1500,6 +1500,76 @@ a:hover {
   padding-top: 0;
 }
 
+.buy-mode {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.2rem;
+  margin: 0.5rem 0 0.85rem;
+  border: 1px solid var(--geek-line);
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--geek-navy-mid) 80%, transparent);
+}
+
+.buy-mode__btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--geek-muted);
+  font: inherit;
+  font-size: 0.85rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: calc(var(--radius-panel) - 2px);
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+
+.buy-mode__btn.is-active {
+  background: color-mix(in srgb, var(--geek-gold) 18%, transparent);
+  color: var(--geek-gold-soft);
+}
+
+.buy-mode__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.buy-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.65rem;
+}
+
+.buy-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1 1 7rem;
+  min-width: 6.5rem;
+  font-size: 0.8rem;
+  color: var(--geek-muted);
+}
+
+.buy-field input {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.buy-fields__eq {
+  color: var(--geek-muted);
+  padding-bottom: 0.65rem;
+  font-size: 1.1rem;
+}
+
+.buy-confirm {
+  margin-top: 0.85rem;
+  padding: 0.85rem;
+  border: 1px solid color-mix(in srgb, var(--geek-gold) 35%, var(--geek-line));
+  border-radius: var(--radius-panel);
+  background: color-mix(in srgb, var(--geek-gold) 6%, var(--geek-navy-deep));
+}
+
 /* Skeleton */
 .skeleton {
   background: linear-gradient(

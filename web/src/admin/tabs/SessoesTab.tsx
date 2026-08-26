@@ -86,6 +86,9 @@ export function SessoesTab({
         </table>
 
         <h3>Histórico recente</h3>
+        <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+          Últimas 15 sessões
+        </p>
         <table className="table">
           <thead>
             <tr>
@@ -96,7 +99,7 @@ export function SessoesTab({
             </tr>
           </thead>
           <tbody>
-            {sessions.map((s) => (
+            {sessions.slice(0, 15).map((s) => (
               <tr key={s.id}>
                 <td>{s.customer_name}</td>
                 <td>{s.station_name}</td>

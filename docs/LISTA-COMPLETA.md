@@ -33,7 +33,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 |---|------|--------|
 | B1 | Checkout portal em **live** (não demo) | `[ ]` |
 | B2 | Pacotes de horas editáveis no GeekCentral (sem mexer código) | `[ ]` |
-| B3 | Compra por hora **ou** por R$ + personalizado | `[ ]` → detalhe em UX U2 |
+| B3 | Compra por hora **ou** por R$ + personalizado | `[x]` → detalhe em UX U2 |
 | B4 | Assinatura: deixar claro que é **desconto**, não ilimitado | `[~]` copy no portal |
 | B5 | Recibo / comprovante simples após Pix (e-mail ou PDF) | `[ ]` |
 | B6 | Relatório de faturamento no Central (dia / semana / mês) | `[~]` métricas existem; falta visão “caixa” |
@@ -46,8 +46,8 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 
 | # | Item | Status |
 |---|------|--------|
-| C1 | Histórico Feed só top 15 | `[ ]` → UX U1 |
-| C2 | Sessões / telemetria com teto na tela | `[ ]` |
+| C1 | Histórico Feed só top 15 | `[x]` → UX U1 |
+| C2 | Sessões / telemetria com teto na tela | `[x]` |
 | C3 | Dashboard de métricas | `[x]` |
 | C4 | Admin usable no celular | `[x]` |
 | C5 | Backup SQLite agendado | `[x]` |
@@ -88,8 +88,8 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | E2 | PWA / service worker | `[x]` básico |
 | E3 | OfflineBanner quando loja offline | `[x]` |
 | E4 | Seletor multi-Central | `[x]` |
-| E5 | Compra hora ↔ R$ + personalizado | `[ ]` |
-| E6 | Histórico de pedidos curto (top 15) | `[ ]` |
+| E5 | Compra hora ↔ R$ + personalizado | `[x]` |
+| E6 | Histórico de pedidos curto (top 15) | `[x]` |
 | E7 | Push no celular: “saldo acabando” | `[ ]` |
 | E8 | WhatsApp automático (saldo / Pix / PC livre) | `[ ]` |
 | E9 | Cadastro facial: mais dicas de luz / ângulo | `[~]` |
@@ -161,7 +161,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 ## 10. Ordem sugerida (projeto todo)
 
 1. **Ops A1–A6** — túnel, Pix, secrets, regenerar apps  
-2. **U1 + U2** — histórico 15 + compra hora/R$ ([`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md))  
+2. ~~**U1 + U2** — histórico 15 + compra hora/R$~~ **feito** ([`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md))  
 3. **B6 / C9** — caixa e faturamento claros no Central  
 4. **D5 / C12** — atualizar apps sem pendrive  
 5. **H4 / H6** — erros visíveis + backup contínuo  

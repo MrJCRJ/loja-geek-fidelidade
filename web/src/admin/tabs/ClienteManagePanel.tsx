@@ -201,9 +201,9 @@ export function ClienteManagePanel({
 
       {pointsLedger.length > 0 ? (
         <div style={{ marginTop: "1rem" }}>
-          <h3>Extrato de pontos</h3>
+          <h3>Últimos 15 — extrato de pontos</h3>
           <ul className="feed">
-            {pointsLedger.slice(0, 12).map((p) => (
+            {pointsLedger.slice(0, 15).map((p) => (
               <li key={p.id}>
                 <strong>
                   {p.delta >= 0 ? "+" : ""}

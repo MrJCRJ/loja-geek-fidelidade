@@ -135,7 +135,8 @@ export function SaudeTab({ onError }: Props) {
       <section className="panel">
         <h2>Logs de produção</h2>
         <p className="muted">
-          Sem fotos, embeddings ou senhas — só eventos de operação para achar falhas cedo.
+          Sem fotos, embeddings ou senhas — só eventos de operação para achar falhas cedo. Mostra os 15
+          mais recentes.
         </p>
         <div className="row">
           <select value={level} onChange={(e) => setLevel(e.target.value)} aria-label="Filtrar nível">
@@ -156,7 +157,7 @@ export function SaudeTab({ onError }: Props) {
               </tr>
             </thead>
             <tbody>
-              {events.map((e) => (
+              {events.slice(0, 15).map((e) => (
                 <tr key={e.id}>
                   <td className="muted" style={{ whiteSpace: "nowrap" }}>
                     {new Date(e.created_at).toLocaleString()}
@@ -178,6 +179,13 @@ export function SaudeTab({ onError }: Props) {
                 <tr>
                   <td colSpan={4} className="muted">
                     Nenhum evento ainda
+                  </td>
+                </tr>
+              )}
+              {events.length > 15 && (
+                <tr>
+                  <td colSpan={4} className="muted">
+                    Mostrando os 15 mais recentes · use o filtro de nível para focar
                   </td>
                 </tr>
               )}

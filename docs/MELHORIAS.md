@@ -61,7 +61,7 @@ Lista de limpeza contínua: [`REFINO.md`](./REFINO.md).
 | 24 | ~~CI GitHub Actions~~ **feito** (parte 13) |
 | 25 | ~~Multi-unidade GeekLock avançada (vários Centrals no mesmo portal)~~ **feito** (parte 16) |
 | 28 | ~~Retenção LGPD fina (apagar face sem apagar conta)~~ **feito** (parte 15) |
-| 30 | UX: Feed histórico top 15 + compra portal hora/R$ — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md) |
+| 30 | ~~UX: Feed histórico top 15 + compra portal hora/R$~~ **feito** — [`UX-LISTAS-E-COMPRA.md`](./UX-LISTAS-E-COMPRA.md) (U1–U11) |
 
 ---
 

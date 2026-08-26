@@ -19,7 +19,7 @@ export function useAdminSocket({ token, onLive, onLiveStatus, scheduleRefresh }:
 
   const pushLive = useCallback((text: string, at?: string) => {
     onLiveRef.current((prev) =>
-      [{ text, at: at || new Date().toISOString() }, ...prev].slice(0, 30),
+      [{ text, at: at || new Date().toISOString() }, ...prev].slice(0, 15),
     );
   }, []);
 

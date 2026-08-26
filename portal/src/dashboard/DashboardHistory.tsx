@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatHours, TimeLedgerEntry, WebOrder } from "../api";
 
 type Props = {
@@ -5,14 +6,21 @@ type Props = {
   timeLedger: TimeLedgerEntry[];
 };
 
+const PAGE = 15;
+
 export function DashboardHistory({ orders, timeLedger }: Props) {
+  const [ordersShown, setOrdersShown] = useState(PAGE);
+
   return (
     <>
       {orders.length > 0 ? (
         <div className="card reveal">
           <p className="section-label">Extrato</p>
           <h2>Compras no portal</h2>
-          {orders.slice(0, 12).map((o) => (
+          <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
+            Últimas {Math.min(ordersShown, orders.length)} compras
+          </p>
+          {orders.slice(0, ordersShown).map((o) => (
             <div className="pack" key={o.id}>
               <div>
                 <strong>
@@ -27,6 +35,11 @@ export function DashboardHistory({ orders, timeLedger }: Props) {
               </div>
             </div>
           ))}
+          {orders.length > ordersShown ? (
+            <button className="btn ghost" type="button" onClick={() => setOrdersShown((n) => n + PAGE)}>
+              Ver anteriores
+            </button>
+          ) : null}
         </div>
       ) : null}
 
