@@ -1,6 +1,7 @@
 import type { Tab } from "../types";
 
 const TABS: Array<[Tab, string, string]> = [
+  ["dashboard", "Dashboard", "Dash"],
   ["feed", "Feed VIP", "Feed"],
   ["clientes", "Clientes", "VIPs"],
   ["caixa", "Caixa", "Caixa"],

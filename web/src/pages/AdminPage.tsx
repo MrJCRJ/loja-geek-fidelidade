@@ -10,6 +10,7 @@ import { useToast } from "../admin/hooks/useToast";
 import { CaixaTab } from "../admin/tabs/CaixaTab";
 import { ClientesTab } from "../admin/tabs/ClientesTab";
 import { ConfigTab } from "../admin/tabs/ConfigTab";
+import { DashboardTab } from "../admin/tabs/DashboardTab";
 import { EstacoesTab } from "../admin/tabs/EstacoesTab";
 import { FeedTab } from "../admin/tabs/FeedTab";
 import { RecompensasTab } from "../admin/tabs/RecompensasTab";
@@ -29,7 +30,7 @@ export default function AdminPage() {
   const [token, setToken] = useState(getAdminToken());
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [tab, setTab] = useState<Tab>("feed");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [live, setLive] = useState<LiveFeedItem[]>([]);
   const [selected, setSelected] = useState<Customer | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
@@ -176,6 +177,7 @@ export default function AdminPage() {
 
       {error && <div className="banner">{error}</div>}
 
+      {tab === "dashboard" && <DashboardTab onError={setError} />}
       {tab === "feed" && <FeedTab live={live} events={data.events} />}
       {tab === "clientes" && (
         <ClientesTab

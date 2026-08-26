@@ -36,6 +36,7 @@ import { registerCustomerRoutes } from "./customer-routes.js";
 import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
 import { rateLimit, verifyAdminPassword } from "./security.js";
 import { buildDiagnostics, listTelemetryEvents, logEvent } from "./telemetry.js";
+import { buildBusinessMetrics } from "./metrics.js";
 
 setStationOfflineHook((stationId, stationName) => {
   logEvent({
@@ -178,6 +179,11 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/admin/diagnostics", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     return buildDiagnostics();
+  });
+
+  app.get("/api/admin/metrics", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    return buildBusinessMetrics();
   });
 
   app.get("/api/admin/telemetry", async (req, reply) => {

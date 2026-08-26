@@ -61,6 +61,10 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 - [x] Multi-Central: `publicApiUrl` + peers no settings/catálogo
 - [x] Portal: seletor de Central (landing/login/register/dashboard) + `VITE_CENTRALS`
 
+## Feito (parte 17)
+
+- [x] Dashboard métricas GeekCentral (`/api/admin/metrics` + aba Dashboard)
+
 ---
 
 ## Backlog encontrado
@@ -106,4 +110,4 @@ Objetivo: código mais limpo/leve em partes pequenas, sem reescrever o sistema.
 
 ## Próxima parte sugerida
 
-**Ops loja** (`docs/loja-ready.md`) **ou** dashboard métricas GeekCentral (MELHORIAS #20).
+**Ops loja** (`docs/loja-ready.md`) — túnel, Pix, STRICT_SECRETS, pendrive.

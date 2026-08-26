@@ -8,6 +8,7 @@ import type {
 } from "../api";
 
 export type Tab =
+  | "dashboard"
   | "feed"
   | "clientes"
   | "caixa"
