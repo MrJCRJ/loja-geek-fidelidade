@@ -64,7 +64,20 @@ Não apague o túnel nem mude o hostname DNS sem confirmar comigo.
 
 ---
 
-## Credenciais Cloudflare neste Windows
+## Pendrive USB (se levar o GEEKLOCK)
+
+No pendrive já pode estar:
+
+| Caminho | Conteúdo |
+|---------|----------|
+| `GeekCentral/.env` | `PUBLIC_API_URL`, portal, MP sandbox |
+| `GeekCentral/data/.env` | cópia |
+| `GeekCentral/resources/runtime/node/.env` | onde o dotenv da API lê |
+| `GeekCentral/cloudflared-COPIAR-PARA-USERPROFILE/` | `cert.pem` + JSON + `config.yml` → copiar para `%USERPROFILE%\.cloudflared\` |
+| `ENV-E-TUNEL.txt` | resumo na raiz do pendrive |
+
+**Não** versionar esses arquivos no Git.
+
 
 Pasta: `%USERPROFILE%\.cloudflared\`  
 (ex.: `C:\Users\Loja\.cloudflared\`)
