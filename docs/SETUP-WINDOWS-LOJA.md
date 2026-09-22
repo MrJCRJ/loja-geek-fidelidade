@@ -150,7 +150,9 @@ Diálogo **"A JavaScript error occurred"** (não é Java/JDK): faltava `shared/l
 
 Ver [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md). No pendrive: `resources/shared/lan-discovery.cjs` já com o módulo real.
 
-**Próximo build (não feito ainda):** pareamento por código de 6 dígitos — [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md).
+**Próximo build (não feito ainda):**
+- Pareamento por código de 6 dígitos — [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md)
+- UI para tela pequena (responsivo + compacto) — [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md)
 
 ---
 

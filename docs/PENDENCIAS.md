@@ -8,7 +8,8 @@ Foco: **URL fixa**, **alternativas baratas**, **Mercado Pago** e o que falta par
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
 **Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — Cloudflare Access + GeekAdmin Saúde  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
-**Pareamento (próximo build):** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — código 6 dígitos no Central; sem digitar segredo longo
+**Pareamento (próximo build):** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — código 6 dígitos no Central; sem digitar segredo longo  
+**UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto
 
 Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 

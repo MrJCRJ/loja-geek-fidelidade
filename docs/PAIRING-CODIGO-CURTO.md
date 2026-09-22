@@ -1,7 +1,7 @@
 # Pareamento GeekLock ↔ GeekCentral — código curto
 
 Atualizado em **2026-09-22**.  
-**Status:** plano documentado — **não implementar ainda** (build/pendrive na próxima visita à loja).
+**Status:** plano documentado — implementar no **mesmo build** que [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) (tela pequena).
 
 ---
 
