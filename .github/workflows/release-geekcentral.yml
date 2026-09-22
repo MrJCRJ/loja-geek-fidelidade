@@ -1,0 +1,79 @@
+name: Release GeekCentral
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão sem v (ex. 1.1.0)"
+        required: true
+        type: string
+      skip_prepare:
+        description: "Reutilizar cache de runtime (SKIP_PREPARE=1) se já existir no runner"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            web/package-lock.json
+            agent-central-windows/package-lock.json
+
+      - name: Native build tools
+        run: sudo apt-get update && sudo apt-get install -y python3 make g++ zip rsync unzip
+
+      - name: Cache central runtime downloads
+        uses: actions/cache@v4
+        with:
+          path: .cache/central-runtime
+          key: central-runtime-${{ hashFiles('face-service/requirements-win.txt', 'scripts/prepare-central-runtime.sh') }}
+          restore-keys: central-runtime-
+
+      - name: Set version
+        run: |
+          VER="${{ inputs.version }}"
+          node -e "
+            const fs=require('fs');
+            const p='agent-central-windows/package.json';
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            j.version=process.env.VER;
+            fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          "
+        env:
+          VER: ${{ inputs.version }}
+
+      - name: Pack GeekCentral (win-unpacked + runtime)
+        env:
+          SKIP_PREPARE: ${{ inputs.skip_prepare && '1' || '0' }}
+        run: bash scripts/pack-pendrive-central.sh
+
+      - name: Make release ZIP
+        run: bash scripts/make-central-release-zip.sh "${{ inputs.version }}"
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: central-v${{ inputs.version }}
+          name: GeekCentral ${{ inputs.version }}
+          body: |
+            Pacote Windows completo (exe + runtime).
+
+            Na loja: GeekCentral → **Atualizar** (mantém a pasta `data\`).
+            Asset: `GeekCentral-win-x64.zip`
+          files: dist-release/GeekCentral-win-x64.zip
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

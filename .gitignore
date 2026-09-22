@@ -46,3 +46,4 @@ data/*.db-*
 *.db
 *.db-wal
 *.db-shm
+dist-release/

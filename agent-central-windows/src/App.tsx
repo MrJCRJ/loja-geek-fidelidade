@@ -63,6 +63,12 @@ export default function App() {
   const [pairCode, setPairCode] = useState("");
   const [pairExpiresAt, setPairExpiresAt] = useState(0);
   const [pairMsg, setPairMsg] = useState("");
+  const [appVersion, setAppVersion] = useState("");
+  const [ghToken, setGhToken] = useState("");
+  const [updateMsg, setUpdateMsg] = useState("");
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [latestVersion, setLatestVersion] = useState("");
+  const [updateAvailable, setUpdateAvailable] = useState(false);
 
   useEffect(() => {
     window.geekcentral.getStatus().then(setStatus).catch(() => undefined);
@@ -90,6 +96,12 @@ export default function App() {
     window.geekcentral
       .getUiCompact()
       .then((r) => setUiCompact(r.uiCompact))
+      .catch(() => undefined);
+    window.geekcentral
+      .getUpdateInfo()
+      .then((r) => {
+        setAppVersion(r.currentVersion || "");
+      })
       .catch(() => undefined);
     return window.geekcentral.onStatus((s) => {
       setStatus(s);
@@ -504,6 +516,97 @@ export default function App() {
             {status.tunnelError}
           </p>
         )}
+      </section>
+
+      {/* Atualizar do GitHub */}
+      <section className="panel">
+        <h2 style={{ marginTop: 0, fontSize: "1.05rem" }}>Atualizar</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Versão instalada: <span className="mono">{appVersion || "—"}</span>
+          {latestVersion ? (
+            <>
+              {" "}
+              · GitHub: <span className="mono">{latestVersion}</span>
+              {updateAvailable ? " (nova disponível)" : ""}
+            </>
+          ) : null}
+        </p>
+        <div className="field">
+          <label>Token GitHub (classic, contents:read no repo privado)</label>
+          <input
+            type="password"
+            value={ghToken}
+            onChange={(e) => setGhToken(e.target.value)}
+            placeholder="ghp_… (salvo só neste PC em data\\config.json)"
+            autoComplete="off"
+          />
+        </div>
+        <div className="row">
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={updateBusy || !ghToken.trim()}
+            onClick={() => {
+              setUpdateBusy(true);
+              setUpdateMsg("Salvando token…");
+              window.geekcentral
+                .setGithubToken(ghToken.trim())
+                .then(() => window.geekcentral.checkUpdate())
+                .then((r) => {
+                  if (!r.ok) {
+                    setUpdateMsg(r.error || "Falha");
+                    setUpdateAvailable(false);
+                    return;
+                  }
+                  setLatestVersion(r.latestVersion || "");
+                  setUpdateAvailable(Boolean(r.updateAvailable));
+                  setAppVersion(r.currentVersion || appVersion);
+                  setUpdateMsg(
+                    r.updateAvailable
+                      ? `Atualização ${r.latestVersion} disponível`
+                      : `Já está em ${r.currentVersion}`,
+                  );
+                })
+                .catch((e) => setUpdateMsg(e instanceof Error ? e.message : "Falha"))
+                .finally(() => setUpdateBusy(false));
+            }}
+          >
+            Verificar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={updateBusy || !updateAvailable}
+            onClick={() => {
+              if (!window.confirm("Baixar e instalar atualização? A pasta data\\ é mantida. O app vai reiniciar.")) {
+                return;
+              }
+              setUpdateBusy(true);
+              setUpdateMsg("Baixando e preparando… (pode demorar)");
+              window.geekcentral
+                .installUpdate()
+                .then((r) => {
+                  if (!r.ok) {
+                    setUpdateMsg(r.error || "Falha na instalação");
+                    setUpdateBusy(false);
+                    return;
+                  }
+                  setUpdateMsg(`Instalando ${r.version}… o app vai fechar e reabrir.`);
+                })
+                .catch((e) => {
+                  setUpdateMsg(e instanceof Error ? e.message : "Falha");
+                  setUpdateBusy(false);
+                });
+            }}
+          >
+            {updateBusy ? "…" : "Baixar e instalar"}
+          </button>
+        </div>
+        {updateMsg && <p className="muted">{updateMsg}</p>}
+        <p className="muted" style={{ fontSize: "0.85rem", marginBottom: 0 }}>
+          Releases: tag <code>central-v*</code>, asset <code>GeekCentral-win-x64.zip</code>. Ver{" "}
+          <code>docs/UPDATE-GEEKCENTRAL.md</code>.
+        </p>
       </section>
 
       {/* 4) Resto */}

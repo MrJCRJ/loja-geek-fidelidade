@@ -354,6 +354,48 @@ ipcMain.handle("central:set-ui-compact", (_e, enabled) => ({
   uiCompact: services.setUiCompact(Boolean(enabled)),
 }));
 
+ipcMain.handle("central:get-update-info", () => {
+  const { currentVersion } = require("./github-update.cjs");
+  return {
+    currentVersion: currentVersion(),
+    hasGithubToken: Boolean(services.getGithubUpdateToken()),
+  };
+});
+
+ipcMain.handle("central:set-github-token", (_e, token) => services.setGithubUpdateToken(token));
+
+ipcMain.handle("central:check-update", async () => {
+  try {
+    const { checkForUpdate } = require("./github-update.cjs");
+    return await checkForUpdate(services.getGithubUpdateToken());
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
+ipcMain.handle("central:install-update", async () => {
+  try {
+    const { checkForUpdate, downloadAndInstall } = require("./github-update.cjs");
+    const token = services.getGithubUpdateToken();
+    const info = await checkForUpdate(token);
+    if (!info.ok) return info;
+    if (!info.updateAvailable) {
+      return { ok: false, error: "Já está na versão mais recente", ...info };
+    }
+    services.stopWatchdog();
+    services.stop();
+    const result = await downloadAndInstall(token, info, { log: console });
+    // Sai para o .cmd aplicar
+    setTimeout(() => {
+      const { app } = require("electron");
+      app.quit();
+    }, 400);
+    return result;
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
+});
+
 ipcMain.handle("central:ensure-firewall", async () => {
   const fw = await ensureApiFirewallRule(services.status.apiPort || 8787);
   services.markFirewallAttempt(fw);

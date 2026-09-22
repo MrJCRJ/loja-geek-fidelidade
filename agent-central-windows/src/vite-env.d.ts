@@ -22,6 +22,7 @@ export type CentralStatus = {
   portalOrigin?: string;
   webhookUrl?: string;
   uiCompact?: boolean;
+  hasGithubToken?: boolean;
   startedAt?: number | null;
   uptimeMs?: number;
   faceError?: string;
@@ -59,6 +60,17 @@ export type GeekCentralApi = {
   setAutostart: (enabled: boolean) => Promise<{ ok: boolean; openAtLogin: boolean; bootDelayMs: number }>;
   getUiCompact: () => Promise<{ uiCompact: boolean }>;
   setUiCompact: (enabled: boolean) => Promise<{ ok: boolean; uiCompact: boolean }>;
+  getUpdateInfo: () => Promise<{ currentVersion: string; hasGithubToken: boolean }>;
+  setGithubToken: (token: string) => Promise<{ ok: boolean; hasGithubToken: boolean }>;
+  checkUpdate: () => Promise<{
+    ok: boolean;
+    error?: string;
+    updateAvailable?: boolean;
+    currentVersion?: string;
+    latestVersion?: string;
+    notes?: string;
+  }>;
+  installUpdate: () => Promise<{ ok: boolean; error?: string; willRelaunch?: boolean; version?: string }>;
   ensureFirewall: () => Promise<{ ok: boolean; error?: string }>;
   setTunnel: (
     input: TunnelInput,

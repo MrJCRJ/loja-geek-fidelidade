@@ -137,6 +137,7 @@ class ServiceManager {
       setupComplete: false,
       unitName: "Unidade 1",
       uiCompact: false,
+      hasGithubToken: false,
       openAtLogin: true,
       bootDelayMs: 15_000,
       firewallOk: false,
@@ -210,6 +211,7 @@ class ServiceManager {
     this.status.openAtLogin = cfg.openAtLogin !== false;
     this.status.bootDelayMs = Number(cfg.bootDelayMs ?? 15_000);
     this.status.uiCompact = Boolean(cfg.uiCompact);
+    this.status.hasGithubToken = Boolean(String(cfg.githubUpdateToken || "").trim());
     this.status.firewallOk = Boolean(cfg.firewallRuleDone);
     this.status.firewallError = String(cfg.firewallError || "");
     this.status.portalOrigin = String(cfg.portalOrigin || DEFAULT_PORTAL);
@@ -281,6 +283,21 @@ class ServiceManager {
     this.status.uiCompact = cfg.uiCompact;
     this.emit();
     return cfg.uiCompact;
+  }
+
+  getGithubUpdateToken() {
+    const cfg = loadConfig(this.dataDir());
+    return String(cfg.githubUpdateToken || "");
+  }
+
+  setGithubUpdateToken(token) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    cfg.githubUpdateToken = String(token || "").trim();
+    saveConfig(dataDir, cfg);
+    this.status.hasGithubToken = Boolean(cfg.githubUpdateToken);
+    this.emit();
+    return { ok: true, hasGithubToken: this.status.hasGithubToken };
   }
 
   markFirewallAttempt(result) {
