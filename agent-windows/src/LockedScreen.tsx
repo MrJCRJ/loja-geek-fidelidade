@@ -1,6 +1,7 @@
 import type { ReactNode, RefObject } from "react";
 import type { Customer, GeekLockConfig } from "./vite-env";
-import { scanStatusHint, statusIcon } from "./kiosk-helpers";
+import type { PendingLogin } from "./hooks/useRecognizeLoop";
+import { scanStatusHint, statusIcon, formatBalanceShort } from "./kiosk-helpers";
 import { PinPad } from "./PinPad";
 import { PortalQr } from "./PortalQr";
 
@@ -20,12 +21,14 @@ type Props = {
   pin: string;
   pinMode: PinMode;
   portalQrUrl: string;
-  logoutNudge: boolean;
+  loginPrompt: PendingLogin | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   banner: ReactNode;
   lastFailure?: { kind: string; message: string; at: string } | null;
   onClearFailure?: () => void;
   onRetryCam: () => void;
+  onConfirmLogin: () => void;
+  onCancelLogin: () => void;
   onPinChange: (v: string) => void;
   onOpenPin: (mode: "unlock" | "quit") => void;
   onSubmitPin: () => void;
@@ -46,12 +49,14 @@ export function LockedScreen({
   pin,
   pinMode,
   portalQrUrl,
-  logoutNudge,
+  loginPrompt,
   videoRef,
   banner,
   lastFailure,
   onClearFailure,
   onRetryCam,
+  onConfirmLogin,
+  onCancelLogin,
   onPinChange,
   onOpenPin,
   onSubmitPin,
@@ -69,7 +74,7 @@ export function LockedScreen({
         {!camReady && (
           <div className="video-placeholder locked-cam-placeholder">
             <p>Webcam indisponível</p>
-            <p className="muted">Confira a Logitech C270 no USB ou use PIN Admin</p>
+            <p className="muted">Confira o DroidCam no celular ou use PIN Admin</p>
             <button className="btn" type="button" onClick={onRetryCam}>
               Tentar câmera de novo
             </button>
@@ -130,17 +135,29 @@ export function LockedScreen({
         </div>
       ) : null}
 
-      {logoutNudge ? (
-        <div className="logout-nudge" role="alert">
-          <p className="logout-nudge-kicker">Sessão encerrada</p>
-          <h2 className="logout-nudge-title">Faça logout do Steam e do Discord</h2>
-          <p className="muted">
-            Se a conta não for sua, saia agora — o próximo VIP herda o que ficar logado no Windows.
-          </p>
+      {loginPrompt ? (
+        <div className="login-confirm">
+          <p className="login-confirm-kicker">VIP reconhecido</p>
+          <h2 className="login-confirm-name">{loginPrompt.customer.name}</h2>
+          <span className={`level-badge lg ${loginPrompt.customer.level}`}>{loginPrompt.customer.level}</span>
+          {loginPrompt.timeBalanceSeconds != null ? (
+            <p className="login-confirm-balance">
+              Saldo: {formatBalanceShort(loginPrompt.timeBalanceSeconds)}
+            </p>
+          ) : null}
+          <p className="login-confirm-question">Deseja entrar nesta máquina?</p>
+          <div className="login-confirm-actions">
+            <button className="btn login-confirm-yes" type="button" onClick={onConfirmLogin}>
+              Sim, entrar
+            </button>
+            <button className="btn ghost login-confirm-no" type="button" onClick={onCancelLogin}>
+              Não sou eu
+            </button>
+          </div>
         </div>
       ) : null}
 
-      {welcomeCustomer && (
+      {welcomeCustomer && !loginPrompt && (
         <div className="welcome-splash">
           <p className="welcome-kicker">Bem-vindo</p>
           <h2 className="welcome-name">{welcomeCustomer.name}</h2>
@@ -151,10 +168,7 @@ export function LockedScreen({
               {String(welcomeCustomer.timeBalanceSeconds % 60).padStart(2, "0")}s
             </p>
           ) : null}
-          <p className="muted">Liberando máquina…</p>
-          <p className="muted welcome-hint">
-            Ao sair, faça logout do Steam e Discord se a conta não for sua.
-          </p>
+          <p className="muted">Entrando…</p>
         </div>
       )}
 

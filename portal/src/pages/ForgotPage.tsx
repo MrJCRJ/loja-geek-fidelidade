@@ -11,8 +11,8 @@ function isEmail(v: string) {
 }
 
 export default function ForgotPage() {
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const [email, setEmail] = useState("");
   const [tip, setTip] = useState("");
   const [devToken, setDevToken] = useState("");
@@ -57,7 +57,7 @@ export default function ForgotPage() {
   }
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
       <h1 className="display display--lg" style={{ marginBottom: "0.5rem" }}>

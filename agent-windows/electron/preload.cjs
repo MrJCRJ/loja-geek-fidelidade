@@ -19,10 +19,10 @@ contextBridge.exposeInMainWorld("geeklock", {
     ipcRenderer.on("lock:state", handler);
     return () => ipcRenderer.removeListener("lock:state", handler);
   },
-  onRequestEndSession: (cb) => {
+  onRequestEndSessionConfirmed: (cb) => {
     const handler = () => cb();
-    ipcRenderer.on("session:request-end", handler);
-    return () => ipcRenderer.removeListener("session:request-end", handler);
+    ipcRenderer.on("session:request-end-confirmed", handler);
+    return () => ipcRenderer.removeListener("session:request-end-confirmed", handler);
   },
   onRequestQuit: (cb) => {
     const handler = () => cb();

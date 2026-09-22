@@ -38,6 +38,7 @@ import { getHourPriceReais, getSubscriberDiscountPct } from "./billing.js";
 import { rateLimit, verifyAdminPassword, verifyClerkPassword } from "./security.js";
 import { buildDiagnostics, listTelemetryEvents, logEvent } from "./telemetry.js";
 import { buildBusinessMetrics } from "./metrics.js";
+import { applyTunnel, getTunnelStatusFull } from "./tunnel-manager.js";
 import {
   sessionSafetySettingsPayload,
   setLowBalanceWarnSeconds,
@@ -210,7 +211,61 @@ export async function registerRoutes(app: FastifyInstance) {
   app.get("/api/admin/readiness", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
     const face = await faceHealth();
-    return { ...getReadiness(), faceService: face };
+    const tunnel = await getTunnelStatusFull();
+    const publicUrl =
+      tunnel.mode === "named"
+        ? tunnel.publicApiUrl
+        : tunnel.mode === "quick"
+          ? tunnel.lastQuickTunnelUrl
+          : "";
+    const readiness = getReadiness();
+    const tunnelOk =
+      tunnel.running &&
+      Boolean(publicUrl) &&
+      (tunnel.publicHealthy || tunnel.mode === "named");
+    readiness.checklist = readiness.checklist.map((c) =>
+      c.id === "tunnel" ? { ...c, ok: tunnelOk, label: "Túnel Cloudflare ativo" } : c,
+    );
+    readiness.tunnelHint = tunnel.running
+      ? publicUrl
+        ? `Túnel ativo: ${publicUrl}`
+        : "Túnel rodando — aguardando URL pública"
+      : "Ligue o túnel em Config → Portal / Cloudflare (auto-start disponível).";
+    return {
+      ...readiness,
+      faceService: face,
+      tunnel: {
+        running: tunnel.running,
+        mode: tunnel.mode,
+        autoStart: tunnel.autoStart,
+        publicUrl,
+        publicHealthy: tunnel.publicHealthy,
+        binaryFound: tunnel.binaryFound,
+      },
+    };
+  });
+
+  app.get("/api/admin/tunnel", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    return getTunnelStatusFull();
+  });
+
+  app.post("/api/admin/tunnel", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    const body = z
+      .object({
+        mode: z.enum(["off", "quick", "named"]).optional(),
+        tunnelName: z.string().optional(),
+        publicApiUrl: z.string().optional(),
+        autoStart: z.boolean().optional(),
+        action: z.enum(["start", "stop", "apply", "check"]).optional(),
+      })
+      .parse(req.body);
+    if (body.action === "check") {
+      const st = await getTunnelStatusFull();
+      return { ok: true, status: st };
+    }
+    return applyTunnel(body);
   });
 
   app.get("/api/admin/diagnostics", async (req, reply) => {

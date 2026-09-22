@@ -20,6 +20,33 @@ type Readiness = {
   tunnelHint: string;
   checklist: Array<{ id: string; ok: boolean; label: string }>;
   unit: { unitName: string; unitId: string };
+  tunnel?: {
+    running: boolean;
+    mode: string;
+    autoStart: boolean;
+    publicUrl: string;
+    publicHealthy: boolean;
+    binaryFound: boolean;
+  };
+};
+
+type TunnelStatus = {
+  mode: "off" | "quick" | "named";
+  running: boolean;
+  tunnelName: string;
+  publicApiUrl: string;
+  lastQuickTunnelUrl: string;
+  autoStart: boolean;
+  publicHealthy: boolean;
+  binaryFound: boolean;
+  binaryPath: string;
+  error: string;
+  webhookUrl: string;
+  logTail: string[];
+  portalLink: string;
+  originCertOk?: boolean;
+  namedConfigOk?: boolean;
+  namedHint?: string;
 };
 
 type Props = {
@@ -33,7 +60,26 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
   const [backups, setBackups] = useState<BackupRow[]>([]);
   const [schedule, setSchedule] = useState<BackupSchedule | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [tunnel, setTunnel] = useState<TunnelStatus | null>(null);
+  const [tunnelMode, setTunnelMode] = useState<"off" | "quick" | "named">("off");
+  const [tunnelName, setTunnelName] = useState("");
+  const [publicApiUrl, setPublicApiUrl] = useState("");
+  const [tunnelAutoStart, setTunnelAutoStart] = useState(false);
+  const [tunnelBusy, setTunnelBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  const loadTunnel = async () => {
+    try {
+      const t = await api<TunnelStatus>("/api/admin/tunnel");
+      setTunnel(t);
+      if (t.mode === "quick" || t.mode === "named" || t.mode === "off") setTunnelMode(t.mode);
+      setTunnelName(t.tunnelName || "");
+      setPublicApiUrl(t.publicApiUrl || t.lastQuickTunnelUrl || "");
+      setTunnelAutoStart(Boolean(t.autoStart));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const loadMeta = async () => {
     try {
@@ -44,6 +90,7 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
       setBackups(b.backups);
       setSchedule(b.schedule || null);
       setReadiness(r);
+      await loadTunnel();
     } catch {
       /* ignore */
     }
@@ -51,6 +98,10 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
 
   useEffect(() => {
     loadMeta().catch(() => undefined);
+    const t = window.setInterval(() => {
+      loadTunnel().catch(() => undefined);
+    }, 12_000);
+    return () => window.clearInterval(t);
   }, []);
 
   const downloadBackup = async (fileName: string) => {
@@ -546,6 +597,244 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
             Purge agora
           </button>
         </div>
+      </section>
+
+      <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
+        <h2>Portal / Cloudflare Tunnel</h2>
+        <p className="muted">
+          Expõe a API (<code>:8787</code>) para o site na Vercel. Quick = URL temporária; Nomeado = URL fixa
+          (precisa <code>cloudflared tunnel login</code> antes).
+        </p>
+        <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+          <span className={`pill ${tunnel?.binaryFound ? "ok" : "bad"}`}>
+            cloudflared {tunnel?.binaryFound ? "ok" : "não encontrado"}
+          </span>
+          <span className={`pill ${tunnel?.running ? "ok" : "warn"}`}>
+            Túnel {tunnel?.running ? "aberto" : "fechado"}
+          </span>
+          <span
+            className={`pill ${
+              tunnel?.publicHealthy ? "ok" : tunnel?.running && publicApiUrl ? "bad" : "warn"
+            }`}
+          >
+            Público {tunnel?.publicHealthy ? "ok" : tunnel?.running ? "testando…" : "—"}
+          </span>
+        </div>
+        {(tunnel?.publicApiUrl || tunnel?.lastQuickTunnelUrl || publicApiUrl) && (
+          <p className="mono muted" style={{ wordBreak: "break-all" }}>
+            {tunnel?.mode === "named"
+              ? tunnel.publicApiUrl || publicApiUrl
+              : tunnel?.lastQuickTunnelUrl || publicApiUrl}
+          </p>
+        )}
+        {tunnel?.error && <p className="error-text">{tunnel.error}</p>}
+        <div className="field">
+          <label>Modo</label>
+          <select
+            value={tunnelMode}
+            onChange={(e) => setTunnelMode(e.target.value as "off" | "quick" | "named")}
+          >
+            <option value="off">Desligado</option>
+            <option value="quick">Quick (trycloudflare — URL muda)</option>
+            <option value="named">Nomeado (URL fixa)</option>
+          </select>
+        </div>
+        {tunnelMode === "named" && (
+          <>
+            <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap", marginBottom: "0.75rem" }}>
+              <span className={`pill ${tunnel?.originCertOk ? "ok" : "bad"}`}>
+                Login Cloudflare {tunnel?.originCertOk ? "ok" : "pendente"}
+              </span>
+              <span className={`pill ${tunnel?.namedConfigOk ? "ok" : "bad"}`}>
+                config.yml {tunnel?.namedConfigOk ? "ok" : "pendente"}
+              </span>
+            </div>
+            {!tunnel?.originCertOk && (
+              <div className="banner warn" style={{ marginBottom: "0.75rem" }}>
+                <strong>Antes do modo nomeado</strong>
+                <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+                  No terminal deste PC:{" "}
+                  <code>bash scripts/cloudflare-named-setup.sh</code>
+                  <br />
+                  Ou manual: <code>cloudflared tunnel login</code> →{" "}
+                  <code>cloudflared tunnel create loja-geek-api</code> → DNS +{" "}
+                  <code>~/.cloudflared/config.yml</code>
+                </p>
+              </div>
+            )}
+            <div className="field">
+              <label>Nome do túnel Cloudflare</label>
+              <input
+                value={tunnelName}
+                onChange={(e) => setTunnelName(e.target.value)}
+                placeholder="loja-geek-api"
+              />
+            </div>
+            <div className="field">
+              <label>URL pública HTTPS (seu domínio — fixa)</label>
+              <input
+                value={publicApiUrl}
+                onChange={(e) => setPublicApiUrl(e.target.value)}
+                placeholder="https://api.sualoja.com"
+              />
+              <span className="muted" style={{ fontSize: "0.8rem" }}>
+                Não use trycloudflare.com aqui — isso é só no modo Quick.
+              </span>
+            </div>
+            {tunnel?.namedHint && (
+              <p className="muted" style={{ fontSize: "0.85rem" }}>
+                {tunnel.namedHint}
+              </p>
+            )}
+          </>
+        )}
+        <label className="row" style={{ alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+          <input
+            type="checkbox"
+            checked={tunnelAutoStart}
+            onChange={(e) => setTunnelAutoStart(e.target.checked)}
+          />
+          Ligar automaticamente ao iniciar o GeekCentral
+        </label>
+        <div className="row">
+          <button
+            className="btn"
+            type="button"
+            disabled={tunnelBusy}
+            onClick={async () => {
+              setTunnelBusy(true);
+              try {
+                if (
+                  tunnelMode === "named" &&
+                  (publicApiUrl.includes("trycloudflare.com") ||
+                    /trycloudflare\.com/i.test(publicApiUrl))
+                ) {
+                  onError(
+                    "Modo nomeado: use seu domínio (ex.: https://api.sualoja.com), não trycloudflare.com. Use Quick se ainda não fez login Cloudflare.",
+                  );
+                  return;
+                }
+                const res = await api<{ ok: boolean; error?: string; status?: TunnelStatus }>(
+                  "/api/admin/tunnel",
+                  {
+                    method: "POST",
+                    body: JSON.stringify({
+                      mode: tunnelMode,
+                      tunnelName,
+                      publicApiUrl,
+                      autoStart: tunnelAutoStart,
+                      action: "apply",
+                    }),
+                  },
+                );
+                if (res.status) setTunnel(res.status);
+                if (res.error) onError(res.error);
+                else onToast(tunnelMode === "off" ? "Túnel desligado" : "Túnel aplicado", "ok");
+                await loadMeta();
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha no túnel");
+              } finally {
+                setTunnelBusy(false);
+              }
+            }}
+          >
+            {tunnelBusy ? "…" : tunnelMode === "off" ? "Desligar túnel" : "Ligar / aplicar"}
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={tunnelBusy}
+            onClick={async () => {
+              setTunnelBusy(true);
+              try {
+                const res = await api<{ status: TunnelStatus }>("/api/admin/tunnel", {
+                  method: "POST",
+                  body: JSON.stringify({ action: "check" }),
+                });
+                setTunnel(res.status);
+                onToast(
+                  res.status.publicHealthy ? "URL pública respondeu" : "URL pública sem resposta",
+                  res.status.publicHealthy ? "ok" : "error",
+                );
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha ao testar");
+              } finally {
+                setTunnelBusy(false);
+              }
+            }}
+          >
+            Testar URL
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={!publicApiUrl && !tunnel?.lastQuickTunnelUrl}
+            onClick={() => {
+              const url = tunnel?.lastQuickTunnelUrl || publicApiUrl;
+              if (url) {
+                void navigator.clipboard.writeText(url);
+                onToast("URL copiada (VITE_API_URL na Vercel)", "ok");
+              }
+            }}
+          >
+            Copiar URL
+          </button>
+        </div>
+        {tunnel?.webhookUrl && (
+          <p className="muted" style={{ fontSize: "0.85rem", wordBreak: "break-all" }}>
+            Webhook MP: {tunnel.webhookUrl}
+          </p>
+        )}
+        {tunnel?.portalLink && tunnel.running && (
+          <div
+            style={{
+              marginTop: "0.75rem",
+              padding: "0.75rem",
+              borderRadius: 8,
+              background: "rgba(45, 212, 191, 0.08)",
+              border: "1px solid rgba(45, 212, 191, 0.25)",
+            }}
+          >
+            <strong>Site Vercel (portal)</strong>
+            <p className="muted" style={{ margin: "0.35rem 0" }}>
+              O portal usa a URL gravada no build. Com túnel <em>quick</em>, abra este link (não precisa
+              redeploy):
+            </p>
+            <p className="mono" style={{ fontSize: "0.8rem", wordBreak: "break-all" }}>
+              {tunnel.portalLink}
+            </p>
+            <button
+              className="btn ghost"
+              type="button"
+              style={{ marginTop: "0.5rem" }}
+              onClick={() => {
+                void navigator.clipboard.writeText(tunnel.portalLink);
+                onToast("Link do portal copiado — abra no navegador", "ok");
+              }}
+            >
+              Copiar link do portal
+            </button>
+            <p className="muted" style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+              Ou na Vercel: <code>VITE_API_URL</code> = URL do túnel + redeploy (ideal com túnel nomeado).
+            </p>
+          </div>
+        )}
+        {tunnel?.logTail && tunnel.logTail.length > 0 && (
+          <pre
+            className="muted"
+            style={{
+              fontSize: "0.75rem",
+              maxHeight: 120,
+              overflow: "auto",
+              marginTop: "0.5rem",
+              background: "rgba(0,0,0,0.2)",
+              padding: "0.5rem",
+              borderRadius: 8,
+            }}
+          >
+            {tunnel.logTail.slice(-12).join("\n")}
+          </pre>
+        )}
       </section>
 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>

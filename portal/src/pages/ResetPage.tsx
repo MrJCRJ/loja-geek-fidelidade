@@ -9,8 +9,8 @@ import { useReveal } from "../hooks/useReveal";
 export default function ResetPage() {
   const [params] = useSearchParams();
   const nav = useNavigate();
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const initialToken = useMemo(() => params.get("token") || "", [params]);
   const [token, setToken] = useState(initialToken);
   const [password, setPassword] = useState("");
@@ -62,7 +62,7 @@ export default function ResetPage() {
   }
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
       <h1 className="display display--lg" style={{ marginBottom: "0.5rem" }}>

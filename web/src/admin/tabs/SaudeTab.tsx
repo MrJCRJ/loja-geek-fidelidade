@@ -42,9 +42,11 @@ export function SaudeTab({ onError }: Props) {
   const [events, setEvents] = useState<TelemetryRow[]>([]);
   const [level, setLevel] = useState("");
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setBusy(true);
+    setLoadError(null);
     try {
       const [d, t] = await Promise.all([
         api<Diagnostics>("/api/admin/diagnostics"),
@@ -55,7 +57,9 @@ export function SaudeTab({ onError }: Props) {
       setDiag(d);
       setEvents(t.events);
     } catch (e) {
-      onError(e instanceof Error ? e.message : "Falha ao carregar saúde");
+      const msg = e instanceof Error ? e.message : "Falha ao carregar saúde";
+      setLoadError(msg);
+      onError(msg);
     } finally {
       setBusy(false);
     }
@@ -77,7 +81,15 @@ export function SaudeTab({ onError }: Props) {
           </button>
         </div>
         {!diag ? (
-          <p className="muted">Carregando…</p>
+          loadError ? (
+            <p className="error-text">
+              {loadError}
+              <br />
+              <span className="muted">Faça login de novo ou clique em Atualizar.</span>
+            </p>
+          ) : (
+            <p className="muted">Carregando…</p>
+          )
         ) : (
           <>
             <p>

@@ -3,18 +3,22 @@ import {
   captureFrame,
   checkHealth,
   recognize,
-  startSession,
 } from "../api";
 import {
+  FACE_GRACE_MS,
   KEEP_STREAK_MIN_SCORE,
   STRONG_MATCH_SCORE,
-  playUnlockChime,
-  sessionStartErrorMessage,
   type Phase,
 } from "../kiosk-helpers";
-import type { Customer, GeekLockConfig, Session } from "../vite-env";
+import type { Customer, GeekLockConfig } from "../vite-env";
 
 type MatchStreak = { id: string; count: number } | null;
+
+export type PendingLogin = {
+  customer: Customer;
+  score: number;
+  timeBalanceSeconds: number | null;
+};
 
 type ScanSetters = {
   setScanning: (v: boolean) => void;
@@ -23,15 +27,6 @@ type ScanSetters = {
   setScore: (v: number | null) => void;
   setStatus: (v: string) => void;
   setWelcomeCustomer: (c: Customer | null) => void;
-  setSession: (s: Session | null) => void;
-  setElapsed: (v: number) => void;
-};
-
-type SessionRefs = {
-  sessionStartedAtRef: RefObject<number | null>;
-  absentSinceRef: RefObject<number | null>;
-  presenceMissStreakRef: RefObject<number>;
-  handoffStreakRef: RefObject<MatchStreak>;
 };
 
 type Args = {
@@ -39,37 +34,45 @@ type Args = {
   config: GeekLockConfig | null;
   videoRef: RefObject<HTMLVideoElement | null>;
   configRef: RefObject<GeekLockConfig | null>;
-  unlockUi: () => Promise<void>;
-} & ScanSetters &
-  SessionRefs;
+  faceGraceUntilRef: RefObject<number>;
+  scanPaused: boolean;
+  declinedLoginRef: RefObject<{ id: string; until: number } | null>;
+  onMatchConfirmed: (pending: PendingLogin) => void | Promise<void>;
+} & ScanSetters;
+
+function faceGraceLeft(faceGraceUntilRef: RefObject<number>) {
+  return Math.max(0, (faceGraceUntilRef.current || 0) - Date.now());
+}
 
 export function useRecognizeLoop({
   phase,
   config,
   videoRef,
   configRef,
-  unlockUi,
-  sessionStartedAtRef,
-  absentSinceRef,
-  presenceMissStreakRef,
-  handoffStreakRef,
+  faceGraceUntilRef,
+  scanPaused,
+  declinedLoginRef,
+  onMatchConfirmed,
   setScanning,
   setScanReason,
   setCustomer,
   setScore,
   setStatus,
   setWelcomeCustomer,
-  setSession,
-  setElapsed,
 }: Args) {
   const scanningRef = useRef(false);
   const scanTimerRef = useRef<number | null>(null);
   const noFaceStreakRef = useRef(0);
   const serviceDownStreakRef = useRef(0);
   const matchStreakRef = useRef<MatchStreak>(null);
+  const onMatchConfirmedRef = useRef(onMatchConfirmed);
 
   useEffect(() => {
-    if (phase !== "locked" || !config?.stationToken) return;
+    onMatchConfirmedRef.current = onMatchConfirmed;
+  }, [onMatchConfirmed]);
+
+  useEffect(() => {
+    if (phase !== "locked" || !config?.stationToken || scanPaused) return;
 
     let cancelled = false;
     matchStreakRef.current = null;
@@ -88,7 +91,7 @@ export function useRecognizeLoop({
     };
 
     const scanOnce = async () => {
-      if (cancelled || scanningRef.current) return;
+      if (cancelled || scanningRef.current || scanPaused) return;
       const video = videoRef.current;
       if (!video || video.readyState < 2 || !video.videoWidth) {
         if (!cancelled) scheduleNext();
@@ -105,6 +108,13 @@ export function useRecognizeLoop({
           noFaceStreakRef.current = 0;
           serviceDownStreakRef.current = 0;
           const scoreVal = res.score ?? 0;
+          const declined = declinedLoginRef.current;
+          if (declined && declined.id === res.customer.id && Date.now() < declined.until) {
+            setScanReason("unknown");
+            setStatus("Entrada cancelada — aguarde ou peça ajuda no balcão");
+            return;
+          }
+
           const prev = matchStreakRef.current;
           if (prev && prev.id === res.customer.id) {
             matchStreakRef.current = { id: res.customer.id, count: prev.count + 1 };
@@ -135,39 +145,14 @@ export function useRecognizeLoop({
             return;
           }
 
-          setStatus(
-            bal != null
-              ? `VIP ${res.customer.name} — saldo ~${Math.floor(bal / 60)}m`
-              : `VIP ${res.customer.name} reconhecido — liberando`,
-          );
-          setWelcomeCustomer({
-            ...res.customer,
-            timeBalanceSeconds: bal ?? undefined,
-          });
-
-          try {
-            const started = await startSession(config, res.customer.id);
-            if (cancelled) return;
-            setSession(started.session);
-            if (started.customer) setCustomer(started.customer);
-            const startedAt = Date.parse(started.session.started_at);
-            sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
-            setElapsed(
-              Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)),
-            );
-            absentSinceRef.current = null;
-            presenceMissStreakRef.current = 0;
-            handoffStreakRef.current = null;
-            matchStreakRef.current = null;
-            playUnlockChime();
-            await unlockUi();
-          } catch (err) {
-            matchStreakRef.current = null;
-            setWelcomeCustomer(null);
-            const mapped = sessionStartErrorMessage(err);
-            setScanReason(mapped.reason);
-            setStatus(mapped.status);
-          }
+          matchStreakRef.current = null;
+          setWelcomeCustomer(null);
+          setStatus(`Olá, ${res.customer.name}! Deseja entrar nesta máquina?`);
+          await Promise.resolve(onMatchConfirmedRef.current({
+            customer: res.customer,
+            score: scoreVal,
+            timeBalanceSeconds: bal,
+          }));
         } else {
           const reason = res.reason || "no_face";
           const best = typeof res.bestScore === "number" ? res.bestScore : 0;
@@ -185,29 +170,40 @@ export function useRecognizeLoop({
             }
           } else {
             serviceDownStreakRef.current = 0;
+            const graceSec = Math.ceil(faceGraceLeft(faceGraceUntilRef) / 1000);
+            const inGrace = graceSec > 0;
+
             if (reason === "no_face") {
               noFaceStreakRef.current += 1;
-              matchStreakRef.current = null;
+              if (!inGrace) matchStreakRef.current = null;
             } else if (reason === "unknown" || reason === "ambiguous") {
               noFaceStreakRef.current = 0;
               if (!(matchStreakRef.current && best >= KEEP_STREAK_MIN_SCORE)) {
-                matchStreakRef.current = null;
+                if (!inGrace) matchStreakRef.current = null;
               }
+            } else if (inGrace && (reason === "low_quality" || reason === "face_too_far")) {
+              noFaceStreakRef.current = 0;
             } else {
               noFaceStreakRef.current = 0;
-              matchStreakRef.current = null;
+              if (!inGrace) matchStreakRef.current = null;
             }
 
             if (typeof res.bestScore === "number") setScore(res.bestScore);
-            setScanReason(reason);
-            const tip =
-              res.tip ||
-              (reason === "no_face"
-                ? "Posicione o rosto no oval"
-                : best > 0
-                  ? `Não confirmado (${(best * 100).toFixed(0)}%) — olhe de frente`
-                  : "Não reconhecido");
-            setStatus(tip);
+
+            if (inGrace && reason !== "unknown" && reason !== "ambiguous" && reason !== "no_gallery") {
+              setScanReason(undefined);
+              setStatus(`Analisando rosto… (${graceSec}s)`);
+            } else {
+              setScanReason(reason);
+              const tip =
+                res.tip ||
+                (reason === "no_face"
+                  ? "Posicione o rosto no oval"
+                  : best > 0
+                    ? `Não confirmado (${(best * 100).toFixed(0)}%) — olhe de frente`
+                    : "Não reconhecido");
+              setStatus(tip);
+            }
           }
         }
       } catch (err) {
@@ -217,7 +213,7 @@ export function useRecognizeLoop({
       } finally {
         scanningRef.current = false;
         setScanning(false);
-        if (!cancelled) scheduleNext();
+        if (!cancelled && !scanPaused) scheduleNext();
       }
     };
 
@@ -233,20 +229,16 @@ export function useRecognizeLoop({
   }, [
     phase,
     config,
-    unlockUi,
+    scanPaused,
     videoRef,
     configRef,
-    sessionStartedAtRef,
-    absentSinceRef,
-    presenceMissStreakRef,
-    handoffStreakRef,
+    faceGraceUntilRef,
+    declinedLoginRef,
     setScanning,
     setScanReason,
     setCustomer,
     setScore,
     setStatus,
     setWelcomeCustomer,
-    setSession,
-    setElapsed,
   ]);
 }

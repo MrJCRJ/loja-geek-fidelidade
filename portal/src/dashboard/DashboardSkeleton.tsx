@@ -1,15 +1,13 @@
-import { RefObject } from "react";
 import BrandHeader from "../components/BrandHeader";
 import OfflineBanner from "../components/OfflineBanner";
 
 type Props = {
-  rootRef: RefObject<HTMLDivElement | null>;
   loadError?: string;
 };
 
-export function DashboardSkeleton({ rootRef, loadError }: Props) {
+export function DashboardSkeleton({ loadError }: Props) {
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <>
       <OfflineBanner />
       <BrandHeader size="sm" />
       {loadError ? (
@@ -23,6 +21,6 @@ export function DashboardSkeleton({ rootRef, loadError }: Props) {
           <div className="skeleton skeleton--line" style={{ width: "60%" }} />
         </>
       )}
-    </div>
+    </>
   );
 }

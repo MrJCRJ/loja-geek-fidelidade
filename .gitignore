@@ -5,6 +5,8 @@ data/*.db-*
 server/data/
 .env
 .env.local
+.cursor/
+data/droidcam-phone-ip
 *.pyc
 __pycache__/
 .venv/

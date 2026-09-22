@@ -87,8 +87,14 @@ const API_BASE_KEY = "lg_portal_api_base";
 const CENTRALS_CACHE_KEY = "lg_portal_centrals";
 
 function defaultApiBase() {
-  const raw = import.meta.env.VITE_API_URL || "http://127.0.0.1:8787";
-  return String(raw).replace(/\/$/, "");
+  const raw = import.meta.env.VITE_API_URL || "";
+  const clean = String(raw).trim().replace(/\/$/, "");
+  // Vercel CLI pode mascarar env no bundle local como "[SENSITIVE]" — ignorar.
+  if (!clean || clean.includes("[SENSITIVE]") || !/^https?:\/\//i.test(clean)) {
+    if (import.meta.env.DEV) return "http://127.0.0.1:8787";
+    return "";
+  }
+  return clean;
 }
 
 function centralsFromEnv(): CatalogCentral[] {
@@ -114,10 +120,16 @@ function centralsFromEnv(): CatalogCentral[] {
   }
 }
 
+function isValidApiUrl(url: string) {
+  const clean = String(url || "").trim().replace(/\/$/, "");
+  return Boolean(clean && !clean.includes("[SENSITIVE]") && /^https?:\/\//i.test(clean));
+}
+
 export function getApiBase() {
   try {
     const stored = localStorage.getItem(API_BASE_KEY);
-    if (stored) return stored.replace(/\/$/, "");
+    if (stored && isValidApiUrl(stored)) return stored.replace(/\/$/, "");
+    if (stored && !isValidApiUrl(stored)) localStorage.removeItem(API_BASE_KEY);
   } catch {
     /* ignore */
   }
@@ -220,8 +232,15 @@ export async function api<T>(
   if (token) headers.set("authorization", `Bearer ${token}`);
 
   let res: Response;
+  const base = apiBase();
+  if (!base) {
+    throw new ApiError(
+      "Não foi possível falar com a loja (rede/API offline). Tente de novo ou use o WhatsApp.",
+      { tip: "Abra o link do portal copiado no GeekCentral (Config → Túnel)." },
+    );
+  }
   try {
-    res = await fetch(`${apiBase()}${path}`, { ...options, headers });
+    res = await fetch(`${base}${path}`, { ...options, headers });
   } catch {
     throw new ApiError(
       "Não foi possível falar com a loja (rede/API offline). Tente de novo ou use o WhatsApp.",

@@ -498,6 +498,68 @@ body,
   font-size: 0.85rem;
 }
 
+.login-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 0.65rem;
+  padding: 1.5rem;
+  background: rgba(6, 15, 31, 0.92);
+  backdrop-filter: blur(10px);
+  animation: fadeIn 0.25s ease;
+}
+
+.login-confirm-kicker {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.login-confirm-name {
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 3rem);
+  margin: 0;
+  font-weight: 800;
+  text-align: center;
+}
+
+.login-confirm-balance {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent, #2dd4bf);
+}
+
+.login-confirm-question {
+  margin: 0.5rem 0 0;
+  font-size: 1.05rem;
+  color: #c8d6ea;
+}
+
+.login-confirm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 0.75rem;
+}
+
+.login-confirm-yes {
+  min-width: 10rem;
+  font-size: 1.05rem;
+  padding: 0.85rem 1.4rem;
+}
+
+.login-confirm-no {
+  min-width: 8rem;
+}
+
 .welcome-splash {
   position: fixed;
   inset: 0;
@@ -704,19 +766,22 @@ body,
   font-size: 1.05rem;
 }
 
-/* Sessão liberada — janela oculta; câmera 1×1 para presença */
+/* Sessão liberada — janela oculta; câmera off-screen p/ presença/cobrança (não 1×1). */
 .session-hidden {
   position: fixed;
-  width: 1px;
-  height: 1px;
+  left: -9999px;
+  top: 0;
+  width: 640px;
+  height: 480px;
   overflow: hidden;
   opacity: 0;
   pointer-events: none;
 }
 
 .session-hidden-cam {
-  width: 1px;
-  height: 1px;
+  width: 640px;
+  height: 480px;
+  object-fit: cover;
 }
 
 .remote-banner {

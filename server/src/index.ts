@@ -6,6 +6,7 @@ import { assertProductionSecrets } from "./security.js";
 import { markStaleStationsOffline } from "./stations.js";
 import { startTelemetryProbe } from "./telemetry.js";
 import { startBackupScheduler } from "./backup-scheduler.js";
+import { autoStartTunnelIfEnabled, startTunnelHealthProbe } from "./tunnel-manager.js";
 import { initSentry, captureException } from "./sentry.js";
 import { ensurePushTable } from "./push.js";
 
@@ -34,6 +35,10 @@ async function main() {
 
   await app.listen({ port: config.port, host: config.host });
   app.log.info(`API em http://${config.host}:${config.port}`);
+  startTunnelHealthProbe(60_000);
+  autoStartTunnelIfEnabled().catch((err) => {
+    app.log.warn({ err }, "Falha ao auto-iniciar túnel Cloudflare");
+  });
 }
 
 main().catch((err) => {

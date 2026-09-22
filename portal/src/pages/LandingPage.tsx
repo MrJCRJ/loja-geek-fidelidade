@@ -93,14 +93,14 @@ function usePriceCount(active: boolean, target = 10) {
 
 export default function LandingPage() {
   const logged = Boolean(getToken());
-  const rootRef = useReveal();
+  const { setRef, rootRef, rootVersion } = useReveal();
   const heroRef = useRef<HTMLElement>(null);
   const priceSectionRef = useRef<HTMLElement>(null);
   const [priceActive, setPriceActive] = useState(false);
   const [shopCatalog, setShopCatalog] = useState(DEFAULT_SHOP);
   const price = usePriceCount(priceActive, 10);
 
-  useProximityField(rootRef, { selector: ".prox", radius: 120 });
+  useProximityField(rootRef, { selector: ".prox", radius: 120 }, rootVersion);
   useScrollParallax(heroRef, { maxShift: 10 });
 
   useEffect(() => {
@@ -142,7 +142,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="shell shell--landing shell--ambient" ref={rootRef}>
+    <div className="shell shell--landing shell--ambient" ref={setRef}>
       <OfflineBanner />
       <CentralPicker className="central-picker central-picker--landing" />
 

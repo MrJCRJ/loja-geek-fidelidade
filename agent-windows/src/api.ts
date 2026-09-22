@@ -234,18 +234,21 @@ export function cameraErrorMessage(err: unknown): string {
 export async function openUserCamera(): Promise<MediaStream> {
   return openUserCameraShared({
     requireSecureContext: false,
-    preferLabel: /logitech|c270|c920|c922|hd\s*webcam/i,
-    preferredWidth: 1280,
-    preferredHeight: 720,
+    preferredWidth: 640,
+    preferredHeight: 480,
+    timeoutMs: 20_000,
     timeoutMessage:
-      "Timeout ao abrir a webcam (15s). Logitech C270 no USB? Feche Zoom/Discord/browser usando a câmera.",
+      "Timeout ao abrir câmera (20s). DroidCam conectado no celular? Feche outros apps usando /dev/video0.",
     formatError: cameraErrorMessage,
   });
 }
 
 export async function attachCameraStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
   return attachCameraStreamShared(video, stream, {
-    timeoutMessage: "Vídeo não iniciou (10s). Confira a Logitech C270 (LED / cabo USB).",
+    timeoutMs: 18_000,
+    waitFrames: true,
+    timeoutMessage:
+      "Vídeo não iniciou (18s). No celular: DroidCam → Wi‑Fi → conecte no IP:4747 do PC, depois Reconectar webcam.",
   });
 }
 

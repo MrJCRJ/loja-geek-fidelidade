@@ -5,11 +5,11 @@ import { useProximityField } from "../hooks/useProximityField";
 import { useReveal } from "../hooks/useReveal";
 
 export default function TermsPage() {
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
       <h1 className="display display--lg" style={{ marginBottom: "0.75rem" }}>

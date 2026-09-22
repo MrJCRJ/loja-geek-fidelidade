@@ -155,6 +155,11 @@ export function getReadiness() {
         ok: Boolean(config.mpAccessToken) && config.portalCheckoutMode === "live",
         label: "Pix live (MP_ACCESS_TOKEN + checkout)",
       },
+      {
+        id: "tunnel",
+        ok: false,
+        label: "Túnel Cloudflare (configure em Config → Portal)",
+      },
     ],
   };
 }

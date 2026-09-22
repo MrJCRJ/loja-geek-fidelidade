@@ -151,9 +151,12 @@ class SessionHud {
     function fmtBal(sec) {
       if (sec == null || !isFinite(sec)) return null;
       var s = Math.max(0, Math.floor(sec));
-      var m = Math.floor(s / 60);
+      var h = Math.floor(s / 3600);
+      var m = Math.floor((s % 3600) / 60);
       var r = s % 60;
-      if (m >= 60) return Math.floor(m / 60) + "h " + (m % 60) + "m";
+      if (h > 0) {
+        return h + "h " + String(m).padStart(2, "0") + "m " + String(r).padStart(2, "0") + "s";
+      }
       return m + "m " + String(r).padStart(2, "0") + "s";
     }
     window.__setHud = function (p) {
@@ -172,33 +175,32 @@ class SessionHud {
       var state = document.getElementById("state");
       var dot = document.getElementById("dot");
       var softEl = document.getElementById("soft");
-      bar.classList.toggle("alert", low || !present || paused || soft);
-      bar.classList.toggle("soft", soft);
-      if (soft) {
-        softEl.textContent = "Volte à cadeira — o PC trava em " + (absent != null ? absent + "s" : "…");
-        state.textContent = paused ? "crédito pausado" : "ausente";
-        state.className = "danger";
-        dot.className = "danger";
-        setPeek(true);
-      } else if (!present) {
-        softEl.textContent = "";
-        state.textContent = "Ausente " + (absent != null ? absent + "s" : "…") + (paused ? " · pausa" : "");
-        state.className = "warn";
-        dot.className = "warn";
-      } else if (low) {
-        softEl.textContent = "";
+      bar.classList.toggle("alert", low);
+      bar.classList.toggle("soft", false);
+      softEl.textContent = "";
+      if (low) {
         state.textContent = "Saldo baixo";
         state.className = "danger";
         dot.className = "danger";
         setPeek(true);
-      } else if (paused) {
-        softEl.textContent = "";
-        state.textContent = "Crédito pausado";
-        state.className = "warn";
-        dot.className = "warn";
+      } else if (!present) {
+        if (absent != null && absent > 0) {
+          state.textContent = "Ausente · trava em " + absent + "s";
+          state.className = absent <= 15 ? "danger" : "warn";
+          dot.className = absent <= 15 ? "danger" : "warn";
+          if (absent <= 15) {
+            bar.classList.add("soft");
+            softEl.textContent = "Volte à cadeira — trava em " + absent + "s";
+            softEl.style.display = "block";
+            setPeek(true);
+          }
+        } else {
+          state.textContent = "Ausente";
+          state.className = "warn";
+          dot.className = "warn";
+        }
       } else {
-        softEl.textContent = "";
-        state.textContent = "Presente";
+        state.textContent = "Presente · sessão ativa";
         state.className = "";
         dot.className = "";
       }
@@ -229,7 +231,7 @@ class SessionHud {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const r = s % 60;
-    if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+    if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
     return `${m}m ${String(r).padStart(2, "0")}s`;
   }
 

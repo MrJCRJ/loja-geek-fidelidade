@@ -32,6 +32,7 @@ function resetElement(el: HTMLElement) {
 export function useProximityField(
   rootRef: RefObject<HTMLElement | null>,
   options: ProximityOptions = {},
+  rootVersion = 0,
 ) {
   const { selector = ".prox", radius = 120 } = options;
 
@@ -165,5 +166,5 @@ export function useProximityField(
       document.removeEventListener("visibilitychange", onVis);
       root.querySelectorAll<HTMLElement>(selector).forEach(resetElement);
     };
-  }, [rootRef, selector, radius]);
+  }, [rootRef, selector, radius, rootVersion]);
 }

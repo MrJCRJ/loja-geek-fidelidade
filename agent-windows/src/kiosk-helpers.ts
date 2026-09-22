@@ -12,22 +12,45 @@ export type RemoteBanner = {
 
 export const DEFAULT_ABSENT_SEC = 60;
 export const PRESENCE_MS = 1800;
-export const SESSION_HB_MS = 8000;
+export const SESSION_HB_MS = 5000;
+/** Após abrir a tela ou liberar sessão — não penaliza rosto por ruído de câmera. */
+export const FACE_GRACE_MS = 10_000;
+/** Troca de pessoa só após sinal contínuo (ms) — evita falso positivo. */
+export const INTRUDER_HOLD_MS = 10_000;
 /** Match único forte libera; senão precisa de 2 frames. Mais alto reduz T14 (quase-gêmeos). */
 export const STRONG_MATCH_SCORE = 0.62;
 export const KEEP_STREAK_MIN_SCORE = 0.4;
+/** Ruído de câmera / posição — não tratar como intruso ou perda de match. */
+export function isCameraNoise(reason?: string | null): boolean {
+  return (
+    reason === "no_face" ||
+    reason === "low_quality" ||
+    reason === "face_too_far" ||
+    reason === "service_down"
+  );
+}
 /** Modo staff sem sessão VIP — auto-trava (T6). */
 export const DEFAULT_STAFF_UNLOCK_MAX_SEC = 600;
 
 export function formatBalanceShort(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
-  const m = Math.floor(s / 60);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (m >= 60) {
-    const h = Math.floor(m / 60);
-    return `${h}h ${m % 60}m`;
-  }
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
   return `${m}m ${String(r).padStart(2, "0")}s`;
+}
+
+/** Saldo ao vivo entre heartbeats (desconta 1s/s quando cobrança ativa). */
+export function liveBalanceSeconds(
+  base: number | null | undefined,
+  syncedAtMs: number | null | undefined,
+  billingPaused: boolean,
+): number | null {
+  if (base == null || !Number.isFinite(base)) return null;
+  if (billingPaused || syncedAtMs == null) return Math.max(0, Math.floor(base));
+  const elapsed = Math.floor((Date.now() - syncedAtMs) / 1000);
+  return Math.max(0, Math.floor(base) - elapsed);
 }
 
 export function scanVisualFromReason(reason?: string, scanning?: boolean): ScanVisual {
@@ -48,7 +71,7 @@ export function statusIcon(reason?: string) {
 
 /** Copy curta sob a oval — linguagem de loja, não código. */
 export function scanStatusHint(reason?: string, scanning?: boolean): string {
-  if (scanning) return "Olhe para a Logitech C270 — estamos confirmando seu VIP.";
+  if (scanning) return "Olhe para a câmera — estamos confirmando seu VIP.";
   switch (reason) {
     case "no_gallery":
       return "Nenhum VIP cadastrado no servidor. Avise o balcão.";
@@ -59,9 +82,9 @@ export function scanStatusHint(reason?: string, scanning?: boolean): string {
     case "low_quality":
       return "Imagem escura ou borrada. Melhore a luz da frente.";
     case "unknown":
-      return "Rosto não reconhecido. Cadastre-se no portal ou fale no caixa.";
+      return "Não cadastrado — escaneie o QR ao lado para se registrar.";
     case "ambiguous":
-      return "Quase reconheci — olhe de frente e tente de novo.";
+      return "Rosto não confirmado — cadastre-se pelo QR ou fale no caixa.";
     case "no_credit":
       return "VIP sem crédito. Passe no caixa ou compre horas no site.";
     case "no_consent":

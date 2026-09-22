@@ -1,5 +1,5 @@
 /* Service worker — PWA shell + push (estilo Workbox: precache + network-first assets). */
-const CACHE = "geeks-portal-v3";
+const CACHE = "geeks-portal-v6";
 const PRECACHE = ["/", "/index.html", "/manifest.webmanifest", "/brand/icon-192.png", "/brand/icon-256.png"];
 
 self.addEventListener("install", (event) => {

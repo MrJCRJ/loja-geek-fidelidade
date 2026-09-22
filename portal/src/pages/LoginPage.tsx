@@ -13,8 +13,8 @@ function isEmail(v: string) {
 
 export default function LoginPage() {
   const nav = useNavigate();
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -56,7 +56,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
       <CentralPicker />

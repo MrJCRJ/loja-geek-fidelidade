@@ -10,9 +10,14 @@ export default function OfflineBanner() {
     let cancelled = false;
     const check = async () => {
       try {
+        const base = getApiBase();
+        if (!base) {
+          if (!cancelled) setOffline(true);
+          return;
+        }
         const ctrl = new AbortController();
         const t = window.setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(`${getApiBase()}/api/portal/health`, { signal: ctrl.signal });
+        const res = await fetch(`${base}/api/portal/health`, { signal: ctrl.signal });
         window.clearTimeout(t);
         if (!cancelled) setOffline(!res.ok);
       } catch {

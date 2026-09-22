@@ -39,6 +39,7 @@ export type Session = {
   status: string;
   customer_name?: string;
   station_name?: string;
+  time_balance_seconds?: number;
 };
 
 declare global {
@@ -57,8 +58,8 @@ declare global {
       getLastFailure: () => Promise<{ kind: string; message: string; at: string } | null>;
       clearLastFailure: () => Promise<{ ok: boolean }>;
       writeLastFailure: (payload: { kind?: string; message?: string }) => Promise<{ ok: boolean }>;
-      onLockState: (cb: (data: { locked: boolean }) => void) => () => void;
-      onRequestEndSession: (cb: () => void) => () => void;
+      onLockState: (cb: (data: { locked: boolean; paint?: boolean; prepare?: boolean }) => void) => () => void;
+      onRequestEndSessionConfirmed: (cb: () => void) => () => void;
       onRequestQuit: (cb: () => void) => () => void;
       onRequestStaffPin: (cb: () => void) => () => void;
       onRequestLock: (cb: () => void) => () => void;

@@ -1,99 +1,87 @@
 import { useEffect, useRef, type RefObject } from "react";
+import { captureFrame, checkPresence, sessionHeartbeat } from "../api";
 import {
-  captureFrame,
-  checkPresence,
-  sessionHeartbeat,
-  startSession,
-} from "../api";
-import {
-  DEFAULT_ABSENT_SEC,
+  FACE_GRACE_MS,
+  INTRUDER_HOLD_MS,
   PRESENCE_MS,
   SESSION_HB_MS,
   STRONG_MATCH_SCORE,
-  playUnlockChime,
-  sessionStartErrorMessage,
   type Phase,
 } from "../kiosk-helpers";
-import type { Customer, GeekLockConfig, Session } from "../vite-env";
+import type { GeekLockConfig, Session } from "../vite-env";
 
-type MatchStreak = { id: string; count: number } | null;
+type IntruderKind = "vip" | "stranger";
+
+/** Frames seguidos sem VIP antes de marcar ausente (evita falso positivo). */
+const ABSENT_MISS_TICKS = 2;
 
 type Args = {
   phase: Phase;
   config: GeekLockConfig | null;
-  session: Session | null;
+  sessionId: string | undefined;
   customerId?: string;
   videoRef: RefObject<HTMLVideoElement | null>;
   streamRef: RefObject<MediaStream | null>;
   configRef: RefObject<GeekLockConfig | null>;
   sessionRef: RefObject<Session | null>;
-  sessionStartedAtRef: RefObject<number | null>;
+  faceGraceUntilRef: RefObject<number>;
   absentSinceRef: RefObject<number | null>;
   presenceMissStreakRef: RefObject<number>;
-  handoffStreakRef: RefObject<MatchStreak>;
-  handoffBusyRef: RefObject<boolean>;
   startCam: () => Promise<void>;
   doEndSession: (reason: string) => Promise<void>;
-  setSession: (s: Session | null) => void;
-  setCustomer: (c: Customer | null) => void;
-  setElapsed: (v: number) => void;
-  setAbsentLeft: (v: number | null) => void;
-  setStatus: (v: string) => void;
+  onIntruder: (kind: IntruderKind) => Promise<void>;
   setBalanceSeconds: (v: number | null) => void;
   setLowBalanceWarn: (v: boolean) => void;
-  setBillingPaused: (v: boolean) => void;
   onLowBalanceWarn?: (balanceSeconds: number) => void;
 };
 
-/** Motivos em que outra pessoa está na cadeira — countdown imediato (T1/T19). */
-function isStrangerReason(reason?: string) {
-  return (
-    reason === "other_vip" ||
-    reason === "unknown" ||
-    reason === "ambiguous" ||
-    reason === "face_too_far"
-  );
+function inFaceGrace(faceGraceUntilRef: RefObject<number>) {
+  return Date.now() < (faceGraceUntilRef.current || 0);
+}
+
+function isImmediateAbsent(reason?: string) {
+  return reason === "no_face" || reason === "face_too_far" || reason === "low_quality";
 }
 
 export function usePresenceLoop({
   phase,
   config,
-  session,
+  sessionId,
   customerId,
   videoRef,
   streamRef,
   configRef,
   sessionRef,
-  sessionStartedAtRef,
+  faceGraceUntilRef,
   absentSinceRef,
   presenceMissStreakRef,
-  handoffStreakRef,
-  handoffBusyRef,
   startCam,
   doEndSession,
-  setSession,
-  setCustomer,
-  setElapsed,
-  setAbsentLeft,
-  setStatus,
+  onIntruder,
   setBalanceSeconds,
   setLowBalanceWarn,
-  setBillingPaused,
   onLowBalanceWarn,
 }: Args) {
   const presenceTimerRef = useRef<number | null>(null);
   const warnedLowRef = useRef(false);
+  const intruderSinceRef = useRef<{ kind: IntruderKind; since: number } | null>(null);
+  const intruderBusyRef = useRef(false);
   const onLowBalanceWarnRef = useRef(onLowBalanceWarn);
   onLowBalanceWarnRef.current = onLowBalanceWarn;
 
   useEffect(() => {
     warnedLowRef.current = false;
-  }, [session?.id]);
+    intruderSinceRef.current = null;
+    intruderBusyRef.current = false;
+    absentSinceRef.current = null;
+    presenceMissStreakRef.current = 0;
+    faceGraceUntilRef.current = Date.now() + FACE_GRACE_MS;
+  }, [sessionId, faceGraceUntilRef, absentSinceRef, presenceMissStreakRef]);
 
   useEffect(() => {
     if (phase !== "unlocked" || !config?.stationToken) return;
     if (customerId === "staff") return;
-    if (!session) return;
+    if (!sessionId) return;
 
     if (!streamRef.current?.active) {
       startCam().catch(() => undefined);
@@ -101,36 +89,124 @@ export function usePresenceLoop({
 
     let cancelled = false;
     let lastHb = 0;
+    let vipPresent = true;
 
-    const markAbsent = (immediate: boolean) => {
-      if (immediate) {
-        presenceMissStreakRef.current = 3;
-        if (absentSinceRef.current == null) {
-          absentSinceRef.current = Date.now();
-        }
+    const markIntruder = (kind: IntruderKind): boolean => {
+      const prev = intruderSinceRef.current;
+      const now = Date.now();
+      if (prev && prev.kind === kind) {
+        return now - prev.since >= INTRUDER_HOLD_MS;
+      }
+      intruderSinceRef.current = { kind, since: now };
+      return false;
+    };
+
+    const noteMiss = (reason?: string) => {
+      const need = isImmediateAbsent(reason) ? 1 : ABSENT_MISS_TICKS;
+      presenceMissStreakRef.current += 1;
+      return presenceMissStreakRef.current >= need;
+    };
+
+    const notePresent = () => {
+      presenceMissStreakRef.current = 0;
+      vipPresent = true;
+      absentSinceRef.current = null;
+    };
+
+    const syncAbsentMark = (grace: boolean) => {
+      if (grace || vipPresent) {
+        absentSinceRef.current = null;
         return;
       }
-      presenceMissStreakRef.current += 1;
-      if (presenceMissStreakRef.current >= 3 && absentSinceRef.current == null) {
+      if (absentSinceRef.current == null) {
         absentSinceRef.current = Date.now();
       }
     };
 
     const tick = async () => {
-      if (cancelled) return;
+      if (cancelled || intruderBusyRef.current) return;
       const cfg = configRef.current;
       const sess = sessionRef.current;
-      if (!cfg) return;
+      if (!cfg || !sess || sess.id !== sessionId) return;
 
       const now = Date.now();
-      const pauseBilling = absentSinceRef.current != null;
-      setBillingPaused(pauseBilling);
+      const grace = inFaceGrace(faceGraceUntilRef);
+      const vipId = sess.customer_id || customerId;
 
-      if (sess && now - lastHb >= SESSION_HB_MS) {
+      if (grace) {
+        notePresent();
+        intruderSinceRef.current = null;
+      } else if (!videoRef.current || videoRef.current.readyState < 2) {
+        if (noteMiss("no_face")) vipPresent = false;
+        intruderSinceRef.current = null;
+      } else {
+        try {
+          const imageBase64 = captureFrame(videoRef.current, 0.85);
+          const res = await checkPresence(cfg, imageBase64, vipId);
+
+          if (res.present) {
+            notePresent();
+            intruderSinceRef.current = null;
+          } else if (res.reason === "other_vip" && res.bestCustomerId && res.bestCustomerId !== vipId) {
+            if (noteMiss(res.reason)) vipPresent = false;
+            if (markIntruder("vip")) {
+              intruderBusyRef.current = true;
+              try {
+                intruderSinceRef.current = null;
+                await onIntruder("vip");
+              } finally {
+                intruderBusyRef.current = false;
+              }
+              return;
+            }
+          } else if (res.reason === "unknown" || res.reason === "ambiguous") {
+            const score = res.bestScore ?? 0;
+            if (score >= STRONG_MATCH_SCORE && res.bestCustomerId && res.bestCustomerId !== vipId) {
+              if (noteMiss(res.reason)) vipPresent = false;
+              if (markIntruder("vip")) {
+                intruderBusyRef.current = true;
+                try {
+                  intruderSinceRef.current = null;
+                  await onIntruder("vip");
+                } finally {
+                  intruderBusyRef.current = false;
+                }
+                return;
+              }
+            } else if (score >= STRONG_MATCH_SCORE) {
+              if (noteMiss(res.reason)) vipPresent = false;
+              if (markIntruder("stranger")) {
+                intruderBusyRef.current = true;
+                try {
+                  intruderSinceRef.current = null;
+                  await onIntruder("stranger");
+                } finally {
+                  intruderBusyRef.current = false;
+                }
+                return;
+              }
+            } else if (noteMiss(res.reason)) {
+              vipPresent = false;
+              intruderSinceRef.current = null;
+            }
+          } else if (noteMiss(res.reason)) {
+            vipPresent = false;
+            intruderSinceRef.current = null;
+          }
+        } catch {
+          intruderSinceRef.current = null;
+        }
+      }
+
+      syncAbsentMark(grace);
+
+      if (now - lastHb >= SESSION_HB_MS) {
         lastHb = now;
         try {
-          const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling });
-          setSession(hb.session);
+          const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling: false });
+          if (sessionRef.current) {
+            sessionRef.current = { ...sessionRef.current, ...hb.session };
+          }
           const bal =
             typeof hb.timeBalanceSeconds === "number"
               ? hb.timeBalanceSeconds
@@ -149,103 +225,8 @@ export function usePresenceLoop({
             return;
           }
         } catch {
-          /* ledger pode falhar — timer local continua */
+          /* ledger */
         }
-      }
-
-      const limitSec = cfg.absentSecondsToLock || DEFAULT_ABSENT_SEC;
-      const limitMs = limitSec * 1000;
-
-      if (!videoRef.current || videoRef.current.readyState < 2) {
-        markAbsent(false);
-      } else {
-        try {
-          const imageBase64 = captureFrame(videoRef.current, 0.85);
-          const vipId = sessionRef.current?.customer_id || customerId;
-          const res = await checkPresence(cfg, imageBase64, vipId);
-          if (res.reason === "service_down") {
-            presenceMissStreakRef.current = 0;
-          } else if (res.present) {
-            presenceMissStreakRef.current = 0;
-            handoffStreakRef.current = null;
-            absentSinceRef.current = null;
-            setAbsentLeft(null);
-            setBillingPaused(false);
-          } else {
-            const otherId = res.bestCustomerId || null;
-            const otherScore = res.bestScore ?? 0;
-            const canHandoff =
-              !!otherId &&
-              otherId !== vipId &&
-              (res.reason === "other_vip" || otherScore >= STRONG_MATCH_SCORE);
-
-            if (canHandoff && !handoffBusyRef.current) {
-              const prev = handoffStreakRef.current;
-              if (prev && prev.id === otherId) {
-                handoffStreakRef.current = { id: otherId, count: prev.count + 1 };
-              } else {
-                handoffStreakRef.current = { id: otherId, count: 1 };
-              }
-              if (handoffStreakRef.current.count >= 2) {
-                handoffBusyRef.current = true;
-                try {
-                  const started = await startSession(cfg, otherId);
-                  if (cancelled) return;
-                  setSession(started.session);
-                  if (started.customer) {
-                    setCustomer(started.customer);
-                  } else {
-                    setCustomer({
-                      id: otherId,
-                      name: started.session.customer_name || "VIP",
-                      level: "bronze",
-                      points: 0,
-                    });
-                  }
-                  const startedAt = Date.parse(started.session.started_at);
-                  sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
-                  setElapsed(0);
-                  presenceMissStreakRef.current = 0;
-                  handoffStreakRef.current = null;
-                  absentSinceRef.current = null;
-                  setAbsentLeft(null);
-                  setBillingPaused(false);
-                  setStatus(`Sessão: ${started.session.customer_name || "VIP"}`);
-                  playUnlockChime();
-                } catch (err) {
-                  handoffStreakRef.current = null;
-                  const mapped = sessionStartErrorMessage(err);
-                  if (mapped.reason === "no_credit") {
-                    setStatus("Outro VIP sem crédito — aguardando ausência");
-                  }
-                  markAbsent(true);
-                } finally {
-                  handoffBusyRef.current = false;
-                }
-              } else {
-                // Outro VIP detectado: inicia countdown sem esperar 3 misses (T19).
-                markAbsent(true);
-              }
-            } else {
-              handoffStreakRef.current = null;
-              markAbsent(isStrangerReason(res.reason));
-            }
-          }
-        } catch {
-          markAbsent(false);
-        }
-      }
-
-      if (absentSinceRef.current != null) {
-        const left = Math.ceil((limitMs - (Date.now() - absentSinceRef.current)) / 1000);
-        setAbsentLeft(Math.max(0, left));
-        setBillingPaused(true);
-        if (left <= 0) {
-          await doEndSession("absent");
-          return;
-        }
-      } else {
-        setAbsentLeft(null);
       }
 
       if (!cancelled) {
@@ -255,6 +236,7 @@ export function usePresenceLoop({
       }
     };
 
+    lastHb = 0;
     tick().catch(() => undefined);
 
     return () => {
@@ -267,26 +249,19 @@ export function usePresenceLoop({
   }, [
     phase,
     config,
-    session,
+    sessionId,
     customerId,
     videoRef,
     streamRef,
     configRef,
     sessionRef,
-    sessionStartedAtRef,
+    faceGraceUntilRef,
     absentSinceRef,
     presenceMissStreakRef,
-    handoffStreakRef,
-    handoffBusyRef,
     startCam,
     doEndSession,
-    setSession,
-    setCustomer,
-    setElapsed,
-    setAbsentLeft,
-    setStatus,
+    onIntruder,
     setBalanceSeconds,
     setLowBalanceWarn,
-    setBillingPaused,
   ]);
 }

@@ -1,5 +1,5 @@
 const { createElectronDebug } = require("./debug.cjs");
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, session } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, session, dialog } = require("electron");
 const path = require("node:path");
 const { OverlayLockController } = require("./lock-controller.cjs");
 const { SessionHud } = require("./session-hud.cjs");
@@ -42,6 +42,15 @@ const sessionHud = new SessionHud();
 const isDev = Boolean(process.env.VITE_DEV_SERVER_URL);
 const debug = createElectronDebug("geeklock", isDev);
 const isLinux = process.platform === "linux";
+
+// Linux sem GPU dedicada: evita crash "GPU process isn't usable" (câmera para de funcionar).
+if (isLinux) {
+  app.disableHardwareAcceleration();
+  app.commandLine.appendSwitch("disable-gpu");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+  // DroidCam alimenta /dev/video0 (v4l2) — preferir captura direta no kiosk.
+  app.commandLine.appendSwitch("disable-features", "WebRTCPipeWireCapturer");
+}
 const ICONS_DIR = path.join(__dirname, "icons");
 const DIST_INDEX = path.join(__dirname, "..", "dist", "index.html");
 const TRAY_ICON_SIZE = isLinux ? 22 : 16;
@@ -78,7 +87,7 @@ function formatTrayTime(seconds) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
+  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
   return `${m}m ${String(r).padStart(2, "0")}s`;
 }
 
@@ -108,83 +117,102 @@ function tooltipFromPayload(payload) {
   if (phase === "locked" || phase === "boot") return "GeekLock — Aguardando VIP";
   if (phase === "unlocked") {
     if (isAdmin) return "GeekLock — Admin · auto-trava em alguns minutos";
-    const balPart = balTxt ? ` · resta ${balTxt}` : ` · ${elapsed}`;
+    const balPart = balTxt ? ` · resta ${balTxt}` : "";
     if (payload?.lowBalanceWarn) return `GeekLock — ${name}${balPart} · SALDO BAIXO`;
-    if (present) return `GeekLock — ${name}${balPart} · Presente`;
-    const left = absentLeft != null ? `${absentLeft}s` : "…";
-    const pause = payload?.billingPaused ? " · crédito pausado" : "";
-    return `GeekLock — ${name}${balPart} · Ausente ${left}${pause}`;
+    if (!present) {
+      if (absentLeft != null && absentLeft > 0) {
+        return `GeekLock — ${name}${balPart} · AUSENTE · trava em ${absentLeft}s`;
+      }
+      return `GeekLock — ${name}${balPart} · ausente`;
+    }
+    return `GeekLock — ${name}${balPart} · presente · sessão ativa`;
   }
   return "GeekLock VIP";
 }
 
 function menuKeyFromPayload(payload) {
   const phase = payload?.phase || "boot";
-  const name = payload?.name || "VIP";
-  if (phase === "unlocked") return `unlocked|${name}`;
+  if (phase === "unlocked") {
+    const bal = payload?.balanceSeconds;
+    const absentLeft = payload?.absentLeft;
+    const present = payload?.present !== false ? "1" : "0";
+    return `unlocked|${present}|${absentLeft ?? ""}|${bal ?? ""}`;
+  }
   return phase;
 }
 
-function focusMainWindow() {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  if (!mainWindow.isVisible()) {
-    mainWindow.show();
-  }
-  if (mainWindow.isMinimized()) {
-    mainWindow.restore();
-  }
-  mainWindow.focus();
-}
-
-function requestStaffPin() {
-  focusMainWindow();
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send("staff:request-pin");
-}
-
-function reloadAppPage() {
-  focusMainWindow();
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  loadFallbackAttempted = false;
-  mainWindow.webContents.reloadIgnoringCache();
+function promptEndSession() {
+  void (async () => {
+    const win = mainWindow && !mainWindow.isDestroyed() ? mainWindow : null;
+    const phase = lastTrayPayload?.phase;
+    if (phase !== "unlocked") {
+      if (win) {
+        win.show();
+        win.focus();
+      }
+      return;
+    }
+    const isAdmin = lastTrayPayload?.mode === "admin" || lastTrayPayload?.name === "Admin";
+    const { response } = await dialog.showMessageBox(win, {
+      type: "warning",
+      buttons: ["Continuar sessão", "Encerrar sessão"],
+      defaultId: 0,
+      cancelId: 0,
+      noLink: true,
+      title: "Encerrar sessão",
+      message: isAdmin
+        ? "Travar a estação e voltar ao reconhecimento facial?"
+        : "Antes de encerrar, faça logout do Steam e do Discord se a conta não for sua.",
+      detail: isAdmin
+        ? "O modo Admin será encerrado."
+        : "Confirme só depois de sair das contas. A tela de reconhecimento volta em seguida.",
+    });
+    if (response === 1 && win) {
+      win.webContents.send("session:request-end-confirmed");
+    }
+  })();
 }
 
 function buildTrayMenu(payload) {
   const phase = payload?.phase || "boot";
   const unlocked = phase === "unlocked";
-  const status = menuStatusFromPayload(payload);
+  const name = payload?.name || "VIP";
+  const elapsed = formatTrayTime(payload?.elapsed);
+  const bal = payload?.balanceSeconds;
+  const balTxt = bal != null ? formatTrayTime(bal) : null;
 
+  if (unlocked) {
+    const absentLeft = payload?.absentLeft;
+    const present = payload?.present !== false;
+    const balTxt = bal != null ? formatTrayTime(bal) : null;
+    const restaPart = balTxt != null ? `resta ${balTxt}` : elapsed;
+    let statusLine;
+    if (!present) {
+      statusLine =
+        absentLeft != null && absentLeft > 0
+          ? `${restaPart} · ausente · trava em ${absentLeft}s`
+          : `${restaPart} · ausente`;
+    } else {
+      statusLine = restaPart;
+    }
+    return Menu.buildFromTemplate([
+      {
+        label: `${name} — ${statusLine}`,
+        enabled: false,
+      },
+      { type: "separator" },
+      {
+        label: "Encerrar sessão",
+        click: () => promptEndSession(),
+      },
+    ]);
+  }
+
+  const status = menuStatusFromPayload(payload);
   return Menu.buildFromTemplate([
     {
       label: `GeekLock — ${status}`,
       enabled: false,
-    },
-    { type: "separator" },
-    {
-      label: "Encerrar sessão",
-      enabled: unlocked,
-      visible: unlocked,
-      click: () => mainWindow?.webContents.send("session:request-end"),
-    },
-    {
-      label: "Travar estação",
-      click: () => {
-        if (!mainWindow || mainWindow.isDestroyed()) return;
-        mainWindow.webContents.send("session:request-lock");
-      },
-    },
-    {
-      label: "Atualizar página (Ctrl+Shift+R)",
-      click: () => reloadAppPage(),
-    },
-    {
-      label: "PIN Admin (Ctrl+Shift+S)",
-      click: () => requestStaffPin(),
-    },
-    { type: "separator" },
-    {
-      label: "Sair (PIN)",
-      click: () => mainWindow?.webContents.send("staff:request-quit"),
     },
   ]);
 }
@@ -202,7 +230,9 @@ function applyTrayUpdate(payload) {
   }
 
   const tip = tooltipFromPayload(lastTrayPayload);
-  const tipKey = `${phase}|${lastTrayPayload.name || ""}|${present}`;
+  const balKey =
+    lastTrayPayload.balanceSeconds != null ? Math.floor(Number(lastTrayPayload.balanceSeconds)) : "";
+  const tipKey = `${phase}|${lastTrayPayload.name || ""}|${present}|${lastTrayPayload.absentLeft ?? ""}|${balKey}`;
   const now = Date.now();
   const tipStatusChanged = tipKey !== lastTipKey;
   const tipTimeDue = tip !== lastTooltip && now - lastTooltipAt >= TOOLTIP_MIN_MS;
@@ -214,7 +244,11 @@ function applyTrayUpdate(payload) {
   }
 
   const menuKey = menuKeyFromPayload(lastTrayPayload);
-  if (menuKey !== lastMenuKey) {
+  // Menu com relógio: atualiza a cada tick quando sessão ativa
+  const menuDue =
+    lastTrayPayload.phase === "unlocked" ||
+    menuKey !== lastMenuKey;
+  if (menuDue) {
     lastMenuKey = menuKey;
     tray.setContextMenu(buildTrayMenu(lastTrayPayload));
   }
@@ -294,14 +328,38 @@ function setupLoadFallback(win) {
   });
 }
 
+function focusMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+  mainWindow.focus();
+}
+
+function requestStaffPin() {
+  focusMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.send("staff:request-pin");
+}
+
+function reloadAppPage() {
+  focusMainWindow();
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  loadFallbackAttempted = false;
+  mainWindow.webContents.reloadIgnoringCache();
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1100,
     height: 720,
-    show: true,
+    show: false,
     autoHideMenuBar: true,
-    fullscreen: true,
-    alwaysOnTop: true,
+    fullscreen: false,
+    alwaysOnTop: false,
     skipTaskbar: true,
     backgroundColor: "#060f1f",
     webPreferences: {
@@ -317,15 +375,16 @@ function createWindow() {
   setupLoadFallback(mainWindow);
   loadApp(mainWindow);
 
+  mainWindow.once("ready-to-show", () => {
+    lock.lock();
+  });
+
   mainWindow.on("close", (e) => {
     if (!app.isQuitting) {
       e.preventDefault();
-      // Pede ao renderer (pinta LockedScreen antes do fullscreen) — evita tela preta
       mainWindow.webContents.send("session:request-lock");
     }
   });
-
-  lock.lock();
 }
 
 function createTray() {
@@ -342,6 +401,7 @@ function createTray() {
   lastTooltipAt = Date.now();
   tray.setToolTip(lastTooltip);
   tray.setContextMenu(buildTrayMenu(lastTrayPayload));
+  tray.on("click", () => promptEndSession());
 }
 
 function registerShortcut(accelerators, handler, label) {
@@ -489,8 +549,8 @@ ipcMain.handle("discovery:stop", () => {
   return { ok: true };
 });
 
-ipcMain.handle("lock:lock", () => {
-  lock.lock();
+ipcMain.handle("lock:lock", async () => {
+  await lock.lock();
   return { locked: true };
 });
 

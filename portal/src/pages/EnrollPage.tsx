@@ -18,8 +18,8 @@ import { useReveal } from "../hooks/useReveal";
 const WA_LAN = "https://wa.me/5575988603747?text=Oi%20preciso%20de%20ajuda%20com%20o%20cadastro%20facial";
 
 export default function EnrollPage() {
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [consent, setConsent] = useState(false);
@@ -196,7 +196,7 @@ export default function EnrollPage() {
   const done = auto.completed || samples >= maxSamples;
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="sm" />
       <h1 className="display display--md" style={{ marginBottom: "0.35rem" }}>

@@ -14,6 +14,8 @@ Sistema **local na LAN**: 1 PC controle + N estações com webcam.
 
 ## PC controle Windows (recomendado na loja)
 
+**Sem pendrive (GitHub + Cursor na loja):** siga [`docs/SETUP-WINDOWS-LOJA.md`](docs/SETUP-WINDOWS-LOJA.md) — domínio/túnel `api.geekloja.com.br` já estão prontos; o agent no Windows só clona, sobe o Central e autentica o Cloudflare.
+
 Gere as pastas do pendrive (no Linux de build):
 
 ```bash

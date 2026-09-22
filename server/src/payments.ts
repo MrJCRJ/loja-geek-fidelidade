@@ -269,6 +269,20 @@ async function createMpCheckoutPreference(input: {
   return { preferenceId: data.id, checkoutUrl };
 }
 
+function mpPayerEmail(raw: string, customerId: string): string {
+  const email = (raw || "").trim().toLowerCase();
+  // MP sandbox /v1/payments: rejeita @testuser.com (4390) e TLDs inválidos (.local)
+  const invalid =
+    !email ||
+    email.endsWith("@testuser.com") ||
+    email.endsWith(".local") ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  if (invalid) {
+    return `cliente+${customerId.slice(0, 12)}@example.com`;
+  }
+  return email;
+}
+
 async function checkoutWithMercadoPago(input: {
   customerId: string;
   kind: "hours" | "subscription";
@@ -295,8 +309,7 @@ async function checkoutWithMercadoPago(input: {
     providerRef: null,
   }) as WebOrderRow;
 
-  const payerEmail =
-    input.payerEmail || `cliente+${input.customerId.slice(0, 8)}@lojageeks.local`;
+  const payerEmail = mpPayerEmail(input.payerEmail, input.customerId);
 
   const [pix, preference] = await Promise.all([
     createMpPixPayment({

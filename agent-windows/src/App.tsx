@@ -8,6 +8,8 @@ import {
   heartbeat,
   openUserCamera,
   reportStaffUnlock,
+  sessionHeartbeat,
+  startSession,
 } from "./api";
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
@@ -15,8 +17,8 @@ import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
 import { OfflineScreen } from "./OfflineScreen";
 import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
-import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, DEFAULT_STAFF_UNLOCK_MAX_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playSoftLockBeep } from "./kiosk-helpers";
-import { useRecognizeLoop } from "./hooks/useRecognizeLoop";
+import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep } from "./kiosk-helpers";
+import { useRecognizeLoop, type PendingLogin } from "./hooks/useRecognizeLoop";
 import { usePresenceLoop } from "./hooks/usePresenceLoop";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
@@ -44,7 +46,9 @@ export default function App() {
     null,
   );
   const [portalBaseUrl, setPortalBaseUrl] = useState(DEFAULT_PORTAL_URL);
-  const [logoutNudge, setLogoutNudge] = useState(false);
+  const [loginPrompt, setLoginPrompt] = useState<PendingLogin | null>(null);
+  /** Bump após show() — remonta LockedScreen com a janela já visível. */
+  const [lockPaintNonce, setLockPaintNonce] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const absentSinceRef = useRef<number | null>(null);
@@ -56,11 +60,15 @@ export default function App() {
   const configRef = useRef<GeekLockConfig | null>(null);
   const phaseRef = useRef<Phase>("boot");
   const camRetryRef = useRef<number | null>(null);
+  const camReadyRef = useRef(false);
   /** Evita reentrada de doEndSession (F11 / onLockState / ausência). */
   const endingSessionRef = useRef(false);
+  const declinedLoginRef = useRef<{ id: string; until: number } | null>(null);
+  /** Janela de tolerância após abrir/travar — câmera estabiliza antes de penalizar rosto. */
+  const faceGraceUntilRef = useRef(0);
+  const balanceSyncedAtRef = useRef<number | null>(null);
   const softLockArmedRef = useRef(false);
   const softLockTickRef = useRef<number | null>(null);
-  const logoutNudgeTimerRef = useRef<number | null>(null);
   /** Epoch ms do início da sessão (timer local). */
   const sessionStartedAtRef = useRef<number | null>(null);
   const absentLeftRef = useRef<number | null>(null);
@@ -87,6 +95,23 @@ export default function App() {
   useEffect(() => {
     phaseRef.current = phase;
   }, [phase]);
+  useEffect(() => {
+    camReadyRef.current = camReady;
+  }, [camReady]);
+
+  const syncBalance = useCallback((bal: number | null) => {
+    setBalanceSeconds(bal);
+    balanceSyncedAtRef.current = bal != null ? Date.now() : null;
+  }, []);
+
+  async function waitForVideoElement(timeoutMs = 4000): Promise<HTMLVideoElement | null> {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      if (videoRef.current) return videoRef.current;
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
+    }
+    return videoRef.current;
+  }
 
   const stopCam = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
@@ -96,63 +121,89 @@ export default function App() {
   const startCam = useCallback(async () => {
     stopCam();
     setCamReady(false);
+    camReadyRef.current = false;
     try {
       const stream = await openUserCamera();
       streamRef.current = stream;
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         streamRef.current = null;
+        camReadyRef.current = false;
         setCamReady(false);
-        setError("Webcam desconectada — tentando reconectar a Logitech C270…");
+        setError("Câmera desconectada — tentando reconectar o DroidCam…");
       });
-      if (videoRef.current) {
-        await attachCameraStream(videoRef.current, stream);
+      const video = await waitForVideoElement();
+      if (!video) {
+        throw new Error("Interface de vídeo não montou — aguarde ou clique em Reconectar webcam.");
       }
+      await attachCameraStream(video, stream);
+      camReadyRef.current = true;
       setCamReady(true);
       setError("");
     } catch (err) {
+      stopCam();
+      camReadyRef.current = false;
       setCamReady(false);
-      setError(err instanceof Error ? err.message : "Falha na câmera");
+      const msg = err instanceof Error ? err.message : "Falha na câmera";
+      setError(msg);
       throw err;
     }
   }, []);
 
   /**
-   * Trava a estação. Importante: pintar LockedScreen (reconhecimento) ANTES de
-   * mostrar a janela fullscreen — na fase unlocked a UI é só um <video> 1px
-   * (parece tela preta). flushSync garante o paint antes do Electron.show().
+   * Trava a estação.
+   * 1) flushSync → LockedScreen no DOM
+   * 2) lock() → fullscreen (janela unlocked fica 1×1 opacity 0, sem hide)
+   * 3) flushSync de novo + nonce → re-pinta com a janela já visível
+   *    (evita tela vazia no auto-trava admin / fim de saldo)
    */
   const lockUi = useCallback(async () => {
+    customerRef.current = null;
+    sessionRef.current = null;
     flushSync(() => {
       setPhase("locked");
       phaseRef.current = "locked";
       setStatus("Aguardando VIP...");
       setScanReason(undefined);
       setWelcomeCustomer(null);
+      setLoginPrompt(null);
+      setCustomer(null);
+      setSession(null);
+      setScore(null);
       setAbsentLeft(null);
+      syncBalance(null);
+      setLowBalanceWarn(false);
+      setBillingPaused(false);
+      absentSinceRef.current = null;
+      presenceMissStreakRef.current = 0;
+      handoffStreakRef.current = null;
       sessionStartedAtRef.current = null;
     });
     await window.geeklock.lock();
-    try {
-      await startCam();
-    } catch (err) {
+    flushSync(() => {
+      setPhase("locked");
+      phaseRef.current = "locked";
+      setStatus("Aguardando VIP...");
+      setLockPaintNonce((n) => n + 1);
+    });
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    faceGraceUntilRef.current = Date.now() + FACE_GRACE_MS;
+    void startCam().catch((err) => {
       setError(err instanceof Error ? err.message : "Falha na câmera");
-    }
-  }, [startCam]);
+    });
+  }, [startCam, syncBalance]);
 
   const unlockUi = useCallback(async () => {
     await window.geeklock.unlock();
+    faceGraceUntilRef.current = Date.now() + FACE_GRACE_MS;
     setPhase("unlocked");
     phaseRef.current = "unlocked";
     setStatus("Sessão ativa");
     setWelcomeCustomer(null);
-    // T7 — apps do Windows ficam logados; aviso curto no HUD overlay
-    setRemoteBanner({
-      title: "Sessão liberada",
-      text: "Ao sair, faça logout do Steam/Discord se não for sua conta. Ausência trava o PC.",
-      level: "info",
-      until: Date.now() + 10_000,
+    await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
+    void startCam().catch((err) => {
+      setError(err instanceof Error ? err.message : "Falha na câmera");
     });
-  }, []);
+  }, [startCam]);
 
   // Reanexa stream ao <video> após trocar locked ↔ unlocked (remount)
   useEffect(() => {
@@ -160,74 +211,112 @@ export default function App() {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (!video || !stream?.active) return;
-    if (video.srcObject !== stream) {
-      attachCameraStream(video, stream).catch(() => {
+    if (video.srcObject === stream && camReadyRef.current) return;
+    attachCameraStream(video, stream)
+      .then(() => {
+        camReadyRef.current = true;
+        setCamReady(true);
+        setError("");
+      })
+      .catch(() => {
         startCam().catch(() => undefined);
       });
-    }
+  }, [phase, lockPaintNonce, startCam]);
+
+  // DroidCam: celular conecta depois — stream fica "live" sem frames até o vídeo chegar
+  useEffect(() => {
+    if (phase !== "locked" && phase !== "unlocked") return;
+    const poll = window.setInterval(() => {
+      if (camReadyRef.current) return;
+      if (phaseRef.current !== "locked" && phaseRef.current !== "unlocked") return;
+      const video = videoRef.current;
+      const stream = streamRef.current;
+      if (video && stream?.active) {
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          camReadyRef.current = true;
+          setCamReady(true);
+          setError("");
+          return;
+        }
+        attachCameraStream(video, stream)
+          .then(() => {
+            camReadyRef.current = true;
+            setCamReady(true);
+            setError("");
+          })
+          .catch(() => undefined);
+        return;
+      }
+      startCam().catch(() => undefined);
+    }, 3000);
+    return () => window.clearInterval(poll);
   }, [phase, startCam]);
+
+  useEffect(() => {
+    if (!navigator.mediaDevices?.addEventListener) return;
+    const onDeviceChange = () => {
+      if (phaseRef.current !== "locked" && phaseRef.current !== "unlocked") return;
+      if (camReadyRef.current) return;
+      startCam().catch(() => undefined);
+    };
+    navigator.mediaDevices.addEventListener("devicechange", onDeviceChange);
+    return () => navigator.mediaDevices.removeEventListener("devicechange", onDeviceChange);
+  }, [startCam]);
 
   const doEndSession = useCallback(
     async (reason: string) => {
       if (endingSessionRef.current) return;
       endingSessionRef.current = true;
-      try {
-        const cfg = configRef.current;
-        const sess = sessionRef.current;
-        // Limpa refs já — evita onLockState/F11 reentrarem em doEndSession
-        sessionRef.current = null;
-        customerRef.current = null;
+      const cfg = configRef.current;
+      const sess = sessionRef.current;
 
-        // UI de reconhecimento na hora (não espera endSession na rede)
+      sessionRef.current = null;
+      customerRef.current = null;
+      setLoginPrompt(null);
+
+      flushSync(() => {
+        setPhase("locked");
+        phaseRef.current = "locked";
+        setStatus(sess ? "Encerrando sessão…" : "Aguardando VIP...");
+        setScanReason(undefined);
+        setWelcomeCustomer(null);
+        setSession(null);
+        setCustomer(null);
+        setScore(null);
+        setAbsentLeft(null);
+        syncBalance(null);
+        setLowBalanceWarn(false);
+        setBillingPaused(false);
+        absentSinceRef.current = null;
+        presenceMissStreakRef.current = 0;
+        handoffStreakRef.current = null;
+        handoffBusyRef.current = false;
+        sessionStartedAtRef.current = null;
+      });
+
+      try {
+        await window.geeklock.lock();
         flushSync(() => {
           setPhase("locked");
           phaseRef.current = "locked";
-          setStatus(sess ? "Encerrando sessão…" : "Aguardando VIP...");
-          setScanReason(undefined);
-          setWelcomeCustomer(null);
-          setSession(null);
-          setCustomer(null);
-          setScore(null);
-          setAbsentLeft(null);
-          setBalanceSeconds(null);
-          setLowBalanceWarn(false);
-          setBillingPaused(false);
-          absentSinceRef.current = null;
-          presenceMissStreakRef.current = 0;
-          handoffStreakRef.current = null;
-          handoffBusyRef.current = false;
-          sessionStartedAtRef.current = null;
+          setLockPaintNonce((n) => n + 1);
+          setStatus("Aguardando VIP...");
+        });
+        // Não bloqueia encerrar sessão na câmera (DroidCam pode demorar).
+        faceGraceUntilRef.current = Date.now() + FACE_GRACE_MS;
+        void startCam().catch((err) => {
+          setError(err instanceof Error ? err.message : "Falha na câmera");
         });
 
-        if (sess) {
-          playLockWarnChime();
-          setLogoutNudge(true);
-          if (logoutNudgeTimerRef.current != null) window.clearTimeout(logoutNudgeTimerRef.current);
-          logoutNudgeTimerRef.current = window.setTimeout(() => setLogoutNudge(false), 6500);
-          setRemoteBanner({
-            title: "Sessão encerrada",
-            text: "Faça logout do Steam e do Discord se a conta não for sua — o próximo VIP herda o que ficar logado.",
-            level: "warn",
-            until: Date.now() + 14_000,
-          });
-        }
-
-        await window.geeklock.lock();
-
         if (cfg && sess) {
-          try {
-            const res = await endSession(cfg, sess.id, reason);
-            if (res.session) setElapsed(res.session.seconds_total);
-          } catch {
-            /* ignore */
-          }
+          endSession(cfg, sess.id, reason)
+            .then((res) => {
+              if (res.session) setElapsed(res.session.seconds_total);
+            })
+            .catch(() => undefined);
+          playLockWarnChime();
         }
         setStatus("Aguardando VIP...");
-        try {
-          await startCam();
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Falha na câmera");
-        }
       } finally {
         endingSessionRef.current = false;
       }
@@ -235,11 +324,123 @@ export default function App() {
     [startCam],
   );
 
+  const confirmLogin = useCallback(async () => {
+    if (!loginPrompt || !config) return;
+    try {
+      const h = await checkHealth(config);
+      if (!h.ok || !h.faceService) {
+        setStatus("GeekCentral offline — impossível liberar agora");
+        return;
+      }
+    } catch {
+      setPhase("offline");
+      setStatus("GeekCentral offline — impossível liberar");
+      return;
+    }
+    const pending = loginPrompt;
+    setLoginPrompt(null);
+    setStatus(`Entrando — ${pending.customer.name}…`);
+    setWelcomeCustomer({
+      ...pending.customer,
+      timeBalanceSeconds: pending.timeBalanceSeconds ?? undefined,
+    });
+    try {
+      const started = await startSession(config, pending.customer.id);
+      setSession(started.session);
+      if (started.customer) setCustomer(started.customer);
+      const initialBal =
+        typeof started.timeBalanceSeconds === "number"
+          ? started.timeBalanceSeconds
+          : typeof started.session.time_balance_seconds === "number"
+            ? started.session.time_balance_seconds
+            : pending.timeBalanceSeconds;
+      if (initialBal != null) syncBalance(initialBal);
+      void sessionHeartbeat(config, started.session.id)
+        .then((hb) => {
+          const bal =
+            typeof hb.timeBalanceSeconds === "number"
+              ? hb.timeBalanceSeconds
+              : typeof hb.session?.time_balance_seconds === "number"
+                ? hb.session.time_balance_seconds
+                : null;
+          if (bal != null) syncBalance(bal);
+        })
+        .catch(() => undefined);
+      const startedAt = Date.parse(started.session.started_at);
+      sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
+      setElapsed(Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)));
+      absentSinceRef.current = null;
+      presenceMissStreakRef.current = 0;
+      handoffStreakRef.current = null;
+      playUnlockChime();
+      await new Promise<void>((r) => window.setTimeout(r, 900));
+      setWelcomeCustomer(null);
+      await unlockUi();
+    } catch (err) {
+      setWelcomeCustomer(null);
+      const mapped = sessionStartErrorMessage(err);
+      setScanReason(mapped.reason);
+      setStatus(mapped.status);
+    }
+  }, [loginPrompt, config, unlockUi, syncBalance]);
+
+  const cancelLogin = useCallback(() => {
+    if (loginPrompt) {
+      declinedLoginRef.current = {
+        id: loginPrompt.customer.id,
+        until: Date.now() + 30_000,
+      };
+    }
+    setLoginPrompt(null);
+    setWelcomeCustomer(null);
+    setCustomer(null);
+    setScore(null);
+    setScanReason(undefined);
+    setStatus("Aguardando VIP...");
+  }, [loginPrompt]);
+
+  // Prompt de login expira sozinho
+  useEffect(() => {
+    if (!loginPrompt) return;
+    const t = window.setTimeout(() => {
+      cancelLogin();
+    }, 45_000);
+    return () => window.clearTimeout(t);
+  }, [loginPrompt, cancelLogin]);
+
+  const handleMatchConfirmed = useCallback(async (pending: PendingLogin) => {
+    const cfg = configRef.current;
+    if (!cfg) return;
+    try {
+      const h = await checkHealth(cfg);
+      if (!h.ok || !h.faceService) {
+        setStatus("GeekCentral offline — impossível liberar agora");
+        return;
+      }
+    } catch {
+      setPhase("offline");
+      setStatus("GeekCentral offline — impossível liberar");
+      return;
+    }
+    setLoginPrompt(pending);
+  }, []);
+
+  const handleIntruder = useCallback(
+    async (kind: "vip" | "stranger") => {
+      await doEndSession(kind === "vip" ? "handoff_vip" : "handoff_stranger");
+      if (kind === "stranger") {
+        setScanReason("unknown");
+        setStatus("Rosto não cadastrado — escaneie o QR para se registrar");
+      }
+    },
+    [doEndSession],
+  );
+
   const scheduleCamRetry = useCallback(() => {
     if (camRetryRef.current != null) return;
     camRetryRef.current = window.setInterval(() => {
       if (phaseRef.current !== "locked" && phaseRef.current !== "unlocked") return;
-      if (streamRef.current?.active) return;
+      if (streamRef.current?.active && camReadyRef.current) return;
       startCam().catch((err) => {
         setError(err instanceof Error ? err.message : "Falha na câmera");
       });
@@ -330,37 +531,7 @@ export default function App() {
     return () => clearInterval(t);
   }, [config]);
 
-  // Soft lock: som ao entrar nos últimos 15s + ticks 10/5/3/2/1
-  useEffect(() => {
-    if (phase !== "unlocked") {
-      softLockArmedRef.current = false;
-      softLockTickRef.current = null;
-      return;
-    }
-    const left = absentLeft;
-    if (left == null || left > 15) {
-      softLockArmedRef.current = false;
-      softLockTickRef.current = null;
-      return;
-    }
-    if (!softLockArmedRef.current) {
-      softLockArmedRef.current = true;
-      playSoftLockBeep("enter");
-      softLockTickRef.current = left;
-      return;
-    }
-    if (left === 1) {
-      if (softLockTickRef.current !== 1) {
-        softLockTickRef.current = 1;
-        playSoftLockBeep("final");
-      }
-      return;
-    }
-    if ([10, 5, 3, 2].includes(left) && softLockTickRef.current !== left) {
-      softLockTickRef.current = left;
-      playSoftLockBeep("tick");
-    }
-  }, [phase, absentLeft]);
+  // Soft lock removido — câmera ruim não trava mais por ausência falsa.
 
   // WebSocket → GeekCentral (comandos + status ao vivo)
   useEffect(() => {
@@ -455,6 +626,39 @@ export default function App() {
     };
   }, [config?.serverUrl, config?.stationToken]);
 
+  // Contagem de ausência 1/s — bandeja, HUD e auto-trava
+  useEffect(() => {
+    if (phase !== "unlocked" || customer?.id === "staff") return;
+    const absentSec = config?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
+    const tick = () => {
+      const since = absentSinceRef.current;
+      if (since == null) {
+        setAbsentLeft(null);
+        softLockArmedRef.current = false;
+        return;
+      }
+      const left = Math.max(0, absentSec - Math.floor((Date.now() - since) / 1000));
+      setAbsentLeft(left);
+      if (left <= 15 && left > 0) {
+        if (!softLockArmedRef.current) {
+          softLockArmedRef.current = true;
+          playSoftLockBeep("enter");
+        } else if (left <= 5) {
+          playSoftLockBeep("tick");
+        }
+      } else {
+        softLockArmedRef.current = false;
+      }
+      if (left <= 0 && !endingSessionRef.current) {
+        playSoftLockBeep("final");
+        void doEndSession("absent");
+      }
+    };
+    tick();
+    const t = window.setInterval(tick, 1000);
+    return () => window.clearInterval(t);
+  }, [phase, session?.id, config?.absentSecondsToLock, customer?.id, doEndSession]);
+
   // Empurra station_status para o central
   useEffect(() => {
     const push = () => {
@@ -462,6 +666,12 @@ export default function App() {
       if (!sock) return;
       const isAdmin = customerRef.current?.id === "staff";
       const phaseNow = phaseRef.current;
+      const liveBal = liveBalanceSeconds(balanceSeconds, balanceSyncedAtRef.current, false);
+      const since = absentSinceRef.current;
+      const absentSec = configRef.current?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
+      const absentLeftNow =
+        since != null ? Math.max(0, absentSec - Math.floor((Date.now() - since) / 1000)) : null;
+      const present = since == null;
       sock.sendStatus({
         phase: phaseNow,
         customerName: customerRef.current?.name || null,
@@ -472,18 +682,18 @@ export default function App() {
             : phaseNow === "offline"
               ? "offline"
               : "locked",
-        elapsed: isAdmin ? 0 : elapsed,
-        present: isAdmin ? true : absentLeftRef.current == null,
-        absentLeft: isAdmin ? null : absentLeftRef.current,
-        balanceSeconds: isAdmin ? null : balanceSeconds,
+        elapsed: isAdmin ? 0 : liveBal ?? elapsed,
+        present,
+        absentLeft: isAdmin ? null : absentLeftNow,
+        balanceSeconds: isAdmin ? null : liveBal,
         lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
-        billingPaused: isAdmin ? false : billingPaused,
+        billingPaused: false,
       });
     };
     push();
     const t = window.setInterval(push, 1000);
     return () => clearInterval(t);
-  }, [phase, elapsed, absentLeft, balanceSeconds, lowBalanceWarn, billingPaused, customer?.name, customer?.id]);
+  }, [phase, elapsed, balanceSeconds, lowBalanceWarn, customer?.name, customer?.id]);
 
   // Timer local 1s — fonte do display (não depende de heartbeat)
   useEffect(() => {
@@ -503,6 +713,12 @@ export default function App() {
     const pushTray = () => {
       const isAdmin = customerRef.current?.id === "staff";
       const phaseNow = phaseRef.current;
+      const liveBal = liveBalanceSeconds(balanceSeconds, balanceSyncedAtRef.current, false);
+      const since = absentSinceRef.current;
+      const absentSec = configRef.current?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
+      const absentLeftNow =
+        since != null ? Math.max(0, absentSec - Math.floor((Date.now() - since) / 1000)) : null;
+      const present = since == null;
       window.geeklock.updateTray({
         phase: phaseNow,
         name: customerRef.current?.name || "VIP",
@@ -513,18 +729,18 @@ export default function App() {
             : phaseNow === "offline"
               ? "offline"
               : "locked",
-        elapsed: isAdmin ? 0 : elapsed,
-        present: isAdmin ? true : absentLeftRef.current == null,
-        absentLeft: isAdmin ? null : absentLeftRef.current,
-        balanceSeconds: isAdmin ? null : balanceSeconds,
+        elapsed: isAdmin ? 0 : liveBal ?? elapsed,
+        present,
+        absentLeft: isAdmin ? null : absentLeftNow,
+        balanceSeconds: isAdmin ? null : liveBal,
         lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
-        billingPaused: isAdmin ? false : billingPaused,
+        billingPaused: false,
       });
     };
     pushTray();
     const t = window.setInterval(pushTray, 1000);
     return () => clearInterval(t);
-  }, [phase, elapsed, absentLeft, balanceSeconds, lowBalanceWarn, billingPaused, customer?.name, customer?.id]);
+  }, [phase, elapsed, balanceSeconds, lowBalanceWarn, customer?.name, customer?.id]);
 
   // Tray + lock sync + comandos remotos
   useEffect(() => {
@@ -534,14 +750,7 @@ export default function App() {
         return;
       }
       if (phaseRef.current === "unlocked") {
-        if (customerRef.current?.id === "staff" && !sessionRef.current) {
-          sessionStartedAtRef.current = null;
-          customerRef.current = null;
-          setCustomer(null);
-          setAbsentLeft(null);
-          absentSinceRef.current = null;
-          lockUi().catch(() => undefined);
-        } else if (sessionRef.current) {
+        if (sessionRef.current) {
           doEndSession("tray_lock").catch(() => undefined);
         } else {
           lockUi().catch(() => undefined);
@@ -565,12 +774,12 @@ export default function App() {
       await unlockUi();
     };
 
-    const offEnd = window.geeklock.onRequestEndSession(() => {
+    const offEnd = window.geeklock.onRequestEndSessionConfirmed(() => {
       if (phaseRef.current === "unlocked") {
-        if (customerRef.current?.id === "staff" && !sessionRef.current) {
-          requestLockStation();
-        } else {
+        if (sessionRef.current) {
           doEndSession("tray_end").catch(() => undefined);
+        } else {
+          lockUi().catch(() => undefined);
         }
       }
     });
@@ -588,6 +797,17 @@ export default function App() {
     const offLockState = window.geeklock.onLockState((data) => {
       if (data.locked && phaseRef.current === "unlocked") {
         requestLockStation();
+        return;
+      }
+      if (data.locked && (data.paint || data.prepare)) {
+        if (phaseRef.current !== "locked") {
+          flushSync(() => {
+            setPhase("locked");
+            phaseRef.current = "locked";
+            setStatus("Aguardando VIP...");
+          });
+        }
+        flushSync(() => setLockPaintNonce((n) => n + 1));
       }
     });
 
@@ -610,19 +830,16 @@ export default function App() {
     config,
     videoRef,
     configRef,
-    unlockUi,
-    sessionStartedAtRef,
-    absentSinceRef,
-    presenceMissStreakRef,
-    handoffStreakRef,
+    faceGraceUntilRef,
+    scanPaused: loginPrompt != null,
+    declinedLoginRef,
+    onMatchConfirmed: handleMatchConfirmed,
     setScanning,
     setScanReason,
     setCustomer,
     setScore,
     setStatus,
     setWelcomeCustomer,
-    setSession,
-    setElapsed,
   });
 
   const showLowBalanceBanner = useCallback((bal: number) => {
@@ -637,27 +854,20 @@ export default function App() {
   usePresenceLoop({
     phase,
     config,
-    session,
+    sessionId: session?.id,
     customerId: customer?.id,
     videoRef,
     streamRef,
     configRef,
     sessionRef,
-    sessionStartedAtRef,
+    faceGraceUntilRef,
     absentSinceRef,
     presenceMissStreakRef,
-    handoffStreakRef,
-    handoffBusyRef,
     startCam,
     doEndSession,
-    setSession,
-    setCustomer,
-    setElapsed,
-    setAbsentLeft,
-    setStatus,
-    setBalanceSeconds,
+    onIntruder: handleIntruder,
+    setBalanceSeconds: syncBalance,
     setLowBalanceWarn,
-    setBillingPaused,
     onLowBalanceWarn: showLowBalanceBanner,
   });
 
@@ -670,6 +880,7 @@ export default function App() {
       const left = maxSec - Math.floor((Date.now() - started) / 1000);
       if (left <= 0) {
         sessionStartedAtRef.current = null;
+        customerRef.current = null;
         setCustomer(null);
         setStatus("Admin auto-travado");
         lockUi().catch(() => undefined);
@@ -696,6 +907,19 @@ export default function App() {
       if (!res.ok) {
         setError(res.error || "PIN inválido");
         return;
+      }
+      if (config) {
+        try {
+          const h = await checkHealth(config);
+          if (!h.ok || !h.faceService) {
+            setError("GeekCentral offline — impossível liberar");
+            return;
+          }
+        } catch {
+          setError("GeekCentral offline — impossível liberar");
+          setPhase("offline");
+          return;
+        }
       }
       setPinMode(null);
       setPin("");
@@ -818,6 +1042,7 @@ export default function App() {
 
   return (
     <LockedScreen
+      key={lockPaintNonce}
       config={config}
       status={status}
       scanReason={scanReason}
@@ -831,7 +1056,7 @@ export default function App() {
       pin={pin}
       pinMode={pinMode}
       portalQrUrl={portalRegisterUrl(portalBaseUrl)}
-      logoutNudge={logoutNudge}
+      loginPrompt={loginPrompt}
       videoRef={videoRef}
       banner={remoteBannerEl}
       lastFailure={lastFailure}
@@ -844,6 +1069,10 @@ export default function App() {
           setError(err instanceof Error ? err.message : "Falha na câmera");
         });
       }}
+      onConfirmLogin={() => {
+        confirmLogin().catch(() => undefined);
+      }}
+      onCancelLogin={cancelLogin}
       onPinChange={setPin}
       onOpenPin={(mode) => {
         setPinMode(mode);

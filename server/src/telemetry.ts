@@ -204,6 +204,7 @@ export async function buildDiagnostics() {
   const readiness = getReadiness();
   const stations = listStations() as Array<{ id: string; name: string; online: number }>;
   const connected = listConnectedStations();
+  const offlineNamed = stations.filter((s) => !s.online);
   const recentErrors = listTelemetryEvents({ limit: 20, level: "error" });
   const recentWarns = listTelemetryEvents({ limit: 20, level: "warn" });
 

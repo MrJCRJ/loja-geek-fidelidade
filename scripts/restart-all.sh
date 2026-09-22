@@ -23,6 +23,13 @@ bash scripts/linux-loja.sh central
 
 echo "=== DROIDCAM ==="
 phone=""
+if [[ -f data/droidcam-phone-ip ]]; then
+  saved="$(tr -d '[:space:]' < data/droidcam-phone-ip)"
+  if [[ -n "$saved" ]] && timeout 0.5 bash -c "echo >/dev/tcp/${saved}/4747" 2>/dev/null; then
+    phone="$saved"
+  fi
+fi
+if [[ -z "$phone" ]]; then
 for i in $(seq 1 254); do
   ip="${LAN_IP%.*}.$i"
   [[ "$ip" == "$LAN_IP" ]] && continue
@@ -31,6 +38,7 @@ for i in $(seq 1 254); do
     break
   fi
 done
+fi
 if [[ -n "$phone" ]]; then
   echo "→ Celular em ${phone}:4747"
   nohup droidcam-cli "$phone" 4747 > data/droidcam.log 2>&1 &

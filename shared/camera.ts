@@ -42,9 +42,9 @@ export const CAMERA_ERROR_COPY = {
     insecure: "Contexto inseguro para câmera.",
     denied: "Permissão da câmera negada. Permita o acesso à webcam no GeekLock.",
     notFound:
-      "Nenhuma webcam encontrada. Conecte a Logitech C270 no USB e confira se o LED acende.",
-    busy: "Webcam ocupada (Zoom, Discord, browser…). Feche esses apps e tente de novo.",
-    overconstrained: "A Logitech C270 não aceitou as restrições de vídeo. Tentando fallback…",
+      "Nenhuma câmera encontrada. DroidCam no celular conectado? Ou plugue a webcam USB.",
+    busy: "Câmera ocupada (Zoom, Discord, browser…). Feche esses apps e tente de novo.",
+    overconstrained: "A câmera não aceitou as restrições de vídeo. Tentando fallback…",
     security: "Câmera bloqueada por segurança.",
     noApi: "getUserMedia indisponível neste ambiente.",
   },
@@ -108,26 +108,36 @@ export type OpenCameraOptions = {
   /** Browser: exige HTTPS/localhost. Electron: false. */
   requireSecureContext?: boolean;
   /**
-   * Prefere device cujo label casa com o regex (ex.: Logitech C270 no GeekLock).
-   * Default: Logitech/C270, depois qualquer USB webcam (evita virtual/DroidCam).
+   * Prefere device cujo label casa com o regex.
+   * Sem preferLabel: ordem kiosk — DroidCam → Logitech → webcam USB → qualquer uma.
    */
   preferLabel?: RegExp;
   preferredWidth?: number;
   preferredHeight?: number;
 };
 
-const DEFAULT_KIOSK_CAM =
-  /logitech|c270|c920|c922|hd\s*webcam|usb.?camera|webcam/i;
-const VIRTUAL_CAM = /droidcam|obs|virtual|loopback|snap|manycam/i;
+/** Ordem de preferência na estação (GeekLock). DroidCam primeiro neste PC. */
+const KIOSK_CAM_PRIORITY = [
+  /droidcam/i,
+  /logitech|c270|c920|c922/i,
+  /hd\s*webcam|usb.?camera|webcam/i,
+];
+/** Câmeras virtuais a evitar (DroidCam NÃO entra — é a fonte da loja). */
+const SKIP_VIRTUAL_CAM = /obs|manycam|snap camera|loopback/i;
 
 function pickPreferredCam(
   cams: MediaDeviceInfo[],
   preferLabel?: RegExp,
 ): MediaDeviceInfo | undefined {
-  const prefer = preferLabel || DEFAULT_KIOSK_CAM;
-  const byPrefer = cams.find((d) => prefer.test(d.label));
-  if (byPrefer) return byPrefer;
-  const physical = cams.find((d) => d.label && !VIRTUAL_CAM.test(d.label));
+  if (preferLabel) {
+    const byCustom = cams.find((d) => preferLabel.test(d.label));
+    if (byCustom) return byCustom;
+  }
+  for (const pat of KIOSK_CAM_PRIORITY) {
+    const m = cams.find((d) => d.label && pat.test(d.label));
+    if (m) return m;
+  }
+  const physical = cams.find((d) => d.label && !SKIP_VIRTUAL_CAM.test(d.label));
   return physical || cams[0];
 }
 
@@ -156,11 +166,39 @@ export async function openUserCamera(opts: OpenCameraOptions): Promise<MediaStre
   const devices = await navigator.mediaDevices.enumerateDevices();
   const cams = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
   const preferred = pickPreferredCam(cams, opts.preferLabel);
+  const probeDeviceId = probe.getVideoTracks()[0]?.getSettings()?.deviceId;
+
+  // DroidCam/v4l2: fechar e reabrir a mesma câmera costuma falhar — reutiliza o probe.
+  if (cams.length === 1) {
+    return probe;
+  }
+  if (preferred?.deviceId && probeDeviceId && preferred.deviceId === probeDeviceId) {
+    return probe;
+  }
+  if (!preferred?.deviceId && probeDeviceId && cams.some((c) => c.deviceId === probeDeviceId)) {
+    return probe;
+  }
 
   probe.getTracks().forEach((t) => t.stop());
 
   const attempts: MediaStreamConstraints[] = [];
   if (preferred?.deviceId) {
+    attempts.push({
+      audio: false,
+      video: {
+        deviceId: { exact: preferred.deviceId },
+        width: { ideal: widthIdeal },
+        height: { ideal: heightIdeal },
+      },
+    });
+    attempts.push({
+      audio: false,
+      video: {
+        deviceId: { exact: preferred.deviceId },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+    });
     attempts.push({
       audio: false,
       video: {

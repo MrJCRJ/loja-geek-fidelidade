@@ -31,10 +31,10 @@ const FAQ = [
 ];
 
 export default function FaqPage() {
-  const rootRef = useReveal();
+  const { setRef } = useReveal();
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="sm" subtitle="Como funciona" />
       <nav className="nav">

@@ -13,8 +13,8 @@ import { DashboardSkeleton } from "../dashboard/DashboardSkeleton";
 import { PaymentReceipt } from "../dashboard/PaymentReceipt";
 
 export default function DashboardPage() {
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const { me, setMe, catalog, orders, timeLedger, loadError, load } = useDashboardData();
   const [error, setError] = useState("");
   const [showReview, setShowReview] = useState(false);
@@ -28,51 +28,53 @@ export default function DashboardPage() {
     onPaid,
   });
 
-  if (!me) {
-    return <DashboardSkeleton rootRef={rootRef} loadError={loadError} />;
-  }
-
   const checkoutEnabled = catalog?.checkoutEnabled === true;
   const checkoutDemo = catalog?.demo === true;
   const pixMode = catalog?.payments?.pixEnabled;
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
-      <OfflineBanner />
-      <DashboardHeader me={me} />
-      <DashboardAlerts
-        me={me}
-        error={error}
-        msg={msg}
-        showReview={showReview}
-        checkoutDemo={checkoutDemo}
-        pix={pix}
-        onDismissReview={() => setShowReview(false)}
-        onClosePix={() => setPix(null)}
-      />
-      {receipt ? (
-        <PaymentReceipt
-          me={me}
-          orderLabel={receipt.label}
-          amountReais={receipt.amountReais}
-          hoursApprox={receipt.hoursApprox}
-          demo={receipt.demo}
-          paidAt={receipt.paidAt}
-          onClose={() => setReceipt(null)}
-        />
-      ) : null}
-      <DashboardBalancePanel me={me} />
-      <DashboardCheckoutSection
-        me={me}
-        catalog={catalog}
-        checkoutEnabled={checkoutEnabled}
-        checkoutDemo={checkoutDemo}
-        pixMode={pixMode}
-        busy={busy}
-        onBuyHours={buyHours}
-        onBuySub={buySub}
-      />
-      <DashboardHistory orders={orders} timeLedger={timeLedger} />
+    <div className="shell shell--ambient page-in" ref={setRef}>
+      {!me ? (
+        <DashboardSkeleton loadError={loadError} />
+      ) : (
+        <>
+          <OfflineBanner />
+          <DashboardHeader me={me} />
+          <DashboardAlerts
+            me={me}
+            error={error}
+            msg={msg}
+            showReview={showReview}
+            checkoutDemo={checkoutDemo}
+            pix={pix}
+            onDismissReview={() => setShowReview(false)}
+            onClosePix={() => setPix(null)}
+          />
+          {receipt ? (
+            <PaymentReceipt
+              me={me}
+              orderLabel={receipt.label}
+              amountReais={receipt.amountReais}
+              hoursApprox={receipt.hoursApprox}
+              demo={receipt.demo}
+              paidAt={receipt.paidAt}
+              onClose={() => setReceipt(null)}
+            />
+          ) : null}
+          <DashboardBalancePanel me={me} />
+          <DashboardCheckoutSection
+            me={me}
+            catalog={catalog}
+            checkoutEnabled={checkoutEnabled}
+            checkoutDemo={checkoutDemo}
+            pixMode={pixMode}
+            busy={busy}
+            onBuyHours={buyHours}
+            onBuySub={buySub}
+          />
+          <DashboardHistory orders={orders} timeLedger={timeLedger} />
+        </>
+      )}
     </div>
   );
 }

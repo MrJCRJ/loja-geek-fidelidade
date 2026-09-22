@@ -8,8 +8,8 @@ import { useReveal } from "../hooks/useReveal";
 
 export default function AccountPage() {
   const nav = useNavigate();
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const [me, setMe] = useState<PortalCustomer | null>(null);
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -106,117 +106,117 @@ export default function AccountPage() {
     }
   }
 
-  if (!me) {
-    return (
-      <div className="shell shell--ambient page-in" ref={rootRef}>
-        <OfflineBanner />
-        <BrandHeader size="sm" />
-        {error ? (
-          <p className="muted">{error}</p>
-        ) : (
-          <>
-            <div className="skeleton skeleton--title" />
-            <div className="skeleton skeleton--line" />
-            <div className="skeleton skeleton--block" />
-          </>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
-      <OfflineBanner />
-      <BrandHeader size="sm" />
-      <h1 className="display display--md" style={{ marginBottom: "0.75rem" }}>
-        Minha conta
-      </h1>
-      <div className="nav page-in-cta">
-        <Link className="btn ghost prox" to="/dashboard">
-          Voltar
-        </Link>
-      </div>
+    <div className="shell shell--ambient page-in" ref={setRef}>
+      {!me ? (
+        <>
+          <OfflineBanner />
+          <BrandHeader size="sm" />
+          {error ? (
+            <p className="muted">{error}</p>
+          ) : (
+            <>
+              <div className="skeleton skeleton--title" />
+              <div className="skeleton skeleton--line" />
+              <div className="skeleton skeleton--block" />
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <OfflineBanner />
+          <BrandHeader size="sm" />
+          <h1 className="display display--md" style={{ marginBottom: "0.75rem" }}>
+            Minha conta
+          </h1>
+          <div className="nav page-in-cta">
+            <Link className="btn ghost prox" to="/dashboard">
+              Voltar
+            </Link>
+          </div>
 
-      {error ? <div className="banner">{error}</div> : null}
-      {msg ? <div className="banner ok">{msg}</div> : null}
+          {error ? <div className="banner">{error}</div> : null}
+          {msg ? <div className="banner ok">{msg}</div> : null}
 
-      <div className="card reveal">
-        <p className="section-label">Perfil</p>
-        <h2>Dados</h2>
-        <form onSubmit={saveProfile} noValidate>
-          <div className="field">
-            <label htmlFor="profile-name">Nome</label>
-            <input
-              id="profile-name"
-              value={editName}
-              className={
-                fieldErrors.name
-                  ? "field-invalid"
-                  : touched.name && editName.trim().length >= 2
-                    ? "field-ok"
-                    : undefined
-              }
-              onBlur={() => setTouched((t) => ({ ...t, name: true }))}
-              onChange={(e) => setEditName(e.target.value)}
-              required
-              minLength={2}
-            />
-            {fieldErrors.name ? <p className="field-error">{fieldErrors.name}</p> : null}
+          <div className="card reveal">
+            <p className="section-label">Perfil</p>
+            <h2>Dados</h2>
+            <form onSubmit={saveProfile} noValidate>
+              <div className="field">
+                <label htmlFor="profile-name">Nome</label>
+                <input
+                  id="profile-name"
+                  value={editName}
+                  className={
+                    fieldErrors.name
+                      ? "field-invalid"
+                      : touched.name && editName.trim().length >= 2
+                        ? "field-ok"
+                        : undefined
+                  }
+                  onBlur={() => setTouched((t) => ({ ...t, name: true }))}
+                  onChange={(e) => setEditName(e.target.value)}
+                  required
+                  minLength={2}
+                />
+                {fieldErrors.name ? <p className="field-error">{fieldErrors.name}</p> : null}
+              </div>
+              <div className="field">
+                <label htmlFor="profile-email">E-mail</label>
+                <input id="profile-email" value={me.email || ""} disabled readOnly />
+                <span className="muted" style={{ fontSize: "0.8rem" }}>
+                  E-mail não pode ser alterado pelo app.
+                </span>
+              </div>
+              <div className="field">
+                <label htmlFor="profile-phone">Telefone</label>
+                <input
+                  id="profile-phone"
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="(75) 9xxxx-xxxx"
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="profile-cur-pass">Senha atual (só se for trocar)</label>
+                <input
+                  id="profile-cur-pass"
+                  type="password"
+                  autoComplete="current-password"
+                  value={currentPassword}
+                  className={fieldErrors.currentPassword ? "field-invalid" : undefined}
+                  onBlur={() => setTouched((t) => ({ ...t, currentPassword: true }))}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                />
+                {fieldErrors.currentPassword ? (
+                  <p className="field-error">{fieldErrors.currentPassword}</p>
+                ) : null}
+              </div>
+              <div className="field">
+                <label htmlFor="profile-new-pass">Nova senha (opcional)</label>
+                <input
+                  id="profile-new-pass"
+                  type="password"
+                  autoComplete="new-password"
+                  minLength={6}
+                  value={newPassword}
+                  className={fieldErrors.newPassword ? "field-invalid" : undefined}
+                  onBlur={() => setTouched((t) => ({ ...t, newPassword: true }))}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                {fieldErrors.newPassword ? <p className="field-error">{fieldErrors.newPassword}</p> : null}
+              </div>
+              <button
+                className={`btn prox${busy ? " loading" : ""}${success ? " success-flash" : ""}`}
+                type="submit"
+                disabled={busy}
+              >
+                {busy ? "Salvando…" : success ? "Salvo" : "Salvar dados"}
+              </button>
+            </form>
           </div>
-          <div className="field">
-            <label htmlFor="profile-email">E-mail</label>
-            <input id="profile-email" value={me.email || ""} disabled readOnly />
-            <span className="muted" style={{ fontSize: "0.8rem" }}>
-              E-mail não pode ser alterado pelo app.
-            </span>
-          </div>
-          <div className="field">
-            <label htmlFor="profile-phone">Telefone</label>
-            <input
-              id="profile-phone"
-              value={editPhone}
-              onChange={(e) => setEditPhone(e.target.value)}
-              placeholder="(75) 9xxxx-xxxx"
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="profile-cur-pass">Senha atual (só se for trocar)</label>
-            <input
-              id="profile-cur-pass"
-              type="password"
-              autoComplete="current-password"
-              value={currentPassword}
-              className={fieldErrors.currentPassword ? "field-invalid" : undefined}
-              onBlur={() => setTouched((t) => ({ ...t, currentPassword: true }))}
-              onChange={(e) => setCurrentPassword(e.target.value)}
-            />
-            {fieldErrors.currentPassword ? (
-              <p className="field-error">{fieldErrors.currentPassword}</p>
-            ) : null}
-          </div>
-          <div className="field">
-            <label htmlFor="profile-new-pass">Nova senha (opcional)</label>
-            <input
-              id="profile-new-pass"
-              type="password"
-              autoComplete="new-password"
-              minLength={6}
-              value={newPassword}
-              className={fieldErrors.newPassword ? "field-invalid" : undefined}
-              onBlur={() => setTouched((t) => ({ ...t, newPassword: true }))}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-            {fieldErrors.newPassword ? <p className="field-error">{fieldErrors.newPassword}</p> : null}
-          </div>
-          <button
-            className={`btn prox${busy ? " loading" : ""}${success ? " success-flash" : ""}`}
-            type="submit"
-            disabled={busy}
-          >
-            {busy ? "Salvando…" : success ? "Salvo" : "Salvar dados"}
-          </button>
-        </form>
-      </div>
+        </>
+      )}
     </div>
   );
 }

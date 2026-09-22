@@ -195,6 +195,14 @@ droidcam_cli_idle() {
 }
 
 find_droidcam_phone_ip() {
+  if [[ -f "$ROOT/data/droidcam-phone-ip" ]]; then
+    local saved
+    saved="$(tr -d '[:space:]' < "$ROOT/data/droidcam-phone-ip")"
+    if [[ -n "$saved" ]] && timeout 0.5 bash -c "echo >/dev/tcp/${saved}/4747" 2>/dev/null; then
+      echo "$saved"
+      return 0
+    fi
+  fi
   local base="${LAN_IP%.*}"
   local ip=""
   for i in $(seq 1 254); do

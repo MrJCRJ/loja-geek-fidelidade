@@ -8,8 +8,8 @@ import { useReveal } from "../hooks/useReveal";
 
 export default function CheckoutReturnPage() {
   const [params] = useSearchParams();
-  const rootRef = useReveal();
-  useProximityField(rootRef);
+  const { setRef, rootRef, rootVersion } = useReveal();
+  useProximityField(rootRef, {}, rootVersion);
   const status = params.get("status") || "pending";
   const orderId = params.get("orderId") || "";
   const [order, setOrder] = useState<WebOrder | null>(null);
@@ -71,7 +71,7 @@ export default function CheckoutReturnPage() {
   }
 
   return (
-    <div className="shell shell--ambient page-in" ref={rootRef}>
+    <div className="shell shell--ambient page-in" ref={setRef}>
       <OfflineBanner />
       <BrandHeader size="md" />
       <h1 className="display display--lg" style={{ marginBottom: "0.5rem" }}>
