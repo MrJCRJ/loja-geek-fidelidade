@@ -5,7 +5,9 @@ Foco: **URL fixa**, **alternativas baratas**, **Mercado Pago** e o que falta par
 
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
 **Túnel:** Cloudflare nomeado `loja-geek-api` · GeekCentral Windows  
-**Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)
+**Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
+**Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — Cloudflare Access + GeekAdmin Saúde  
+**Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)
 
 Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 

@@ -14,6 +14,9 @@ npx electron-builder --win dir --x64
 rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -a "$AGENT/release/win-unpacked/." "$OUT/"
+# Failsafe: require('../../shared/...') resolve para resources/shared fora do asar
+mkdir -p "$OUT/resources/shared"
+cp -a "$ROOT/shared/." "$OUT/resources/shared/"
 cp -f "$AGENT/config.example.json" "$OUT/config.example.json"
 cp -f "$AGENT/config.example.json" "$OUT/config.json"
 

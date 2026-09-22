@@ -142,6 +142,13 @@ PORTAL_CHECKOUT_ENABLED=1
 - [ ] `https://api.geekloja.com.br/api/health` → ok
 - [ ] Portal abre e fala com a loja (sem banner offline permanente)
 - [ ] (depois) Mercado Pago app + webhook na URL fixa — ver `docs/PENDENCIAS.md`
+- [ ] (depois) Monitor no teu PC: Cloudflare Access + GeekAdmin Saúde — ver `docs/REMOTE-MONITOR.md`
+
+## Correção loja 2026-09-22
+
+Diálogo **"A JavaScript error occurred"** (não é Java/JDK): faltava `shared/lan-discovery.cjs` no pack do GeekLock **e** do GeekCentral.
+
+Ver [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md). No pendrive: `resources/shared/lan-discovery.cjs` já com o módulo real.
 
 ---
 

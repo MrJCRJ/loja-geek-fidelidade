@@ -24,6 +24,10 @@ rm -rf "$OUT"
 mkdir -p "$OUT"
 cp -a "$CENTRAL/release/win-unpacked/." "$OUT/"
 
+# Failsafe: services.cjs require('../../shared/...') → resources/shared
+mkdir -p "$OUT/resources/shared"
+cp -a "$ROOT/shared/." "$OUT/resources/shared/"
+
 # data gravável ao lado do exe
 mkdir -p "$OUT/data"
 cp -f "$CENTRAL/config.example.json" "$OUT/data/config.json"

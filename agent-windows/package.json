@@ -50,6 +50,11 @@
       {
         "from": "config.example.json",
         "to": "config.example.json"
+      },
+      {
+        "from": "../shared",
+        "to": "shared",
+        "filter": ["**/*"]
       }
     ],
     "win": {
