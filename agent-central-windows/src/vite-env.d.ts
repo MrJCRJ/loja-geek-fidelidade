@@ -21,6 +21,7 @@ export type CentralStatus = {
   tunnelError?: string;
   portalOrigin?: string;
   webhookUrl?: string;
+  uiCompact?: boolean;
   startedAt?: number | null;
   uptimeMs?: number;
   faceError?: string;
@@ -56,6 +57,8 @@ export type GeekCentralApi = {
   openUrl: (url: string) => Promise<{ ok: boolean }>;
   getAutostart: () => Promise<{ openAtLogin: boolean; bootDelayMs: number }>;
   setAutostart: (enabled: boolean) => Promise<{ ok: boolean; openAtLogin: boolean; bootDelayMs: number }>;
+  getUiCompact: () => Promise<{ uiCompact: boolean }>;
+  setUiCompact: (enabled: boolean) => Promise<{ ok: boolean; uiCompact: boolean }>;
   ensureFirewall: () => Promise<{ ok: boolean; error?: string }>;
   setTunnel: (
     input: TunnelInput,

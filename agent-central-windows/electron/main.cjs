@@ -7,6 +7,7 @@ const {
   Tray,
   Menu,
   nativeImage,
+  screen,
 } = require("electron");
 const path = require("node:path");
 const { ServiceManager, isDev } = require("./services.cjs");
@@ -85,9 +86,20 @@ function createWindow(opts = {}) {
     return mainWindow;
   }
 
+  const work = screen.getPrimaryDisplay().workAreaSize;
+  const width = Math.min(920, Math.max(640, work.width - 24));
+  const height = Math.min(780, Math.max(480, work.height - 24));
+  try {
+    services.ensureUiCompactDefault(work.height < 700);
+  } catch {
+    /* ignore */
+  }
+
   mainWindow = new BrowserWindow({
-    width: 920,
-    height: 780,
+    width,
+    height,
+    minWidth: 640,
+    minHeight: 480,
     show,
     autoHideMenuBar: true,
     webPreferences: {
@@ -332,6 +344,15 @@ ipcMain.handle("central:set-autostart", (_e, enabled) => {
     bootDelayMs: services.getBootDelayMs(),
   };
 });
+
+ipcMain.handle("central:get-ui-compact", () => ({
+  uiCompact: services.getUiCompact(),
+}));
+
+ipcMain.handle("central:set-ui-compact", (_e, enabled) => ({
+  ok: true,
+  uiCompact: services.setUiCompact(Boolean(enabled)),
+}));
 
 ipcMain.handle("central:ensure-firewall", async () => {
   const fw = await ensureApiFirewallRule(services.status.apiPort || 8787);

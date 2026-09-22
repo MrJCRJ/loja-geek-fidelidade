@@ -1,7 +1,7 @@
 # Pareamento GeekLock ↔ GeekCentral — código curto
 
 Atualizado em **2026-09-22**.  
-**Status:** plano documentado — implementar no **mesmo build** que [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) (tela pequena).
+**Status:** implementado (2026-09-22) — regenerar pendrive na loja.
 
 ---
 
@@ -67,14 +67,14 @@ Código invalida após uso / 15 min
 
 ---
 
-## Checklist de implementação (depois)
+## Checklist de implementação
 
-- [ ] Endpoint `pair` + geração no Central  
-- [ ] UI código grande no GeekCentral  
-- [ ] SetupWizard: nome + código (sem sharedSecret)  
-- [ ] Teste: Central online → Lock digita código → claim ok  
-- [ ] Regenerar pendrive Lock + Central  
-- [ ] Atualizar LEIA-ME das pastas  
+- [x] Endpoint `pair` + geração no Central  
+- [x] UI código grande no GeekCentral  
+- [x] SetupWizard: nome + código (sem sharedSecret)  
+- [ ] Teste na loja: Central online → Lock digita código → claim ok  
+- [ ] Regenerar pendrive Lock + Central (pack)  
+- [x] Atualizar LEIA-ME dos scripts de pack  
 
 ---
 

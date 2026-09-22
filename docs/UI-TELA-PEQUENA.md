@@ -1,7 +1,7 @@
 # GeekCentral — UI para tela pequena
 
 Atualizado em **2026-09-22**.  
-**Status:** plano documentado — implementar no **mesmo build** que [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md).
+**Status:** implementado (2026-09-22) — regenerar pendrive na loja.
 
 ---
 
@@ -49,13 +49,13 @@ Hoje: janela Electron **920×780**; `.grid` 2 colunas até 700px; `.shell` max 8
 
 ---
 
-## Checklist de implementação (próximo build)
+## Checklist de implementação
 
-- [ ] `BrowserWindow`: size baseado no `workArea`; min ~640×480  
-- [ ] CSS: breakpoints (ex. 800 / 600) + classe `.compact`  
-- [ ] Toggle “Modo compacto” + persistência  
-- [ ] Reordenar seções conforme hierarquia acima (+ bloco do código curto)  
-- [ ] Testar em viewport 1024×600 e 1280×720 (DevTools ou VM)  
+- [x] `BrowserWindow`: size baseado no `workArea`; min ~640×480  
+- [x] CSS: breakpoints (800 / 600) + classe `.compact`  
+- [x] Toggle “Modo compacto” + persistência (`uiCompact`)  
+- [x] Reordenar seções (status → código → túnel → resto)  
+- [ ] Validar em monitor pequeno na loja  
 - [ ] Regenerar pendrive GeekCentral  
 
 ---

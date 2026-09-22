@@ -28,6 +28,44 @@ describe("Estações", () => {
     await app.close();
   });
 
+  it("pair com código curto cria estação e invalida o código", async () => {
+    const app = await createTestApp();
+    const codeRes = await app.inject({ method: "GET", url: "/api/local/pair-code" });
+    expect(codeRes.statusCode).toBe(200);
+    const { code } = codeRes.json() as { code: string };
+    expect(code).toMatch(/^\d{6}$/);
+
+    const pair = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair",
+      payload: { name: "PC-Pair", pairCode: code },
+    });
+    expect(pair.statusCode).toBe(200);
+    const body = pair.json() as { name: string; token: string };
+    expect(body.name).toBe("PC-Pair");
+    expect(body.token).toBeTruthy();
+
+    const reuse = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair",
+      payload: { name: "PC-2", pairCode: code },
+    });
+    expect(reuse.statusCode).toBe(401);
+    await app.close();
+  });
+
+  it("pair rejeita código errado", async () => {
+    const app = await createTestApp();
+    await app.inject({ method: "GET", url: "/api/local/pair-code" });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair",
+      payload: { name: "FakePC", pairCode: "000000" },
+    });
+    expect(res.statusCode).toBe(401);
+    await app.close();
+  });
+
   it("admin cria estação via painel", async () => {
     const app = await createTestApp();
     const token = await adminToken(app);

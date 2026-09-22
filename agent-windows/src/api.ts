@@ -60,6 +60,17 @@ export async function claimStation(config: GeekLockConfig) {
   });
 }
 
+/** Pareamento por código de 6 dígitos (sem sharedSecret). */
+export async function pairStation(config: GeekLockConfig, pairCode: string) {
+  return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/pair", {
+    method: "POST",
+    body: JSON.stringify({
+      name: config.stationName,
+      pairCode: pairCode.replace(/\D/g, ""),
+    }),
+  });
+}
+
 export type SessionSafetyConfig = {
   lowBalanceWarnSeconds: number;
   staffUnlockMaxSeconds: number;

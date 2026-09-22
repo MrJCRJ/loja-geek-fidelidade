@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("geekcentral", {
   openUrl: (url) => ipcRenderer.invoke("central:open-url", url),
   getAutostart: () => ipcRenderer.invoke("central:get-autostart"),
   setAutostart: (enabled) => ipcRenderer.invoke("central:set-autostart", enabled),
+  getUiCompact: () => ipcRenderer.invoke("central:get-ui-compact"),
+  setUiCompact: (enabled) => ipcRenderer.invoke("central:set-ui-compact", enabled),
   ensureFirewall: () => ipcRenderer.invoke("central:ensure-firewall"),
   setTunnel: (input) => ipcRenderer.invoke("central:set-tunnel", input),
   checkTunnel: () => ipcRenderer.invoke("central:check-tunnel"),

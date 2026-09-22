@@ -18,6 +18,12 @@ import {
 } from "./stations.js";
 import { sessionSafetySettingsPayload } from "./session-safety.js";
 import { logEvent } from "./telemetry.js";
+import {
+  consumePairCode,
+  ensurePairCode,
+  isLocalRequest,
+  rotatePairCode,
+} from "./pair-code.js";
 
 const stationCommandBody = z.object({
   command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
@@ -139,5 +145,45 @@ export async function registerStationRoutes(app: FastifyInstance) {
       return reply.code(401).send({ error: "Segredo inválido" });
     }
     return registerStation(body.name);
+  });
+
+  /** Pareamento por código curto (6 dígitos) — sem digitar sharedSecret. */
+  app.post("/api/stations/pair", async (req, reply) => {
+    const body = z
+      .object({
+        name: z.string().min(2),
+        pairCode: z.string().min(4).max(12),
+      })
+      .parse(req.body);
+    const result = consumePairCode(body.pairCode, req.ip || "unknown");
+    if (!result.ok) {
+      return reply.code(result.status).send({ error: result.error });
+    }
+    const station = registerStation(body.name);
+    logEvent({
+      level: "info",
+      source: "admin",
+      kind: "station.pair",
+      message: `Estação pareada via código: ${station.name}`,
+      stationId: station.id,
+    });
+    // Novo código pronto para a próxima estação
+    ensurePairCode();
+    return station;
+  });
+
+  /** Só localhost — GeekCentral na mesma máquina mostra o código. */
+  app.get("/api/local/pair-code", async (req, reply) => {
+    if (!isLocalRequest(req.ip, req.headers.host)) {
+      return reply.code(403).send({ error: "Só no PC do GeekCentral" });
+    }
+    return ensurePairCode();
+  });
+
+  app.post("/api/local/pair-code/rotate", async (req, reply) => {
+    if (!isLocalRequest(req.ip, req.headers.host)) {
+      return reply.code(403).send({ error: "Só no PC do GeekCentral" });
+    }
+    return rotatePairCode();
   });
 }

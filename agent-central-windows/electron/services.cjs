@@ -136,6 +136,7 @@ class ServiceManager {
       needsSetup: true,
       setupComplete: false,
       unitName: "Unidade 1",
+      uiCompact: false,
       openAtLogin: true,
       bootDelayMs: 15_000,
       firewallOk: false,
@@ -208,6 +209,7 @@ class ServiceManager {
     this.status.lanIp = lanIPv4();
     this.status.openAtLogin = cfg.openAtLogin !== false;
     this.status.bootDelayMs = Number(cfg.bootDelayMs ?? 15_000);
+    this.status.uiCompact = Boolean(cfg.uiCompact);
     this.status.firewallOk = Boolean(cfg.firewallRuleDone);
     this.status.firewallError = String(cfg.firewallError || "");
     this.status.portalOrigin = String(cfg.portalOrigin || DEFAULT_PORTAL);
@@ -249,6 +251,36 @@ class ServiceManager {
     saveConfig(dataDir, cfg);
     this.status.openAtLogin = cfg.openAtLogin;
     this.emit();
+  }
+
+  getUiCompact() {
+    const cfg = loadConfig(this.dataDir());
+    return Boolean(cfg.uiCompact);
+  }
+
+  setUiCompact(enabled) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    cfg.uiCompact = Boolean(enabled);
+    saveConfig(dataDir, cfg);
+    this.status.uiCompact = cfg.uiCompact;
+    this.emit();
+    return cfg.uiCompact;
+  }
+
+  /** Define compacto só na 1ª vez (chave ausente), ex. tela baixa. */
+  ensureUiCompactDefault(preferCompact) {
+    const dataDir = this.dataDir();
+    const cfg = loadConfig(dataDir);
+    if (Object.prototype.hasOwnProperty.call(cfg, "uiCompact")) {
+      this.status.uiCompact = Boolean(cfg.uiCompact);
+      return this.status.uiCompact;
+    }
+    cfg.uiCompact = Boolean(preferCompact);
+    saveConfig(dataDir, cfg);
+    this.status.uiCompact = cfg.uiCompact;
+    this.emit();
+    return cfg.uiCompact;
   }
 
   markFirewallAttempt(result) {

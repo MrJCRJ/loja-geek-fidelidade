@@ -53,8 +53,8 @@ Como usar no PC da loja
 Estações (outros PCs)
 1) Copie a pasta GeekLock do pendrive.
 2) Execute GeekLock.exe — o assistente lista o GeekCentral na LAN (ou digite o IP).
-3) Nome da estação único (PC-01…) + mesmo segredo do Central; permita a webcam.
-4) No Central: veja o QR / checklist / “Criar atalhos” se quiser.
+3) Nome da estação único (PC-01…) + código de 6 dígitos da tela do Central.
+4) No Central: veja o código grande / checklist / “Criar atalhos” se quiser.
 
 Firewall Windows
 - Use o botão "Liberar firewall" no GeekCentral, ou permita na 1ª execução (rede privada).

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { claimStation, checkHealth, openUserCamera, attachCameraStream } from "./api";
+import { pairStation, checkHealth, openUserCamera, attachCameraStream } from "./api";
 import type { DiscoveryPeer, GeekLockConfig } from "./vite-env";
 
 type Props = {
@@ -10,7 +10,7 @@ export function SetupWizard({ onDone }: Props) {
   const [peers, setPeers] = useState<DiscoveryPeer[]>([]);
   const [serverUrl, setServerUrl] = useState("");
   const [stationName, setStationName] = useState("PC-01");
-  const [sharedSecret, setSharedSecret] = useState("");
+  const [pairCode, setPairCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
@@ -64,7 +64,7 @@ export function SetupWizard({ onDone }: Props) {
     setError("");
     const url = serverUrl.trim().replace(/\/$/, "");
     const name = stationName.trim();
-    const secret = sharedSecret.trim();
+    const code = pairCode.replace(/\D/g, "");
     if (!url || !/^https?:\/\//i.test(url)) {
       setError("Informe a URL do GeekCentral (ex.: http://192.168.0.10:8787)");
       return;
@@ -73,8 +73,8 @@ export function SetupWizard({ onDone }: Props) {
       setError("Informe o nome da estação (ex.: PC-01)");
       return;
     }
-    if (!secret) {
-      setError("Informe o segredo compartilhado (o mesmo do GeekCentral)");
+    if (code.length !== 6) {
+      setError("Digite o código de 6 dígitos mostrado no GeekCentral");
       return;
     }
     setBusy(true);
@@ -82,12 +82,12 @@ export function SetupWizard({ onDone }: Props) {
       let cfg = await window.geeklock.saveConfig({
         serverUrl: url,
         stationName: name,
-        sharedSecret: secret,
+        sharedSecret: "",
         setupComplete: false,
         stationToken: "",
       });
       await checkHealth(cfg);
-      const claimed = await claimStation(cfg);
+      const claimed = await pairStation(cfg, code);
       cfg = await window.geeklock.saveToken(claimed.token);
       cfg = await window.geeklock.saveConfig({ setupComplete: true });
       await window.geeklock.stopDiscovery();
@@ -95,7 +95,7 @@ export function SetupWizard({ onDone }: Props) {
       setScanning(false);
       onDone(cfg);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Falha ao conectar / claim";
+      const msg = err instanceof Error ? err.message : "Falha ao conectar / parear";
       setError(msg);
       window.geeklock.writeLastFailure({ kind: "setup", message: msg });
     } finally {
@@ -109,7 +109,7 @@ export function SetupWizard({ onDone }: Props) {
         <h1 className="brand" style={{ fontSize: "2rem" }}>
           GeekLock
         </h1>
-        <p className="muted">Assistente da 1ª vez — escolha o PC controle na rede.</p>
+        <p className="muted">Assistente da 1ª vez — escolha o PC controle e digite o código.</p>
 
         <div className="field">
           <label>Teste de câmera</label>
@@ -163,13 +163,19 @@ export function SetupWizard({ onDone }: Props) {
           <input value={stationName} onChange={(e) => setStationName(e.target.value)} placeholder="PC-01" />
         </div>
         <div className="field">
-          <label>Segredo compartilhado</label>
+          <label>Código do GeekCentral (6 dígitos)</label>
           <input
-            type="password"
-            value={sharedSecret}
-            onChange={(e) => setSharedSecret(e.target.value)}
-            placeholder="Mesmo do GeekCentral"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={pairCode}
+            onChange={(e) => setPairCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            placeholder="Ex.: 482913"
+            maxLength={6}
+            style={{ fontSize: "1.35rem", letterSpacing: "0.2em", fontFamily: "ui-monospace, monospace" }}
           />
+          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+            Olhe o número grande na tela do PC controle (válido até usar ou 15 min).
+          </p>
         </div>
         {error && <p className="error-text">{error}</p>}
         <div className="row">

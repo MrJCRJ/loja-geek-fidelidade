@@ -29,7 +29,8 @@ Pré-requisito: PC CONTROLE com GeekCentral.exe online (ou Docker na LAN).
 1) Copie a pasta GeekLock do pendrive para o disco (ex.: C:\GeekLock).
 2) Execute GeekLock.exe — aparece o assistente.
 3) Escolha o GeekCentral encontrado na LAN (ou digite a URL).
-4) Informe nome da estação (ex.: PC-01) e o mesmo segredo do Central.
+4) Informe o nome da estação (ex.: PC-01) e o código de 6 dígitos
+   mostrado na tela do GeekCentral (não digite o segredo longo).
 5) Permita a webcam. Sem conexão = tela travada.
 
 Config manual (opcional): edite config.json (serverUrl, stationName, sharedSecret, staffPin).

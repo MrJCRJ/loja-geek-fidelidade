@@ -37,6 +37,7 @@ body {
   max-width: 880px;
   margin: 0 auto;
   padding: 1.5rem;
+  overflow-x: hidden;
 }
 
 .brand {
@@ -44,6 +45,21 @@ body {
   font-weight: 700;
   letter-spacing: -0.02em;
   margin: 0;
+}
+
+.pair-panel {
+  text-align: center;
+}
+
+.pair-code {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: clamp(2rem, 8vw, 3.25rem);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  line-height: 1.2;
+  color: var(--accent);
+  padding: 0.5rem 0.25rem;
+  user-select: all;
 }
 
 .muted {
@@ -201,8 +217,79 @@ code,
   gap: 0.75rem;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 800px) {
+  .shell {
+    padding: 0.85rem;
+  }
+
+  .brand {
+    font-size: 1.45rem;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
+
+  .panel {
+    padding: 0.85rem 0.9rem;
+    margin-top: 0.75rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .shell {
+    padding: 0.55rem;
+  }
+
+  .brand {
+    font-size: 1.25rem;
+  }
+
+  .btn {
+    padding: 0.45rem 0.7rem;
+    font-size: 0.9rem;
+  }
+}
+
+/* Modo compacto (toggle) */
+html.compact .shell {
+  padding: 0.65rem;
+  max-width: 100%;
+}
+
+html.compact .brand {
+  font-size: 1.35rem;
+}
+
+html.compact .panel {
+  padding: 0.7rem 0.8rem;
+  margin-top: 0.55rem;
+  border-radius: 10px;
+}
+
+html.compact .pill {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.5rem;
+}
+
+html.compact .btn {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+html.compact .field {
+  margin-bottom: 0.55rem;
+}
+
+html.compact .pair-code {
+  font-size: clamp(1.75rem, 7vw, 2.5rem);
+}
+
+html.compact .logs {
+  max-height: 140px;
+  font-size: 0.72rem;
+}
+
+html.compact .grid {
+  grid-template-columns: 1fr;
 }

@@ -265,7 +265,9 @@ export async function registerRoutes(app: FastifyInstance) {
       const st = await getTunnelStatusFull();
       return { ok: true, status: st };
     }
-    return applyTunnel(body);
+    const { action, ...rest } = body;
+    void action;
+    return applyTunnel(rest);
   });
 
   app.get("/api/admin/diagnostics", async (req, reply) => {
