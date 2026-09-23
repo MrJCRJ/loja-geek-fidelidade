@@ -6,13 +6,19 @@ export const SHOP_PUBLIC_HOST = "loja.geekloja.com.br";
 export const HOME_HOST = "admin.geekloja.com.br";
 export const PUBLIC_API_HOST = "api.geekloja.com.br";
 
-export function requestHost(req: FastifyRequest | { headers?: { host?: string | string[] } }): string {
-  const raw = req.headers?.host;
-  const host = Array.isArray(raw) ? raw[0] : raw;
-  return String(host || "")
+function firstHeader(value: string | string[] | undefined): string {
+  const raw = Array.isArray(value) ? value[0] : value;
+  return String(raw || "")
+    .split(",")[0]
     .split(":")[0]
     .trim()
     .toLowerCase();
+}
+
+export function requestHost(req: FastifyRequest | { headers?: { host?: string | string[]; "x-forwarded-host"?: string | string[] } }): string {
+  const forwarded = firstHeader(req.headers?.["x-forwarded-host"]);
+  if (forwarded) return forwarded;
+  return firstHeader(req.headers?.host);
 }
 
 function isPrivateIpv4(host: string): boolean {
@@ -23,14 +29,15 @@ function isPrivateIpv4(host: string): boolean {
   return false;
 }
 
-/** Host da loja: celular/PC na LAN. Túnel Cloudflare NÃO entra aqui (Host público). */
+/** Host com controle (código GeekLock, PCs, caixa). api.geekloja.com.br nunca entra. */
 export function isLanControlHost(host: string): boolean {
   const h = String(host || "")
     .split(":")[0]
     .trim()
     .toLowerCase();
   if (!h) return false;
-  if (h === SHOP_HOST || h === SHOP_PUBLIC_HOST || h.endsWith(".local")) return true;
+  if (h === PUBLIC_API_HOST) return false;
+  if (h === SHOP_HOST || h === SHOP_PUBLIC_HOST || h === HOME_HOST || h.endsWith(".local")) return true;
   if (h === "localhost" || h === "127.0.0.1" || h === "::1") return true;
   if (isPrivateIpv4(h)) return true;
   return false;

@@ -50,10 +50,50 @@ export function getPresenceMatchThreshold(faceMatchThreshold: number) {
   return Math.min(0.95, faceMatchThreshold + Math.max(0, Math.min(0.2, m)));
 }
 
-export function sessionSafetySettingsPayload() {
+type StaffUnlockWindow = { startedAt: number; durationSec: number; timer?: ReturnType<typeof setTimeout> };
+const staffUnlockWindows = new Map<string, StaffUnlockWindow>();
+
+export function clampStaffUnlockSeconds(seconds: number) {
+  if (!Number.isFinite(seconds)) return getStaffUnlockMaxSeconds();
+  return Math.min(7200, Math.max(60, Math.floor(seconds)));
+}
+
+export function startStaffUnlockWindow(stationId: string, durationSec: number) {
+  clearStaffUnlockWindow(stationId);
+  const d = clampStaffUnlockSeconds(durationSec);
+  staffUnlockWindows.set(stationId, { startedAt: Date.now(), durationSec: d });
+  return d;
+}
+
+export function attachStaffUnlockTimer(stationId: string, timer: ReturnType<typeof setTimeout>) {
+  const w = staffUnlockWindows.get(stationId);
+  if (w) w.timer = timer;
+}
+
+export function clearStaffUnlockWindow(stationId: string) {
+  const prev = staffUnlockWindows.get(stationId);
+  if (prev?.timer) clearTimeout(prev.timer);
+  staffUnlockWindows.delete(stationId);
+}
+
+export function staffUnlockLeftSeconds(stationId: string) {
+  const w = staffUnlockWindows.get(stationId);
+  if (!w) return 0;
+  const left = w.durationSec - Math.floor((Date.now() - w.startedAt) / 1000);
+  if (left <= 0) {
+    clearStaffUnlockWindow(stationId);
+    return 0;
+  }
+  return left;
+}
+
+export function sessionSafetySettingsPayload(stationId?: string) {
+  const windowSec = stationId ? staffUnlockWindows.get(stationId)?.durationSec : 0;
   return {
     lowBalanceWarnSeconds: getLowBalanceWarnSeconds(),
-    staffUnlockMaxSeconds: getStaffUnlockMaxSeconds(),
+    staffUnlockMaxSeconds: windowSec && staffUnlockLeftSeconds(stationId!) > 0
+      ? windowSec
+      : getStaffUnlockMaxSeconds(),
     presenceMinFaceRatio: getPresenceMinFaceRatio(),
   };
 }

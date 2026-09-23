@@ -33,13 +33,21 @@ export function EstacoesTab({
   pairCode,
   compact,
 }: Props) {
+  const [showPair, setShowPair] = useState(true);
   const [stationName, setStationName] = useState("");
   const [messageText, setMessageText] = useState("Olá da central!");
   const [messageTitle, setMessageTitle] = useState("Aviso da loja");
   const [messageLevel, setMessageLevel] = useState<"info" | "warn" | "urgent">("info");
   const [messageDuration, setMessageDuration] = useState(15);
   const [createdToken, setCreatedToken] = useState<{ name: string; token: string } | null>(null);
+  const [liberarId, setLiberarId] = useState<string | null>(null);
   const onlineMap = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
+  const unlockPresets = [
+    { label: "15 min", sec: 15 * 60 },
+    { label: "30 min", sec: 30 * 60 },
+    { label: "1 h", sec: 60 * 60 },
+    { label: "2 h", sec: 2 * 60 * 60 },
+  ];
 
   const messageBody = () => ({
     command: "message" as const,
@@ -49,21 +57,64 @@ export function EstacoesTab({
     durationSec: messageDuration,
   });
 
-  const sendCmd = (stationId: string, command: string, text?: string) =>
+  const sendCmd = (stationId: string, command: string, text?: string, durationSec?: number) =>
     api(`/api/stations/${stationId}/command`, {
       method: "POST",
       body: JSON.stringify(
         command === "message"
           ? { ...messageBody(), text: text || messageBody().text }
-          : { command, text },
+          : { command, text, durationSec },
       ),
     })
-      .then(() => onToast(`Comando ${command} enviado`, "ok"))
+      .then(() => {
+        if (command === "unlock_screen" && durationSec) {
+          const min = Math.round(durationSec / 60);
+          onToast(min >= 60 ? `Liberado por ${min / 60} h` : `Liberado por ${min} min`, "ok");
+          return;
+        }
+        onToast(`Comando ${command} enviado`, "ok");
+      })
       .catch((e) => onError(e instanceof Error ? e.message : "Falha no comando"));
+
+  const liberarPor = (stationId: string, sec: number) => {
+    setLiberarId(null);
+    sendCmd(stationId, "unlock_screen", undefined, sec);
+  };
+
+  const pairBox =
+    pairCode && !remoteReadOnly ? (
+      <section className="panel pair-box">
+        <p className="muted" style={{ margin: "0 0 0.35rem" }}>
+          Senha / código para cadastrar o GeekLock
+        </p>
+        <p className="pair-code-digits mono">{showPair ? pairCode : "••••••"}</p>
+        <p className="muted" style={{ margin: "0.35rem 0 0.75rem" }}>
+          No Lock: <span className="mono">http://192.168.3.70:8787</span> + este código
+        </p>
+        <div className="row">
+          <button className="btn" type="button" onClick={() => setShowPair((v) => !v)}>
+            {showPair ? "Ocultar" : "Visualizar senha"}
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            onClick={() =>
+              navigator.clipboard.writeText(pairCode).then(
+                () => onToast("Código copiado", "ok"),
+                () => onError("Falha ao copiar"),
+              )
+            }
+          >
+            Copiar
+          </button>
+        </div>
+      </section>
+    ) : null;
 
   if (compact) {
     return (
       <div role="tabpanel" id="panel-estacoes" aria-labelledby="tab-estacoes">
+        {pairBox}
         {stations.length === 0 && <p className="muted">Nenhum PC pareado.</p>}
         <div className="pc-cards">
           {stations.map((s) => {
@@ -88,9 +139,25 @@ export function EstacoesTab({
                 <p className="muted" style={{ margin: "0 0 0.75rem" }}>
                   {modeLabel}
                 </p>
-                {!remoteReadOnly && (
+                {!remoteReadOnly && liberarId === s.id ? (
+                  <div>
+                    <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+                      Liberar por quanto tempo?
+                    </p>
+                    <div className="time-chips">
+                      {unlockPresets.map((p) => (
+                        <button className="btn" type="button" key={p.sec} onClick={() => liberarPor(s.id, p.sec)}>
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                    <button className="btn ghost" type="button" style={{ marginTop: "0.5rem", width: "100%" }} onClick={() => setLiberarId(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                ) : !remoteReadOnly ? (
                   <div className="pc-card-actions">
-                    <button className="btn" type="button" onClick={() => sendCmd(s.id, "unlock_screen")}>
+                    <button className="btn" type="button" onClick={() => setLiberarId(s.id)}>
                       Liberar
                     </button>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "lock_screen")}>
@@ -100,7 +167,7 @@ export function EstacoesTab({
                       Encerrar
                     </button>
                   </div>
-                )}
+                ) : null}
               </section>
             );
           })}
@@ -113,11 +180,7 @@ export function EstacoesTab({
     <div className="grid-2" role="tabpanel" id="panel-estacoes" aria-labelledby="tab-estacoes">
       <section className="panel">
         <h2>Estações</h2>
-        {pairCode && !remoteReadOnly && (
-          <p>
-            Código de pareamento: <strong className="mono">{pairCode}</strong>
-          </p>
-        )}
+        {pairBox}
         {remoteReadOnly && <p className="muted">De casa não dá para travar/destravar PC.</p>}
         {!remoteReadOnly && (
         <>

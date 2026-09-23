@@ -351,7 +351,7 @@ export default function App() {
           ) : null}
         </p>
         <p className="muted">
-          De casa (só ver): <span className="mono">https://admin.geekloja.com.br</span>
+          De casa: <span className="mono">https://admin.geekloja.com.br</span>
         </p>
         <p className="muted">
           IP LAN: <span className="mono">{status.lanIp}</span> · Uptime:{" "}

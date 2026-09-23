@@ -9,9 +9,14 @@ function lanAddresses() {
   const out = [];
   for (const name of Object.keys(nets)) {
     for (const net of nets[name] || []) {
-      if (net.family !== "IPv4" || net.internal) continue;
-      if (net.address.startsWith("172.1") || net.address.startsWith("172.2")) continue;
-      out.push({ address: net.address, broadcast: net.broadcast || null });
+      const family = String(net.family);
+      if ((family !== "IPv4" && family !== "4") || net.internal) continue;
+      const addr = String(net.address || "");
+      if (addr.startsWith("169.254.")) continue;
+      if (addr.startsWith("172.1") || addr.startsWith("172.2")) continue;
+      const parts = addr.split(".");
+      const guessed = parts.length === 4 ? `${parts[0]}.${parts[1]}.${parts[2]}.255` : null;
+      out.push({ address: addr, broadcast: net.broadcast || guessed });
     }
   }
   return out;

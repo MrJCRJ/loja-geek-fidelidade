@@ -16,7 +16,13 @@ import {
   registerStation,
   renameStation,
 } from "./stations.js";
-import { sessionSafetySettingsPayload } from "./session-safety.js";
+import {
+  attachStaffUnlockTimer,
+  clearStaffUnlockWindow,
+  getStaffUnlockMaxSeconds,
+  sessionSafetySettingsPayload,
+  startStaffUnlockWindow,
+} from "./session-safety.js";
 import { logEvent } from "./telemetry.js";
 import {
   consumePairCode,
@@ -30,7 +36,7 @@ const stationCommandBody = z.object({
   text: z.string().optional(),
   title: z.string().max(80).optional(),
   level: z.enum(["info", "warn", "urgent"]).optional(),
-  durationSec: z.number().int().min(3).max(600).optional(),
+  durationSec: z.number().int().min(3).max(7200).optional(),
 });
 
 export async function registerStationRoutes(app: FastifyInstance) {
@@ -73,7 +79,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
     return {
       ok: true,
       station: { id: station.id, name: station.name },
-      sessionSafety: sessionSafetySettingsPayload(),
+      sessionSafety: sessionSafetySettingsPayload(station.id),
       portalPublicUrl: config.portalPublicUrl,
     };
   });
@@ -82,12 +88,28 @@ export async function registerStationRoutes(app: FastifyInstance) {
     if (!(await staffWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const body = stationCommandBody.parse(req.body);
+    const durationSec =
+      body.command === "unlock_screen"
+        ? startStaffUnlockWindow(id, body.durationSec ?? getStaffUnlockMaxSeconds())
+        : body.durationSec ?? 12;
+    if (body.command === "lock_screen" || body.command === "end_session") {
+      clearStaffUnlockWindow(id);
+    }
     sendCommandToStation(id, body.command, {
       text: body.text || "",
       title: body.title || "",
       level: body.level || "info",
-      durationSec: body.durationSec ?? 12,
+      durationSec,
     });
+    if (body.command === "unlock_screen") {
+      attachStaffUnlockTimer(
+        id,
+        setTimeout(() => {
+          clearStaffUnlockWindow(id);
+          sendCommandToStation(id, "lock_screen", { text: "", title: "", level: "info", durationSec: 12 });
+        }, durationSec * 1000),
+      );
+    }
     logEvent({
       level: "info",
       source: "admin",

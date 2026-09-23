@@ -582,6 +582,18 @@ a {
   font-size: 0.9em;
 }
 
+.pair-box {
+  margin-bottom: 1rem;
+}
+
+.pair-code-digits {
+  margin: 0;
+  font-size: 2.4rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  line-height: 1.1;
+}
+
 .metrics-grid {
   display: grid;
   gap: 0.75rem;
@@ -831,4 +843,17 @@ a {
 .pc-card-actions .btn {
   min-height: 48px;
   width: 100%;
+}
+
+.time-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.time-chips .btn {
+  min-height: 52px;
+  width: 100%;
+  font-size: 1.05rem;
+  font-weight: 600;
 }

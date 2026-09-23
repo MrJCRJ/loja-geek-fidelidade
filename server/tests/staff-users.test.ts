@@ -46,7 +46,7 @@ describe("Contas da equipe + controle só na LAN", () => {
     await app.close();
   });
 
-  it("funcionário não entra pelo host de casa; dono entra só em leitura", async () => {
+  it("admin.geekloja.com.br libera controle; host desconhecido fica só leitura", async () => {
     const app = await createTestApp();
     const bootToken = await adminToken(app);
     await app.inject({
@@ -76,7 +76,7 @@ describe("Contas da equipe + controle só na LAN", () => {
       headers: { host: HOME_HOST },
       payload: { username: "joao", password: "joao-123" },
     });
-    expect(clerkHome.statusCode).toBe(403);
+    expect(clerkHome.statusCode).toBe(200);
 
     const ownerHome = await app.inject({
       method: "POST",
@@ -93,12 +93,20 @@ describe("Contas da equipe + controle só na LAN", () => {
       headers: { ...authHeaders(homeToken), host: HOME_HOST },
     });
     expect(me.statusCode).toBe(200);
-    expect((me.json() as { remoteReadOnly: boolean }).remoteReadOnly).toBe(true);
+    expect((me.json() as { remoteReadOnly: boolean }).remoteReadOnly).toBe(false);
+
+    const otherHost = "outro.exemplo.com";
+    const meOther = await app.inject({
+      method: "GET",
+      url: "/api/admin/me",
+      headers: { ...authHeaders(homeToken), host: otherHost },
+    });
+    expect((meOther.json() as { remoteReadOnly: boolean }).remoteReadOnly).toBe(true);
 
     const cmd = await app.inject({
       method: "POST",
       url: "/api/stations/x/command",
-      headers: { ...authHeaders(homeToken), host: HOME_HOST },
+      headers: { ...authHeaders(homeToken), host: otherHost },
       payload: { command: "unlock_screen" },
     });
     expect(cmd.statusCode).toBe(403);

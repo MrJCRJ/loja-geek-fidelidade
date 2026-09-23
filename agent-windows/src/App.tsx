@@ -518,6 +518,10 @@ export default function App() {
           if (res.portalPublicUrl) {
             setPortalBaseUrl(res.portalPublicUrl.replace(/\/$/, ""));
           }
+          if (phaseRef.current === "offline") {
+            setStatus("Central voltou");
+            lockUi().catch(() => undefined);
+          }
         })
         .catch(() => {
           if (phaseRef.current !== "unlocked") {
@@ -529,7 +533,7 @@ export default function App() {
     tick();
     const t = setInterval(tick, 8000);
     return () => clearInterval(t);
-  }, [config]);
+  }, [config, lockUi]);
 
   // Soft lock removido — câmera ruim não trava mais por ausência falsa.
 
@@ -582,10 +586,12 @@ export default function App() {
         return;
       }
       if (command === "unlock_screen") {
-        if (phaseRef.current === "unlocked") return;
-        const unlockFn = (window as unknown as { __geeklockUnlockAdmin?: () => Promise<void> })
+        const unlocked = phaseRef.current === "unlocked";
+        const isAdmin = customerRef.current?.id === "staff";
+        if (unlocked && !isAdmin) return;
+        const unlockFn = (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> })
           .__geeklockUnlockAdmin;
-        unlockFn?.().catch(() => undefined);
+        unlockFn?.(payload?.durationSec).catch(() => undefined);
       }
     };
 
@@ -762,12 +768,19 @@ export default function App() {
       }
     };
 
-    const unlockAsAdmin = async () => {
+    const unlockAsAdmin = async (durationSec?: number) => {
+      if (durationSec && durationSec >= 60) {
+        sessionSafetyRef.current.staffUnlockMaxSeconds = Math.min(7200, Math.floor(durationSec));
+      }
+      const minutes = Math.max(
+        1,
+        Math.round((sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC) / 60),
+      );
       sessionStartedAtRef.current = Date.now();
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus("Modo Admin — auto-trava em alguns minutos");
+      setStatus(`Liberado pela equipe — trava em ${minutes} min`);
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
@@ -812,7 +825,7 @@ export default function App() {
     });
 
     (window as unknown as { __geeklockRequestLock?: () => void }).__geeklockRequestLock = requestLockStation;
-    (window as unknown as { __geeklockUnlockAdmin?: () => Promise<void> }).__geeklockUnlockAdmin = unlockAsAdmin;
+    (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> }).__geeklockUnlockAdmin = unlockAsAdmin;
 
     return () => {
       offEnd();
@@ -821,7 +834,7 @@ export default function App() {
       offLockReq();
       offLockState();
       delete (window as unknown as { __geeklockRequestLock?: () => void }).__geeklockRequestLock;
-      delete (window as unknown as { __geeklockUnlockAdmin?: () => Promise<void> }).__geeklockUnlockAdmin;
+      delete (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> }).__geeklockUnlockAdmin;
     };
   }, [doEndSession, lockUi, unlockUi]);
 

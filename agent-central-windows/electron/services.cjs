@@ -86,13 +86,16 @@ function lanIPv4() {
   const preferred = [];
   for (const name of Object.keys(nets)) {
     for (const net of nets[name] || []) {
-      if (net.family !== "IPv4" || net.internal) continue;
-      // ignora bridges docker comuns
-      if (net.address.startsWith("172.1") || net.address.startsWith("172.2")) continue;
-      preferred.push(net.address);
+      const family = String(net.family);
+      if ((family !== "IPv4" && family !== "4") || net.internal) continue;
+      const addr = String(net.address || "");
+      if (addr.startsWith("169.254.")) continue;
+      if (addr.startsWith("172.1") || addr.startsWith("172.2")) continue;
+      preferred.push(addr);
     }
   }
-  return preferred[0] || "127.0.0.1";
+  const lan = preferred.find((a) => a.startsWith("192.168.")) || preferred[0];
+  return lan || "127.0.0.1";
 }
 
 function waitHttp(url, timeoutMs = 60_000) {

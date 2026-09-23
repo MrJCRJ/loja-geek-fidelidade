@@ -102,7 +102,7 @@ export default function AdminPage() {
         setRemoteReadOnly(Boolean(me.remoteReadOnly));
         if (me.shopUrl) setShopUrl(me.shopUrl);
         if (me.role === "clerk") setTab("estacoes");
-        if (!me.remoteReadOnly && me.role !== "clerk") {
+        if (!me.remoteReadOnly) {
           api<{ code: string }>("/api/admin/pair-code")
             .then((p) => setPairCode(p.code || ""))
             .catch(() => undefined);
@@ -351,9 +351,9 @@ export default function AdminPage() {
           No celular: menu do navegador → Adicionar à tela inicial. Link da loja: {shopUrl}
         </div>
       )}
-      {!remoteReadOnly && !clerk && pairCode && (
+      {!remoteReadOnly && !clerk && pairCode && tab !== "estacoes" && (
         <p className="muted" style={{ margin: "0 0 0.75rem" }}>
-          Pareamento GeekLock: <strong>{pairCode}</strong>
+          Pareamento GeekLock: <strong className="mono">{pairCode}</strong>
         </p>
       )}
 
@@ -423,7 +423,7 @@ export default function AdminPage() {
           onToast={toast.push}
           askConfirm={askConfirm}
           remoteReadOnly={remoteReadOnly}
-          pairCode={clerk ? "" : pairCode}
+          pairCode={pairCode}
           compact={clerk}
         />
       )}
