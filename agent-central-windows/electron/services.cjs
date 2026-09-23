@@ -507,6 +507,7 @@ class ServiceManager {
       lanIp: this.status.lanIp || lanIPv4(),
       apiPort: this.status.apiPort || 8787,
       unitName: this.status.unitName || "Unidade",
+      hostname: "geek.local",
       version: 1,
     }));
     this.log("[discovery] anunciando GeekCentral na LAN (UDP 48787)");

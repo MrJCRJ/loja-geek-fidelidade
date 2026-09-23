@@ -45,7 +45,7 @@ describe("GET /api/admin/me", () => {
       headers: { authorization: `Bearer ${token}` },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ role: "admin" });
+    expect(res.json()).toMatchObject({ role: "admin" });
     await app.close();
   });
 

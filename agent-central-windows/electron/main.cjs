@@ -144,17 +144,24 @@ function updateTrayTooltip(status) {
   tray.setToolTip(`GeekCentral — ${phase} · ${api} · ${face}`);
 }
 
+function shopAdminUrl() {
+  const port = services.status.apiPort || 8787;
+  return `http://geek.local:${port}/admin`;
+}
+
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
     {
-      label: "Abrir GeekCentral",
-      click: () => focusMainWindow(),
+      label: "Abrir no celular / navegador",
+      click: () => {
+        shell.openExternal(shopAdminUrl()).catch(() => {
+          shell.openExternal(`http://127.0.0.1:${services.status.apiPort || 8787}/admin`);
+        });
+      },
     },
     {
-      label: "Abrir admin",
-      click: () => {
-        openAdminWindow().catch(() => undefined);
-      },
+      label: "Status do motor",
+      click: () => focusMainWindow(),
     },
     { type: "separator" },
     {
@@ -185,9 +192,13 @@ function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("GeekCentral");
   tray.setContextMenu(buildTrayMenu());
-  tray.on("double-click", () => focusMainWindow());
+  tray.on("double-click", () => {
+    shell.openExternal(shopAdminUrl()).catch(() => focusMainWindow());
+  });
   tray.on("click", () => {
-    if (isWin) focusMainWindow();
+    if (isWin) {
+      shell.openExternal(shopAdminUrl()).catch(() => undefined);
+    }
   });
 }
 
@@ -233,7 +244,7 @@ app.whenReady().then(async () => {
 
   createTray();
 
-  const startHidden = wasOpenedAtLogin() && peek.setupComplete && !peek.needsSetup;
+  const startHidden = peek.setupComplete && !peek.needsSetup;
   createWindow({ show: !startHidden });
 
   try {

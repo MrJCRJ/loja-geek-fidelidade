@@ -2,7 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { getTimeBalance } from "./billing.js";
 import { getCustomer } from "./customers.js";
-import { adminGuard, stationFromHeader } from "./http-guards.js";
+import { adminGuard, staffWriteGuard, stationFromHeader } from "./http-guards.js";
 import { broadcastAdmins, sendCommandToStation, sendToStation } from "./hub.js";
 import {
   endActiveSessionForStation,
@@ -113,7 +113,7 @@ export async function registerSessionRoutes(app: FastifyInstance) {
 
   app.post("/api/sessions/end", async (req, reply) => {
     const station = stationFromHeader(req);
-    if (!station && !(await adminGuard(req, reply))) return;
+    if (!station && !(await staffWriteGuard(req, reply))) return;
     const body = z
       .object({
         sessionId: z.string().optional(),

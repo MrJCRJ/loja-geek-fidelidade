@@ -10,6 +10,7 @@ import { useToast } from "../admin/hooks/useToast";
 import { CaixaTab } from "../admin/tabs/CaixaTab";
 import { ClientesTab } from "../admin/tabs/ClientesTab";
 import { AjudaTab } from "../admin/tabs/AjudaTab";
+import { EquipeTab } from "../admin/tabs/EquipeTab";
 import { ConfigTab } from "../admin/tabs/ConfigTab";
 import { DashboardTab } from "../admin/tabs/DashboardTab";
 import { EstacoesTab } from "../admin/tabs/EstacoesTab";
@@ -29,6 +30,7 @@ type ConfirmState = {
 
 export default function AdminPage() {
   const [token, setToken] = useState(getAdminToken());
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [tab, setTab] = useState<Tab>("dashboard");
@@ -36,7 +38,16 @@ export default function AdminPage() {
   const [selected, setSelected] = useState<Customer | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [role, setRole] = useState<"admin" | "clerk">("admin");
+  const [displayName, setDisplayName] = useState("");
+  const [needsBootstrap, setNeedsBootstrap] = useState(false);
+  const [bootUser, setBootUser] = useState("");
+  const [bootName, setBootName] = useState("");
+  const [bootPass, setBootPass] = useState("");
+  const [remoteReadOnly, setRemoteReadOnly] = useState(false);
+  const [shopUrl, setShopUrl] = useState("http://geek.local:8787/admin");
+  const [pairCode, setPairCode] = useState("");
   const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
+  const [installHint, setInstallHint] = useState(false);
 
   const toast = useToast();
   const data = useAdminData(token);
@@ -68,7 +79,7 @@ export default function AdminPage() {
   useEffect(() => {
     const onAuthExpired = () => {
       setToken(null);
-      setError("Sessão expirada. Entre novamente com a senha admin.");
+      setError("Sessão expirada. Entre de novo com usuário e senha.");
     };
     window.addEventListener("lg-auth-expired", onAuthExpired);
     return () => window.removeEventListener("lg-auth-expired", onAuthExpired);
@@ -76,13 +87,37 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!token) return;
-    api<{ role: string }>("/api/admin/me")
+    api<{
+      role: string;
+      displayName?: string | null;
+      needsBootstrap?: boolean;
+      remoteReadOnly?: boolean;
+      shopUrl?: string;
+    }>("/api/admin/me")
       .then((me) => {
         setRole(me.role === "clerk" ? "clerk" : "admin");
+        setDisplayName(me.displayName || "");
+        setNeedsBootstrap(Boolean(me.needsBootstrap));
+        setRemoteReadOnly(Boolean(me.remoteReadOnly));
+        if (me.shopUrl) setShopUrl(me.shopUrl);
+        if (!me.remoteReadOnly) {
+          api<{ code: string }>("/api/admin/pair-code")
+            .then((p) => setPairCode(p.code || ""))
+            .catch(() => undefined);
+        }
         return data.refreshNow();
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Falha ao validar sessão"));
   }, [token, data.refreshNow]);
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    const standalone =
+      window.matchMedia("(display-mode: standalone)").matches ||
+      Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
+    setInstallHint(!standalone && /mobile|android|iphone/i.test(navigator.userAgent));
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -100,14 +135,21 @@ export default function AdminPage() {
     e.preventDefault();
     setError("");
     try {
-      const res = await api<{ token: string; role?: "admin" | "clerk" }>("/api/admin/login", {
+      const res = await api<{
+        token: string;
+        role?: "admin" | "clerk";
+        displayName?: string;
+        needsBootstrap?: boolean;
+      }>("/api/admin/login", {
         method: "POST",
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username: username.trim() || undefined, password }),
         token: null,
       });
       setAdminToken(res.token);
       setToken(res.token);
       setRole(res.role === "clerk" ? "clerk" : "admin");
+      setDisplayName(res.displayName || "");
+      setNeedsBootstrap(Boolean(res.needsBootstrap));
       toast.push(res.role === "clerk" ? "Modo balcão" : "Login ok", "ok");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login");
@@ -126,12 +168,23 @@ export default function AdminPage() {
         <p className="muted">PC controle — geeks · Celular e Game</p>
         <form className="panel" onSubmit={login}>
           <div className="field">
-            <label>Senha admin</label>
+            <label>Usuário</label>
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+              autoFocus
+              data-testid="admin-username"
+              placeholder="dono (vazio só no 1º acesso)"
+            />
+          </div>
+          <div className="field">
+            <label>Senha</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              autoFocus
+              autoComplete="current-password"
               data-testid="admin-password"
             />
           </div>
@@ -139,6 +192,9 @@ export default function AdminPage() {
           <button className="btn" type="submit" data-testid="admin-login">
             Entrar
           </button>
+          <p className="muted" style={{ marginTop: "0.75rem" }}>
+            Loja: <code>http://geek.local</code> · Casa: <code>admin.geekloja.com.br</code>
+          </p>
         </form>
       </div>
     );
@@ -167,7 +223,9 @@ export default function AdminPage() {
         <div>
           <p className="muted" style={{ margin: 0 }}>
             geeks · Celular e Game · {data.settings.unitName}
+            {displayName ? ` · ${displayName}` : ""}
             {role === "clerk" ? " · modo balcão" : ""}
+            {remoteReadOnly ? " · só leitura (casa)" : ""}
           </p>
           <h1 className="brand">GeekCentral</h1>
           {data.health ? (
@@ -197,10 +255,68 @@ export default function AdminPage() {
         tab={tab}
         clerk={role === "clerk"}
         onChange={(id) => {
-          if (role === "clerk" && (id === "config" || id === "recompensas")) return;
+          if (role === "clerk" && (id === "config" || id === "recompensas" || id === "equipe")) return;
           setTab(id);
         }}
       />
+
+      {needsBootstrap && role === "admin" && (
+        <form
+          className="panel"
+          style={{ marginBottom: "1rem" }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            api<{ token: string; displayName?: string }>("/api/admin/bootstrap-owner", {
+              method: "POST",
+              body: JSON.stringify({
+                username: bootUser,
+                password: bootPass,
+                displayName: bootName || bootUser,
+              }),
+            })
+              .then((res) => {
+                setAdminToken(res.token);
+                setToken(res.token);
+                setNeedsBootstrap(false);
+                setDisplayName(res.displayName || bootName);
+                toast.push("Conta dono criada", "ok");
+              })
+              .catch((err) => setError(err instanceof Error ? err.message : "Falha ao criar dono"));
+          }}
+        >
+          <h2 style={{ marginTop: 0 }}>Crie sua conta de dono</h2>
+          <p className="muted">A senha compartilhada deixa de funcionar depois disso.</p>
+          <div className="field">
+            <label>Usuário</label>
+            <input value={bootUser} onChange={(e) => setBootUser(e.target.value)} required />
+          </div>
+          <div className="field">
+            <label>Seu nome</label>
+            <input value={bootName} onChange={(e) => setBootName(e.target.value)} />
+          </div>
+          <div className="field">
+            <label>Senha</label>
+            <input type="password" value={bootPass} onChange={(e) => setBootPass(e.target.value)} required minLength={6} />
+          </div>
+          <button className="btn" type="submit">
+            Criar conta dono
+          </button>
+        </form>
+      )}
+
+      {remoteReadOnly && (
+        <div className="banner warn">De casa só dá para ver. Controle dos PCs e caixa: {shopUrl}</div>
+      )}
+      {installHint && !remoteReadOnly && (
+        <div className="banner warn">
+          No celular: menu do navegador → Adicionar à tela inicial. Link da loja: {shopUrl}
+        </div>
+      )}
+      {!remoteReadOnly && pairCode && (
+        <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+          Pareamento GeekLock: <strong>{pairCode}</strong>
+        </p>
+      )}
 
       {sysAlerts.length > 0 && (
         <div className={`banner ${sysAlerts.some((a) => a.severity === "error") ? "" : "warn"}`}>
@@ -255,6 +371,7 @@ export default function AdminPage() {
           loadTimeForCustomer={data.loadTimeForCustomer}
           onError={setError}
           onToast={toast.push}
+          remoteReadOnly={remoteReadOnly}
         />
       )}
       {tab === "estacoes" && (
@@ -266,6 +383,8 @@ export default function AdminPage() {
           onError={setError}
           onToast={toast.push}
           askConfirm={askConfirm}
+          remoteReadOnly={remoteReadOnly}
+          pairCode={pairCode}
         />
       )}
       {tab === "sessoes" && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}
@@ -280,6 +399,9 @@ export default function AdminPage() {
       )}
       {tab === "saude" && <SaudeTab onError={setError} />}
       {tab === "ajuda" && <AjudaTab clerk={role === "clerk"} />}
+      {tab === "equipe" && role !== "clerk" && (
+        <EquipeTab remoteReadOnly={remoteReadOnly} onError={setError} onToast={toast.push} />
+      )}
       {tab === "config" && role !== "clerk" && (
         <ConfigTab
           settings={data.settings}

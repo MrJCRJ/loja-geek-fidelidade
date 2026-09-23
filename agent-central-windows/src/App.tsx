@@ -341,6 +341,21 @@ export default function App() {
           <span className={`pill ${status.face ? "ok" : "warn"}`}>Face {status.face ? "ok" : "off"}</span>
         </div>
         <p className="muted">
+          Celular na loja: <span className="mono">http://geek.local:{status.apiPort || 8787}/admin</span>
+          {status.lanIp ? (
+            <>
+              {" "}
+              · se o nome falhar:{" "}
+              <span className="mono">
+                http://{status.lanIp}:{status.apiPort || 8787}/admin
+              </span>
+            </>
+          ) : null}
+        </p>
+        <p className="muted">
+          De casa (só ver): <span className="mono">https://admin.geekloja.com.br</span>
+        </p>
+        <p className="muted">
           IP LAN: <span className="mono">{status.lanIp}</span> · Uptime:{" "}
           <span className="mono">{uptimeLabel}</span>
         </p>

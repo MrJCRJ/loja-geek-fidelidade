@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { config } from "./config.js";
-import { adminGuard, ownerGuard, stationFromHeader } from "./http-guards.js";
+import { adminGuard, ownerWriteGuard, staffWriteGuard, stationFromHeader, actorLabel } from "./http-guards.js";
 import {
   broadcastAdmins,
   getAllStationStatuses,
@@ -44,13 +44,13 @@ export async function registerStationRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/stations", async (req, reply) => {
-    if (!(await ownerGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const body = z.object({ name: z.string().min(2) }).parse(req.body);
     return registerStation(body.name);
   });
 
   app.patch("/api/stations/:id", async (req, reply) => {
-    if (!(await ownerGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const body = z.object({ name: z.string().min(2) }).parse(req.body);
     const updated = renameStation(id, body.name);
@@ -59,7 +59,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api/stations/:id", async (req, reply) => {
-    if (!(await ownerGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     if (!deleteStation(id)) return reply.code(404).send({ error: "Não encontrado" });
     return { ok: true };
@@ -79,7 +79,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/stations/:id/command", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await staffWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const body = stationCommandBody.parse(req.body);
     sendCommandToStation(id, body.command, {
@@ -92,15 +92,15 @@ export async function registerStationRoutes(app: FastifyInstance) {
       level: "info",
       source: "admin",
       kind: `command.${body.command}`,
-      message: `Comando ${body.command} → estação ${id}`,
+      message: `${actorLabel(req)}: comando ${body.command} → estação ${id}`,
       stationId: id,
-      meta: { text: body.text, title: body.title, level: body.level },
+      meta: { text: body.text, title: body.title, level: body.level, actor: actorLabel(req) },
     });
     return { ok: true };
   });
 
   app.post("/api/stations/command-all", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await staffWriteGuard(req, reply))) return;
     const body = stationCommandBody.parse(req.body);
     sendCommandToAllStations(body.command, {
       text: body.text || "",
@@ -112,8 +112,8 @@ export async function registerStationRoutes(app: FastifyInstance) {
       level: "info",
       source: "admin",
       kind: `command_all.${body.command}`,
-      message: `Comando ${body.command} → todas as estações`,
-      meta: { text: body.text, title: body.title, level: body.level },
+      message: `${actorLabel(req)}: comando ${body.command} → todas as estações`,
+      meta: { text: body.text, title: body.title, level: body.level, actor: actorLabel(req) },
     });
     return { ok: true };
   });

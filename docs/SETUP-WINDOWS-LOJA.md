@@ -96,6 +96,8 @@ credentials-file: C:\Users\SEU_USUARIO\.cloudflared\b9406016-bea4-4398-b6e4-48f4
 ingress:
   - hostname: api.geekloja.com.br
     service: http://127.0.0.1:8787
+  - hostname: admin.geekloja.com.br
+    service: http://127.0.0.1:8787
   - service: http_status:404
 ```
 
@@ -142,7 +144,7 @@ PORTAL_CHECKOUT_ENABLED=1
 - [ ] `https://api.geekloja.com.br/api/health` → ok
 - [ ] Portal abre e fala com a loja (sem banner offline permanente)
 - [ ] (depois) Mercado Pago app + webhook na URL fixa — ver `docs/PENDENCIAS.md`
-- [ ] (depois) Monitor no teu PC: Cloudflare Access + GeekAdmin Saúde — ver `docs/REMOTE-MONITOR.md`
+- [ ] Controle no celular: `http://geek.local` + CNAME `admin.geekloja.com.br` no túnel existente — `docs/GEEKADMIN-CELULAR.md`
 
 ## Correção loja 2026-09-22
 
@@ -160,6 +162,7 @@ Ver [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md). No pendrive:
 | Recurso | URL |
 |---------|-----|
 | Repo | https://github.com/MrJCRJ/loja-geek-fidelidade |
+| Controle celular (depois) | `docs/GEEKADMIN-CELULAR.md` |
 | Este guia | `docs/SETUP-WINDOWS-LOJA.md` |
 | Pendências ops | `docs/PENDENCIAS.md` |
 | Túnel / portal | `docs/portal-api-tunnel.md` |

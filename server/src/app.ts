@@ -26,7 +26,11 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
         return cb(null, true);
       }
       if (portalOrigins.includes(origin) || portalOrigins.includes("*")) return cb(null, true);
-      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+      if (/^https?:\/\/(localhost|127\.0\.0\.1|geek\.local)(:\d+)?$/.test(origin)) return cb(null, true);
+      if (/^https?:\/\/(192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d+)?$/.test(origin)) {
+        return cb(null, true);
+      }
+      if (/^https:\/\/admin\.geekloja\.com\.br$/.test(origin)) return cb(null, true);
       return cb(null, false);
     },
     credentials: true,

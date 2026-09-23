@@ -594,7 +594,7 @@ export default function App() {
       onOpen: () => {
         if (phaseRef.current === "offline") {
           setRemoteBanner({
-            title: "Conexão restaurada",
+            title: "Central voltou",
             text: "Link com o GeekCentral voltou. Se a sessão travar de novo, avise o balcão.",
             level: "info",
             until: Date.now() + 8_000,
@@ -609,7 +609,7 @@ export default function App() {
         });
         if (phaseRef.current === "unlocked") {
           setRemoteBanner({
-            title: "Sem link com a central",
+            title: "Central offline",
             text: "Rede oscilando — o saldo não deve consumir em lote; aguarde ou chame o balcão.",
             level: "warn",
             until: Date.now() + 10_000,

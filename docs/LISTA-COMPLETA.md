@@ -123,7 +123,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | G4 | Consentimento + termos | `[x]` |
 | G5 | Revogar biometria mantendo conta | `[x]` |
 | G6 | Purge de eventos antigos | `[x]` |
-| G7 | Auditoria: quem staff-unlock / quem vendeu hora | `[ ]` |
+| G7 | Auditoria: quem staff-unlock / quem vendeu hora | `[x]` contas nominais + actor na Ajuda |
 | G8 | Rotação de `STATION_SHARED_SECRET` com doc | `[ ]` |
 | G9 | Política “1 face = 1 pessoa” no site e no balcão | `[~]` aviso no portal |
 

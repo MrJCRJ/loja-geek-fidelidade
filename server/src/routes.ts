@@ -29,7 +29,30 @@ import { getRecognitionRetentionDays, pruneRecognitionEvents, setRecognitionRete
 import { faceHealth } from "./face-client.js";
 import { setStationOfflineHook } from "./hub.js";
 import { getStationByToken } from "./stations.js";
-import { adminGuard, ownerGuard, getAuthRole, stationFromHeader } from "./http-guards.js";
+import {
+  adminGuard,
+  ownerGuard,
+  ownerWriteGuard,
+  getAuthRole,
+  getAuthPayload,
+  actorLabel,
+  stationFromHeader,
+} from "./http-guards.js";
+import { ensurePairCode, rotatePairCode } from "./pair-code.js";
+import {
+  homeAdminUrl,
+  isLanControlHost,
+  isRemoteAdminHost,
+  requestHost,
+  shopAdminUrl,
+} from "./request-scope.js";
+import {
+  createStaffUser,
+  hasNamedOwner,
+  listStaffUsers,
+  updateStaffUser,
+  verifyStaffPassword,
+} from "./staff-users.js";
 import { registerStationRoutes } from "./station-routes.js";
 import { registerFaceRoutes } from "./face-routes.js";
 import { registerSessionRoutes } from "./session-routes.js";
@@ -94,23 +117,216 @@ export async function registerRoutes(app: FastifyInstance) {
 
   app.post("/api/admin/login", async (req, reply) => {
     const ip = req.ip || "unknown";
+    const host = requestHost(req);
+    const remote = isRemoteAdminHost(host);
     if (!rateLimit(`admin-login:${ip}`, 10, 60_000)) {
       return reply.code(429).send({ error: "Muitas tentativas — aguarde um minuto" });
     }
-    const body = z.object({ password: z.string() }).parse(req.body);
+    const body = z
+      .object({
+        username: z.string().optional(),
+        password: z.string(),
+      })
+      .parse(req.body);
+
+    if (hasNamedOwner()) {
+      const username = String(body.username || "").trim();
+      if (!username) {
+        return reply.code(400).send({ error: "Informe o usuário" });
+      }
+      const user = verifyStaffPassword(username, body.password);
+      if (!user) {
+        return reply.code(401).send({ error: "Usuário ou senha inválidos" });
+      }
+      if (remote && user.role !== "admin") {
+        return reply.code(403).send({
+          error: "Funcionário só entra na loja (geek.local). De casa é só o dono.",
+          code: "home_owner_only",
+        });
+      }
+      const token = app.jwt.sign(
+        {
+          role: user.role,
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+        },
+        { expiresIn: "12h" },
+      );
+      return {
+        token,
+        role: user.role,
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        needsBootstrap: false,
+      };
+    }
+
     let role: "admin" | "clerk" | null = null;
     if (verifyAdminPassword(body.password)) role = "admin";
     else if (verifyClerkPassword(body.password)) role = "clerk";
     if (!role) {
       return reply.code(401).send({ error: "Senha inválida" });
     }
-    const token = app.jwt.sign({ role }, { expiresIn: "12h" });
-    return { token, role };
+    if (remote) {
+      return reply.code(403).send({
+        error: "Primeiro acesso: crie a conta do dono na loja (geek.local).",
+        code: "bootstrap_local_only",
+      });
+    }
+    const token = app.jwt.sign({ role, bootstrap: true }, { expiresIn: "12h" });
+    return { token, role, needsBootstrap: role === "admin" };
+  });
+
+  app.post("/api/admin/bootstrap-owner", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    if (!isLanControlHost(requestHost(req))) {
+      return reply.code(403).send({
+        error: "Crie a conta do dono só na loja (geek.local).",
+        code: "bootstrap_local_only",
+      });
+    }
+    if (getAuthRole(req) !== "admin") {
+      return reply.code(403).send({ error: "Só o dono cria a primeira conta." });
+    }
+    if (hasNamedOwner()) {
+      return reply.code(409).send({ error: "Já existe um dono. Use a aba Equipe." });
+    }
+    const body = z
+      .object({
+        username: z.string(),
+        password: z.string(),
+        displayName: z.string().optional(),
+      })
+      .parse(req.body);
+    try {
+      const user = createStaffUser({
+        username: body.username,
+        password: body.password,
+        displayName: body.displayName || body.username,
+        role: "admin",
+      });
+      const token = app.jwt.sign(
+        {
+          role: user.role,
+          userId: user.id,
+          username: user.username,
+          displayName: user.displayName,
+        },
+        { expiresIn: "12h" },
+      );
+      logEvent({
+        level: "info",
+        source: "admin",
+        kind: "staff.bootstrap",
+        message: `Conta dono criada: ${user.username}`,
+        meta: { actor: user.displayName, userId: user.id },
+      });
+      return {
+        token,
+        role: user.role,
+        userId: user.id,
+        username: user.username,
+        displayName: user.displayName,
+        needsBootstrap: false,
+      };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
   });
 
   app.get("/api/admin/me", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
-    return { role: getAuthRole(req) || "admin" };
+    const host = requestHost(req);
+    const actor = getAuthPayload(req);
+    const lanControl = isLanControlHost(host);
+    return {
+      role: getAuthRole(req) || "admin",
+      userId: actor?.userId || null,
+      username: actor?.username || null,
+      displayName: actor?.displayName || null,
+      needsBootstrap: Boolean(actor?.bootstrap && actor.role === "admin" && !hasNamedOwner()),
+      remoteReadOnly: !lanControl,
+      lanControl,
+      host,
+      shopUrl: shopAdminUrl(config.port),
+      homeUrl: homeAdminUrl(),
+    };
+  });
+
+  app.get("/api/admin/pair-code", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    if (!isLanControlHost(requestHost(req))) {
+      return reply.code(403).send({ error: "Código de pareamento só na loja.", code: "remote_readonly" });
+    }
+    return ensurePairCode();
+  });
+
+  app.post("/api/admin/pair-code/rotate", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    return rotatePairCode();
+  });
+
+  app.get("/api/admin/staff", async (req, reply) => {
+    if (!(await ownerGuard(req, reply))) return;
+    return { staff: listStaffUsers(), hasNamedOwner: hasNamedOwner() };
+  });
+
+  app.post("/api/admin/staff", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    const body = z
+      .object({
+        username: z.string(),
+        password: z.string(),
+        displayName: z.string().optional(),
+        role: z.enum(["admin", "clerk"]).optional(),
+      })
+      .parse(req.body);
+    try {
+      const user = createStaffUser({
+        username: body.username,
+        password: body.password,
+        displayName: body.displayName || body.username,
+        role: body.role === "admin" ? "admin" : "clerk",
+      });
+      logEvent({
+        level: "info",
+        source: "admin",
+        kind: "staff.create",
+        message: `${actorLabel(req)} criou ${user.displayName} (${user.username})`,
+        meta: { actor: actorLabel(req), userId: user.id, role: user.role },
+      });
+      return user;
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  app.patch("/api/admin/staff/:id", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        displayName: z.string().optional(),
+        password: z.string().optional(),
+        active: z.boolean().optional(),
+        role: z.enum(["admin", "clerk"]).optional(),
+      })
+      .parse(req.body);
+    try {
+      const user = updateStaffUser(id, body);
+      logEvent({
+        level: "info",
+        source: "admin",
+        kind: "staff.update",
+        message: `${actorLabel(req)} atualizou ${user.displayName}`,
+        meta: { actor: actorLabel(req), userId: user.id, active: user.active },
+      });
+      return user;
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
   });
 
   app.get("/api/settings", async (req, reply) => {
@@ -119,7 +335,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.put("/api/settings", async (req, reply) => {
-    if (!(await ownerGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const body = z
       .object({
         faceMatchThreshold: z.number().min(0.1).max(0.99).optional(),
@@ -251,7 +467,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/admin/tunnel", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const body = z
       .object({
         mode: z.enum(["off", "quick", "named"]).optional(),
@@ -346,7 +562,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/admin/backup", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     try {
       const out = runScheduledBackupIfDue(true);
       return out.result || createSqliteBackup({ reason: "manual" });
@@ -376,7 +592,7 @@ export async function registerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/admin/lgpd/prune-recognition", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const body = z
       .object({ keepDays: z.number().int().min(7).max(730).optional() })
       .parse(req.body ?? {});

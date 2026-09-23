@@ -1,17 +1,17 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-09-21**.  
+Atualizado em **2026-09-23**.  
 Foco: **URL fixa**, **alternativas baratas**, **Mercado Pago** e o que falta para a loja rodar de verdade.
 
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
 **Túnel:** Cloudflare nomeado `loja-geek-api` · GeekCentral Windows  
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
-**Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — Cloudflare Access + GeekAdmin Saúde  
+**Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — ver de casa em `admin.geekloja.com.br`; controle só na loja (`geek.local`)  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
 **Pareamento (próximo build):** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — código 6 dígitos no Central; sem digitar segredo longo  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
 **Atualizar Central (GitHub):** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — botão + release ZIP  
-**Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — próxima = estabilidade WS; depois setup; depois update Lock  
+**Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
 **GeekLock boot lento no reinício:** [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md) — documentado; medir na loja  
 **Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`
 

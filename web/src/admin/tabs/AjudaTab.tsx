@@ -9,6 +9,7 @@ type AuditRow = {
   kind: string;
   message: string;
   station_id: string | null;
+  meta?: { actor?: string } | null;
 };
 
 export function AjudaTab({ clerk }: { clerk?: boolean }) {
@@ -50,13 +51,13 @@ export function AjudaTab({ clerk }: { clerk?: boolean }) {
         {clerk ? (
           <p className="muted">Você está no modo balcão: sem Config, sem apagar VIP ou estação.</p>
         ) : (
-          <p className="muted">Senha de ajudante: defina <code>CLERK_PASSWORD</code> no .env do Central.</p>
+          <p className="muted">Crie funcionários na aba Equipe (usuário + senha por pessoa).</p>
         )}
       </section>
       <section className="panel">
         <h2>Auditoria recente</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          Vendas, PIN Admin nas estações e comandos — últimos 15.
+          Vendas, PIN Admin e comandos — últimos 15, com o nome de quem fez.
         </p>
         {audit.length === 0 ? (
           <div className="empty-state">
@@ -67,7 +68,8 @@ export function AjudaTab({ clerk }: { clerk?: boolean }) {
           <ul className="feed">
             {audit.map((e) => (
               <li key={e.id}>
-                <strong>{e.kind}</strong> · {e.message}
+                <strong>{e.kind}</strong>
+                {e.meta?.actor ? ` · ${e.meta.actor}` : ""} · {e.message}
                 <div className="muted">{new Date(e.created_at).toLocaleString("pt-BR")}</div>
               </li>
             ))}

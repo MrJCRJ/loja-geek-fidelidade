@@ -126,7 +126,7 @@ export async function api<T>(
     }
     const err = data as { error?: string; tip?: string; code?: string };
     const msg = [err.error, err.tip].filter(Boolean).join(" — ") || `HTTP ${res.status}`;
-    const message = res.status === 401 ? "Sessão expirada — faça login novamente (senha admin)." : msg;
+    const message = res.status === 401 ? "Sessão expirada — entre de novo com usuário e senha." : msg;
     throw new ApiError(message, { tip: err.tip, code: err.code });
   }
   return data as T;

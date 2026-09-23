@@ -1,7 +1,9 @@
 # Melhorias Central ↔ GeekLock — handoff loja
 
-Atualizado em **2026-09-22**.  
+Atualizado em **2026-09-23**.  
 **Status:** decisões documentadas — **não implementar nesta visita** (só validar o que já foi para o pendrive).
+
+**Controle no celular** (implementado 2026-09-23): [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md). Na loja: atualizar + CNAME `admin` no túnel existente.
 
 ---
 
@@ -21,6 +23,7 @@ Atualizado em **2026-09-22**.
 2. **(B) Estabilidade** — próxima  
 3. **(A) Setup** — fila de estações / código multi-uso / checklist  
 4. **(D) Update Lock via Central** — empurrar ZIP do Lock a partir do Central  
+5. **(E) GeekAdmin no celular** — [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — **implementado** (validar na loja)  
 
 ---
 
@@ -53,9 +56,8 @@ Se a API/WebSocket do Central cair ou a rede oscilar, o GeekLock:
 - Setup avançado (A)
 
 ### Critério de pronto
-- [ ] Derrubar API no Central → Lock mostra offline em poucos segundos  
-- [ ] Subir API de novo → Lock reconecta sem reiniciar o .exe  
-- [ ] Teste básico no PC de build (1 Lock + 1 Central) antes da loja  
+- [x] Reconnect WS com backoff (já existia) + banners **Central offline** / **Central voltou**
+- [ ] Validar na loja: derrubar API → banner; subir → reconecta sem reiniciar o .exe  
 
 ### Onde mexer (quando for implementar)
 - `agent-windows` — WS client / banners  

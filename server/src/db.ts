@@ -2,6 +2,7 @@ import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
 import { config } from "./config.js";
+import { ensureStaffUsersTable } from "./staff-users.js";
 
 export type CustomerLevel = "bronze" | "prata" | "ouro";
 
@@ -222,6 +223,8 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_system_events_level ON system_events(level);
     CREATE INDEX IF NOT EXISTS idx_system_events_kind ON system_events(kind);
   `);
+
+  ensureStaffUsersTable();
 
   return conn;
 }

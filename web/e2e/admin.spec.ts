@@ -12,6 +12,8 @@ test.describe("GeekCentral admin", () => {
   test("login e abas principais", async ({ page }) => {
     await page.goto(`${baseURL}/admin`);
     await expect(page.getByRole("heading", { name: "GeekCentral" })).toBeVisible();
+    const user = process.env.ADMIN_USERNAME || "";
+    if (user) await page.getByTestId("admin-username").fill(user);
     await page.getByTestId("admin-password").fill(password);
     await page.getByTestId("admin-login").click();
     await expect(page.getByRole("tab", { name: "Feed VIP" })).toBeVisible({ timeout: 15_000 });

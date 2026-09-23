@@ -17,6 +17,7 @@ export type Tab =
   | "recompensas"
   | "saude"
   | "ajuda"
+  | "equipe"
   | "config";
 
 export type LiveStationStatus = {

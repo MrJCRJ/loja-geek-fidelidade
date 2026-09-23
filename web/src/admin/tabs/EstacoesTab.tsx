@@ -16,6 +16,8 @@ type Props = {
     danger?: boolean;
     confirmLabel?: string;
   }) => Promise<boolean>;
+  remoteReadOnly?: boolean;
+  pairCode?: string;
 };
 
 export function EstacoesTab({
@@ -26,6 +28,8 @@ export function EstacoesTab({
   onError,
   onToast,
   askConfirm,
+  remoteReadOnly,
+  pairCode,
 }: Props) {
   const [stationName, setStationName] = useState("");
   const [messageText, setMessageText] = useState("Olá da central!");
@@ -59,6 +63,14 @@ export function EstacoesTab({
     <div className="grid-2" role="tabpanel" id="panel-estacoes" aria-labelledby="tab-estacoes">
       <section className="panel">
         <h2>Estações</h2>
+        {pairCode && !remoteReadOnly && (
+          <p>
+            Código de pareamento: <strong className="mono">{pairCode}</strong>
+          </p>
+        )}
+        {remoteReadOnly && <p className="muted">De casa não dá para travar/destravar PC.</p>}
+        {!remoteReadOnly && (
+        <>
         <form
           className="row"
           onSubmit={(e) => {
@@ -116,6 +128,8 @@ export function EstacoesTab({
             </div>
           </div>
         )}
+        </>
+        )}
 
         <div className="table-scroll">
         <table className="table">
@@ -171,6 +185,10 @@ export function EstacoesTab({
                   </td>
                   <td>{s.last_ip || "—"}</td>
                   <td className="row" style={{ flexWrap: "wrap" }}>
+                    {remoteReadOnly ? (
+                      <span className="muted">só ver</span>
+                    ) : (
+                    <>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "lock_screen")}>
                       Travar
                     </button>
@@ -211,6 +229,8 @@ export function EstacoesTab({
                     >
                       Del
                     </button>
+                    </>
+                    )}
                   </td>
                 </tr>
               );
@@ -219,6 +239,7 @@ export function EstacoesTab({
         </table>
         </div>
       </section>
+      {!remoteReadOnly && (
       <section className="panel">
         <h2>Comando global</h2>
         <div className="field">
@@ -325,6 +346,7 @@ export function EstacoesTab({
           </button>
         </div>
       </section>
+      )}
     </div>
   );
 }

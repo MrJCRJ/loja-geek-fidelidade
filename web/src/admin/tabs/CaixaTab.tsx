@@ -13,6 +13,7 @@ type Props = {
   loadTimeForCustomer: (id: string) => Promise<void>;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: "ok" | "error" | "info") => void;
+  remoteReadOnly?: boolean;
 };
 
 const QUICK_REAIS = [10, 20, 50];
@@ -28,6 +29,7 @@ export function CaixaTab({
   loadTimeForCustomer,
   onError,
   onToast,
+  remoteReadOnly,
 }: Props) {
   const [saleReais, setSaleReais] = useState("10");
   const [saleHours, setSaleHours] = useState("1");
@@ -140,6 +142,9 @@ export function CaixaTab({
               )}
             </p>
 
+            {remoteReadOnly && <p className="muted">De casa não dá para vender hora.</p>}
+            {!remoteReadOnly && (
+            <>
             <p className="muted" style={{ marginBottom: "0.35rem", fontSize: "0.85rem" }}>
               Atalhos R$
             </p>
@@ -223,6 +228,8 @@ export function CaixaTab({
               </button>
             </div>
             {caixaMsg && <p>{caixaMsg}</p>}
+            </>
+            )}
           </>
         )}
         {!selected && (
@@ -240,7 +247,10 @@ export function CaixaTab({
           nesta tela — marque manualmente.
         </p>
         {!selected && <p className="muted">Selecione um cliente no caixa.</p>}
-        {selected && (
+        {selected && remoteReadOnly && (
+          <p className="muted">Assinatura só se altera na loja.</p>
+        )}
+        {selected && !remoteReadOnly && (
           <>
             <div className="row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
               <div className="field">
@@ -312,6 +322,10 @@ export function CaixaTab({
                 Remover
               </button>
             </div>
+          </>
+        )}
+        {selected && (
+          <>
             <h3 style={{ marginTop: "1.2rem" }}>Últimos 15 — histórico de horas</h3>
             <div className="table-scroll">
               <table className="table table-compact">

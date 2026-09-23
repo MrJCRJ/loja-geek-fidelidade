@@ -1,7 +1,8 @@
 # Monitor remoto — teu PC enxerga a loja
 
-Atualizado em **2026-09-22**.  
-**Status:** plano documentado — **só ativar depois** do GeekCentral Windows estável na loja.
+Atualizado em **2026-09-23**.  
+**Status:** plano documentado — **só ativar depois** do GeekCentral Windows estável na loja.  
+**Produto:** [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — este arquivo é o checklist de ops (Access + hostname). Em conflito, vale o produto.
 
 ---
 
@@ -9,12 +10,14 @@ Atualizado em **2026-09-22**.
 
 | # | Decisão | Escolha |
 |---|--------|---------|
-| 1 | O que ver | Estações GeekLock online/offline + alertas (face, disco, etc.) — aba **Saúde** |
-| 2 | Como ver | Navegador no teu PC, quando quiser |
-| 3 | Quando | Depois do setup Windows na loja (túnel no ar 24/7) |
-| 4 | Segurança | **Cloudflare Access** na frente do admin |
-| 5 | UI | GeekAdmin existente pela URL pública (sem painel novo) |
-| 6 | Agora | Só este doc — sem código novo |
+| 1 | O que ver | GeekAdmin **inteiro em leitura** — **não** controla PC |
+| 2 | Como ver | Navegador, URL **com nome** |
+| 3 | Quando | Túnel estável **e** quando o dono mandar o celular |
+| 4 | Segurança | Access (e-mail do dono) + login **conta dono**. Funcionário **não** entra de casa |
+| 5 | UI | GeekAdmin existente — sem painel novo |
+| 6 | URL de casa | `https://admin.geekloja.com.br` (hostname novo no túnel existente — **não** recriar) |
+| 7 | URL da loja | `http://geek.local` |
+| 8 | Agora | Só doc — sem código novo |
 
 ---
 
@@ -30,12 +33,13 @@ GeekLock (PCs da lan) ──LAN/WS──► GeekCentral (PC loja)
                                       │
                     ┌─────────────────┴─────────────────┐
                     │                                   │
-         /api/health + webhooks MP              /admin + /api/admin/*
-         (públicos — MP/portal)                 Cloudflare Access → tu
-                                                      │
+         /api/health + webhooks MP              admin.geekloja.com.br
+         (públicos — MP/portal)                 Cloudflare Access → dono
+         api.geekloja.com.br                          │
                                                       ▼
-                                              Teu PC (navegador)
-                                              login Access + login admin
+                                              Navegador em casa
+                                              Access + login conta dono
+                                              (leitura; API recusa comando de PC)
 ```
 
 Os GeekLock **não** falam com o teu PC. Eles reportam ao Central; tu lê o Central pela internet.
@@ -56,18 +60,15 @@ Ver [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md).
 
 1. [ ] Zero Trust → **Access** → Applications → Add  
 2. [ ] Application type: **Self-hosted**  
-3. [ ] Application domain: `api.geekloja.com.br`  
-4. [ ] **Path policy (importante):**  
-   - Proteger: `/` do admin estático (ex. caminhos do painel) e `/api/admin/*`  
-   - **Bypass / não exigir Access** em:  
-     - `/api/health`  
-     - `/api/portal/*` (cliente + webhook Mercado Pago)  
-     - WebSocket das estações se passar pelo mesmo host (só LAN costuma; se WS público, tratar à parte)  
+3. [ ] Application domain: `admin.geekloja.com.br` (**não** o `api.` — portal e Pix ficam de fora)  
+4. [ ] Proteger o hostname `admin` inteiro (painel + `/api/admin/*` nesse host)  
+   - `api.geekloja.com.br` **sem** Access: `/api/health`, `/api/portal/*`, webhook MP  
 5. [ ] Policy: Allow → e-mail(s) teus (OTP por e-mail)  
 6. [ ] Testar do teu PC:  
    - Health sem login Access → 200  
-   - Abrir admin → challenge Cloudflare → depois login admin Geek  
-7. [ ] Aba **Saúde**: estações + alertas/telemetria  
+   - Abrir `admin.geekloja.com.br` → challenge Cloudflare → login **conta dono**  
+   - Tentar destrava de PC por esse link → API recusa  
+7. [ ] Painel em leitura: estações + Saúde + resto visível, sem comando  
 
 Docs Cloudflare: [Access self-hosted](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/self-hosted-public-app/).
 
@@ -76,7 +77,8 @@ Docs Cloudflare: [Access self-hosted](https://developers.cloudflare.com/cloudfla
 | O quê | URL |
 |-------|-----|
 | Health (público) | `https://api.geekloja.com.br/api/health` |
-| Admin (Access + senha) | `https://api.geekloja.com.br/` (Abrir admin / rota do GeekAdmin) |
+| Admin de casa (Access + conta dono) | `https://admin.geekloja.com.br` |
+| Controle na loja | `http://geek.local` |
 | Portal cliente | `https://loja-geek-portal.vercel.app` |
 
 ---
@@ -99,6 +101,7 @@ Docs Cloudflare: [Access self-hosted](https://developers.cloudflare.com/cloudfla
 
 ## Relacionados
 
+- [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — desenho do produto (fonte da verdade)  
 - [`telemetria.md`](./telemetria.md) — o que o Central já coleta  
 - [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md) — handoff Windows  
 - [`PENDENCIAS.md`](./PENDENCIAS.md) — ops gerais  
