@@ -1,7 +1,7 @@
 /* GeekAdmin — network-first, para o celular na loja. */
 self.addEventListener("install", (event) => {
   self.skipWaiting();
-  event.waitUntil(caches.open("geekadmin-v1").then((cache) => cache.addAll(["/admin"])));
+  event.waitUntil(caches.open("geekadmin-v2").then((cache) => cache.addAll(["/admin"])));
 });
 
 self.addEventListener("activate", (event) => {
@@ -17,7 +17,7 @@ self.addEventListener("fetch", (event) => {
     fetch(req)
       .then((res) => {
         const copy = res.clone();
-        caches.open("geekadmin-v1").then((cache) => cache.put(req, copy)).catch(() => undefined);
+        caches.open("geekadmin-v2").then((cache) => cache.put(req, copy)).catch(() => undefined);
         return res;
       })
       .catch(() => caches.match(req).then((hit) => hit || caches.match("/admin"))),

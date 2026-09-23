@@ -8,6 +8,7 @@ import { initDb } from "./db.js";
 import { addClient, broadcastAdmins, setStationStatus } from "./hub.js";
 import { registerRoutes } from "./routes.js";
 import { getStationByToken } from "./stations.js";
+import { isStaffUiHost, requestHost, SHOP_PUBLIC_HOST } from "./request-scope.js";
 
 export async function buildApp(options?: { logger?: boolean; databasePath?: string }): Promise<FastifyInstance> {
   initDb(options?.databasePath);
@@ -31,6 +32,7 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
         return cb(null, true);
       }
       if (/^https:\/\/admin\.geekloja\.com\.br$/.test(origin)) return cb(null, true);
+      if (origin === `https://${SHOP_PUBLIC_HOST}`) return cb(null, true);
       return cb(null, false);
     },
     credentials: true,
@@ -39,6 +41,22 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
   });
   await app.register(fastifyJwt, { secret: config.jwtSecret });
   await app.register(websocket);
+
+  app.addHook("onRequest", async (req, reply) => {
+    if (isStaffUiHost(requestHost(req))) return;
+    const path = String(req.url || "").split("?")[0];
+    if (
+      path === "/admin" ||
+      path.startsWith("/admin/") ||
+      path.startsWith("/api/admin") ||
+      path === "/manifest.webmanifest" ||
+      path === "/sw.js" ||
+      path.startsWith("/assets/") ||
+      path.startsWith("/icon-")
+    ) {
+      return reply.code(404).send({ error: "Not found" });
+    }
+  });
 
   await registerRoutes(app);
   const { registerPortalRoutes } = await import("./portal-routes.js");

@@ -1,6 +1,8 @@
 import type { FastifyRequest } from "fastify";
 
 export const SHOP_HOST = "geek.local";
+/** Nome que o Android resolve (mDNS .local falha no Chrome). Mesmo túnel, certificado real. */
+export const SHOP_PUBLIC_HOST = "loja.geekloja.com.br";
 export const HOME_HOST = "admin.geekloja.com.br";
 export const PUBLIC_API_HOST = "api.geekloja.com.br";
 
@@ -28,7 +30,7 @@ export function isLanControlHost(host: string): boolean {
     .trim()
     .toLowerCase();
   if (!h) return false;
-  if (h === SHOP_HOST || h.endsWith(".local")) return true;
+  if (h === SHOP_HOST || h === SHOP_PUBLIC_HOST || h.endsWith(".local")) return true;
   if (h === "localhost" || h === "127.0.0.1" || h === "::1") return true;
   if (isPrivateIpv4(h)) return true;
   return false;
@@ -46,8 +48,19 @@ export function isRemoteAdminHost(host: string): boolean {
   return !isLanControlHost(host);
 }
 
-export function shopAdminUrl(port = 8787): string {
-  return `http://${SHOP_HOST}:${port}/admin`;
+/** Painel da equipe: loja / LAN / admin de casa. NÃO inclui api.geekloja.com.br. */
+export function isStaffUiHost(host: string): boolean {
+  const h = String(host || "")
+    .split(":")[0]
+    .trim()
+    .toLowerCase();
+  if (!h) return true;
+  if (h === PUBLIC_API_HOST) return false;
+  return isLanControlHost(h) || isHomeAdminHost(h);
+}
+
+export function shopAdminUrl(_port = 8787): string {
+  return `https://${SHOP_PUBLIC_HOST}/admin`;
 }
 
 export function homeAdminUrl(): string {

@@ -341,14 +341,12 @@ export default function App() {
           <span className={`pill ${status.face ? "ok" : "warn"}`}>Face {status.face ? "ok" : "off"}</span>
         </div>
         <p className="muted">
-          Celular na loja: <span className="mono">http://geek.local:{status.apiPort || 8787}/admin</span>
+          Celular na loja: <span className="mono">https://loja.geekloja.com.br</span>
           {status.lanIp ? (
             <>
               {" "}
               · se o nome falhar:{" "}
-              <span className="mono">
-                http://{status.lanIp}:{status.apiPort || 8787}/admin
-              </span>
+              <span className="mono">https://{status.lanIp}/admin</span>
             </>
           ) : null}
         </p>

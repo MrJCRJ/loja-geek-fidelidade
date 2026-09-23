@@ -145,8 +145,7 @@ function updateTrayTooltip(status) {
 }
 
 function shopAdminUrl() {
-  const port = services.status.apiPort || 8787;
-  return `http://geek.local:${port}/admin`;
+  return "https://loja.geekloja.com.br/admin";
 }
 
 function buildTrayMenu() {

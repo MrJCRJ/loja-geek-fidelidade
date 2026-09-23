@@ -44,10 +44,11 @@ export default function AdminPage() {
   const [bootName, setBootName] = useState("");
   const [bootPass, setBootPass] = useState("");
   const [remoteReadOnly, setRemoteReadOnly] = useState(false);
-  const [shopUrl, setShopUrl] = useState("http://geek.local:8787/admin");
+  const [shopUrl, setShopUrl] = useState("https://loja.geekloja.com.br/admin");
   const [pairCode, setPairCode] = useState("");
   const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
   const [installHint, setInstallHint] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
 
   const toast = useToast();
   const data = useAdminData(token);
@@ -100,7 +101,8 @@ export default function AdminPage() {
         setNeedsBootstrap(Boolean(me.needsBootstrap));
         setRemoteReadOnly(Boolean(me.remoteReadOnly));
         if (me.shopUrl) setShopUrl(me.shopUrl);
-        if (!me.remoteReadOnly) {
+        if (me.role === "clerk") setTab("estacoes");
+        if (!me.remoteReadOnly && me.role !== "clerk") {
           api<{ code: string }>("/api/admin/pair-code")
             .then((p) => setPairCode(p.code || ""))
             .catch(() => undefined);
@@ -116,11 +118,18 @@ export default function AdminPage() {
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       Boolean((navigator as Navigator & { standalone?: boolean }).standalone);
-    setInstallHint(!standalone && /mobile|android|iphone/i.test(navigator.userAgent));
+    setInstallHint(!standalone);
+    const onPrompt = (e: Event) => {
+      e.preventDefault();
+      const ev = e as Event & { prompt: () => Promise<void> };
+      setInstallPrompt({ prompt: () => ev.prompt() });
+    };
+    window.addEventListener("beforeinstallprompt", onPrompt);
+    return () => window.removeEventListener("beforeinstallprompt", onPrompt);
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || role === "clerk") return;
     const loadAlerts = () => {
       api<{ alerts?: Array<{ severity: string; message: string }> }>("/api/admin/diagnostics")
         .then((d) => setSysAlerts(d.alerts || []))
@@ -129,7 +138,7 @@ export default function AdminPage() {
     loadAlerts();
     const t = setInterval(loadAlerts, 20_000);
     return () => clearInterval(t);
-  }, [token]);
+  }, [token, role]);
 
   const login = async (e: FormEvent) => {
     e.preventDefault();
@@ -150,7 +159,8 @@ export default function AdminPage() {
       setRole(res.role === "clerk" ? "clerk" : "admin");
       setDisplayName(res.displayName || "");
       setNeedsBootstrap(Boolean(res.needsBootstrap));
-      toast.push(res.role === "clerk" ? "Modo balcão" : "Login ok", "ok");
+      if (res.role === "clerk") setTab("estacoes");
+      toast.push(res.role === "clerk" ? "Modo equipe" : "Login ok", "ok");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Falha no login");
     }
@@ -165,7 +175,7 @@ export default function AdminPage() {
     return (
       <div className="shell" style={{ maxWidth: 420 }}>
         <h1 className="brand">GeekCentral</h1>
-        <p className="muted">PC controle — geeks · Celular e Game</p>
+        <p className="muted">Acesso só da equipe — geeks · Celular e Game</p>
         <form className="panel" onSubmit={login}>
           <div className="field">
             <label>Usuário</label>
@@ -193,15 +203,17 @@ export default function AdminPage() {
             Entrar
           </button>
           <p className="muted" style={{ marginTop: "0.75rem" }}>
-            Loja: <code>http://geek.local</code> · Casa: <code>admin.geekloja.com.br</code>
+            Loja: <code>https://loja.geekloja.com.br</code> · Casa: <code>https://admin.geekloja.com.br</code>
           </p>
         </form>
       </div>
     );
   }
 
+  const clerk = role === "clerk";
+
   return (
-    <div className="shell">
+    <div className={`shell ${clerk ? "clerk-shell" : ""}`}>
       <ToastStack items={toast.toasts} onDismiss={toast.dismiss} />
       <ConfirmModal
         open={Boolean(confirmState)}
@@ -221,30 +233,57 @@ export default function AdminPage() {
 
       <div className="admin-topbar">
         <div>
-          <p className="muted" style={{ margin: 0 }}>
-            geeks · Celular e Game · {data.settings.unitName}
-            {displayName ? ` · ${displayName}` : ""}
-            {role === "clerk" ? " · modo balcão" : ""}
-            {remoteReadOnly ? " · só leitura (casa)" : ""}
-          </p>
-          <h1 className="brand">GeekCentral</h1>
-          {data.health ? (
-            <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-              API {data.health.ok ? "ok" : "falha"} · Face{" "}
-              <span className={data.health.faceService ? "tag ouro" : "tag noface"}>
-                {data.health.faceService ? "online" : "offline"}
-              </span>
-            </p>
+          {clerk ? (
+            <>
+              <h1 className="brand">Loja</h1>
+              <p className="muted" style={{ margin: 0 }}>
+                {displayName || "Equipe"}
+              </p>
+            </>
           ) : (
-            <p className="muted" style={{ margin: "0.35rem 0 0" }}>
-              Health: —
-            </p>
+            <>
+              <p className="muted" style={{ margin: 0 }}>
+                geeks · Celular e Game · {data.settings.unitName}
+                {displayName ? ` · ${displayName}` : ""}
+                {remoteReadOnly ? " · só leitura (casa)" : ""}
+              </p>
+              <h1 className="brand">GeekCentral</h1>
+              {data.health ? (
+                <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+                  API {data.health.ok ? "ok" : "falha"} · Face{" "}
+                  <span className={data.health.faceService ? "tag ouro" : "tag noface"}>
+                    {data.health.faceService ? "online" : "offline"}
+                  </span>
+                </p>
+              ) : (
+                <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+                  Health: —
+                </p>
+              )}
+            </>
           )}
         </div>
         <div className="admin-topbar-actions">
-          <button className="btn ghost" type="button" onClick={() => data.refreshNow()}>
-            Atualizar
-          </button>
+          {installHint && (
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => {
+                if (installPrompt) {
+                  void installPrompt.prompt().then(() => setInstallPrompt(null));
+                  return;
+                }
+                toast.push("No celular: menu → Adicionar à tela inicial", "info");
+              }}
+            >
+              App
+            </button>
+          )}
+          {!clerk && (
+            <button className="btn ghost" type="button" onClick={() => data.refreshNow()}>
+              Atualizar
+            </button>
+          )}
           <button className="btn danger" type="button" onClick={logout}>
             Sair
           </button>
@@ -253,9 +292,9 @@ export default function AdminPage() {
 
       <AdminTabs
         tab={tab}
-        clerk={role === "clerk"}
+        clerk={clerk}
         onChange={(id) => {
-          if (role === "clerk" && (id === "config" || id === "recompensas" || id === "equipe")) return;
+          if (clerk && id !== "estacoes" && id !== "caixa" && id !== "clientes") return;
           setTab(id);
         }}
       />
@@ -307,18 +346,18 @@ export default function AdminPage() {
       {remoteReadOnly && (
         <div className="banner warn">De casa só dá para ver. Controle dos PCs e caixa: {shopUrl}</div>
       )}
-      {installHint && !remoteReadOnly && (
+      {installHint && !remoteReadOnly && !clerk && (
         <div className="banner warn">
           No celular: menu do navegador → Adicionar à tela inicial. Link da loja: {shopUrl}
         </div>
       )}
-      {!remoteReadOnly && pairCode && (
+      {!remoteReadOnly && !clerk && pairCode && (
         <p className="muted" style={{ margin: "0 0 0.75rem" }}>
           Pareamento GeekLock: <strong>{pairCode}</strong>
         </p>
       )}
 
-      {sysAlerts.length > 0 && (
+      {sysAlerts.length > 0 && !clerk && (
         <div className={`banner ${sysAlerts.some((a) => a.severity === "error") ? "" : "warn"}`}>
           {sysAlerts[0].message}
           {sysAlerts.length > 1 ? ` · +${sysAlerts.length - 1}` : ""}
@@ -327,8 +366,8 @@ export default function AdminPage() {
 
       {error && <div className="banner">{error}</div>}
 
-      {tab === "dashboard" && <DashboardTab onError={setError} />}
-      {tab === "feed" && <FeedTab live={live} events={data.events} />}
+      {tab === "dashboard" && !clerk && <DashboardTab onError={setError} />}
+      {tab === "feed" && !clerk && <FeedTab live={live} events={data.events} />}
       {tab === "clientes" && (
         <ClientesTab
           customers={data.customers}
@@ -384,11 +423,12 @@ export default function AdminPage() {
           onToast={toast.push}
           askConfirm={askConfirm}
           remoteReadOnly={remoteReadOnly}
-          pairCode={pairCode}
+          pairCode={clerk ? "" : pairCode}
+          compact={clerk}
         />
       )}
-      {tab === "sessoes" && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}
-      {tab === "recompensas" && role !== "clerk" && (
+      {tab === "sessoes" && !clerk && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}
+      {tab === "recompensas" && !clerk && (
         <RecompensasTab
           rewards={data.rewards}
           refresh={data.refreshNow}
@@ -397,12 +437,12 @@ export default function AdminPage() {
           askConfirm={askConfirm}
         />
       )}
-      {tab === "saude" && <SaudeTab onError={setError} />}
-      {tab === "ajuda" && <AjudaTab clerk={role === "clerk"} />}
-      {tab === "equipe" && role !== "clerk" && (
+      {tab === "saude" && !clerk && <SaudeTab onError={setError} />}
+      {tab === "ajuda" && !clerk && <AjudaTab clerk={false} />}
+      {tab === "equipe" && !clerk && (
         <EquipeTab remoteReadOnly={remoteReadOnly} onError={setError} onToast={toast.push} />
       )}
-      {tab === "config" && role !== "clerk" && (
+      {tab === "config" && !clerk && (
         <ConfigTab
           settings={data.settings}
           setSettings={data.setSettings}

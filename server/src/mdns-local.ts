@@ -99,6 +99,17 @@ export function startGeekLocalMdns(getIp: () => string | null = lanIpv4): { stop
     }
   });
 
+  function announce() {
+    const ip = getIp();
+    if (!ip) return;
+    const packet = buildAResponse(wanted, ip);
+    try {
+      socket.send(packet, 0, packet.length, MDNS_PORT, MDNS_ADDR);
+    } catch {
+      /* ignore */
+    }
+  }
+
   socket.bind(MDNS_PORT, () => {
     try {
       socket.addMembership(MDNS_ADDR);
@@ -107,10 +118,14 @@ export function startGeekLocalMdns(getIp: () => string | null = lanIpv4): { stop
     } catch {
       /* ignore */
     }
+    announce();
   });
+
+  const timer = setInterval(announce, 15_000);
 
   return {
     stop() {
+      clearInterval(timer);
       try {
         socket.close();
       } catch {

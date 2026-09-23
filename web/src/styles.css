@@ -800,3 +800,35 @@ a {
     gap: 0.45rem;
   }
 }
+
+.clerk-shell .brand {
+  font-size: clamp(2rem, 10vw, 2.8rem);
+}
+
+.pc-cards {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.pc-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pc-card-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.pc-card-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.pc-card-actions .btn {
+  min-height: 48px;
+  width: 100%;
+}

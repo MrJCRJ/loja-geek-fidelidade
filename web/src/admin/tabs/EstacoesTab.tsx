@@ -18,6 +18,7 @@ type Props = {
   }) => Promise<boolean>;
   remoteReadOnly?: boolean;
   pairCode?: string;
+  compact?: boolean;
 };
 
 export function EstacoesTab({
@@ -30,6 +31,7 @@ export function EstacoesTab({
   askConfirm,
   remoteReadOnly,
   pairCode,
+  compact,
 }: Props) {
   const [stationName, setStationName] = useState("");
   const [messageText, setMessageText] = useState("Olá da central!");
@@ -58,6 +60,54 @@ export function EstacoesTab({
     })
       .then(() => onToast(`Comando ${command} enviado`, "ok"))
       .catch((e) => onError(e instanceof Error ? e.message : "Falha no comando"));
+
+  if (compact) {
+    return (
+      <div role="tabpanel" id="panel-estacoes" aria-labelledby="tab-estacoes">
+        {stations.length === 0 && <p className="muted">Nenhum PC pareado.</p>}
+        <div className="pc-cards">
+          {stations.map((s) => {
+            const online = onlineMap.has(s.id) || Boolean(s.online);
+            const st = liveStatus[s.id];
+            const modeLabel =
+              st?.mode === "admin"
+                ? "Liberado"
+                : st?.mode === "vip"
+                  ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                  : st?.phase === "locked" || st?.phase === "boot"
+                    ? "Travado"
+                    : online
+                      ? "Livre"
+                      : "Offline";
+            return (
+              <section key={s.id} className="panel pc-card">
+                <div className="pc-card-head">
+                  <h2>{s.name}</h2>
+                  <span className={`status-pill ${online ? "ok" : "bad"}`}>{online ? "online" : "offline"}</span>
+                </div>
+                <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+                  {modeLabel}
+                </p>
+                {!remoteReadOnly && (
+                  <div className="pc-card-actions">
+                    <button className="btn" type="button" onClick={() => sendCmd(s.id, "unlock_screen")}>
+                      Liberar
+                    </button>
+                    <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "lock_screen")}>
+                      Travar
+                    </button>
+                    <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
+                      Encerrar
+                    </button>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="grid-2" role="tabpanel" id="panel-estacoes" aria-labelledby="tab-estacoes">

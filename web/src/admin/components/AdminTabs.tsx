@@ -22,7 +22,7 @@ type Props = {
 
 export function AdminTabs({ tab, onChange, clerk }: Props) {
   const TABS = clerk
-    ? ALL_TABS.filter(([id]) => id !== "config" && id !== "recompensas" && id !== "equipe")
+    ? ALL_TABS.filter(([id]) => id === "estacoes" || id === "caixa" || id === "clientes")
     : ALL_TABS;
   return (
     <div className="tabs" role="tablist" aria-label="GeekCentral">

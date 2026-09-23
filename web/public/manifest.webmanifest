@@ -1,12 +1,14 @@
 {
-  "name": "GeekAdmin — Loja Geek",
-  "short_name": "GeekAdmin",
+  "name": "Geek Loja — Equipe",
+  "short_name": "Geek Loja",
   "start_url": "/admin",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#060f1f",
   "theme_color": "#e8951a",
   "lang": "pt-BR",
+  "description": "Painel enxuto da equipe na loja",
   "icons": [
     {
       "src": "/icon-192.png",
