@@ -1,0 +1,15 @@
+---
+description: Usar grilling automaticamente em features/UI sem o usuário pedir
+alwaysApply: true
+---
+
+# Grill automático (grill-me)
+
+Antes de implementar features novas, mudanças de UI, gráficos, fluxos de produto ou qualquer design com trade-offs:
+
+1. Leia e siga a skill `grilling` (e `grill-me` se disponível).
+2. Faça isso **sem esperar** o usuário pedir `/grill-me`.
+3. Uma rodada por vez: perguntas da fronteira + recomendação em cada uma.
+4. Só implemente depois do entendimento compartilhado (ou se o usuário disser "só faz" / "implementa direto").
+
+Não use grilling para: typo, bugfix óbvio de uma linha, deploy, ou tarefas puramente mecânicas.

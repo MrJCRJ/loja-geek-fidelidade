@@ -1,0 +1,18 @@
+Pack Cursor — loja (Windows)
+============================
+
+Isto NAO sincroniza pela conta. Sem estes arquivos o agent NAO faz grill-me sozinho.
+
+1) Instale o Cursor (pasta acima: CursorUserSetup-x64.exe) e faca login.
+2) PowerShell:
+
+   Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+   .\INSTALAR-NO-WINDOWS.ps1
+
+3) Feche e reabra o Cursor.
+4) Abra C:\GeekCentral ou o clone do repo.
+5) Cole o PROMPT-PARA-O-AGENT.txt (pasta Cursor-Agent).
+
+Teste: peca uma feature de UI — deve grilar (uma rodada) sem /grill-me.
+
+Detalhes: ..\..\docs\CURSOR-PACK-LOJA.md

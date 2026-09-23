@@ -92,8 +92,10 @@ Ideias alinhadas ao grilling:
 5. [ ] Health: `https://api.geekloja.com.br/api/health`  
 6. [ ] Parear 1 estação com **código 6 dígitos**  
 7. [ ] Anotar no celular: o que ainda falhou (para voltar e implementar **B**)  
+8. [ ] Cronometrar boot do GeekLock após reinício — [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md)  
+9. [ ] Instalar pack Cursor (`Cursor-Agent\cursor-pack`) para o agent grilar igual — [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md)  
 
-**Não fazer nesta visita:** Cloudflare Access remoto; Mercado Pago live; implementar B/A/D no código (a menos que sobra tempo e você diga “implementa B”).
+**Não fazer nesta visita:** Cloudflare Access remoto; Mercado Pago live; implementar B/A/D nem boot rápido do Lock (a menos que você diga “implementa”).
 
 ---
 
