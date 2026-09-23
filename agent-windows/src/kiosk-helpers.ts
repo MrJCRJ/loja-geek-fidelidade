@@ -31,6 +31,18 @@ export function isCameraNoise(reason?: string | null): boolean {
 }
 /** Modo staff sem sessão VIP — auto-trava (T6). */
 export const DEFAULT_STAFF_UNLOCK_MAX_SEC = 600;
+/** Aviso no HUD da equipe quando falta 1 minuto. */
+export const STAFF_UNLOCK_WARN_SEC = 60;
+
+/** Segundos restantes no destrava sem conta (PIN / Liberar da equipe). */
+export function staffUnlockLeftSeconds(
+  startedAtMs: number | null | undefined,
+  maxSec: number | null | undefined,
+): number {
+  const max = Math.max(60, Math.floor(Number(maxSec) || DEFAULT_STAFF_UNLOCK_MAX_SEC));
+  if (startedAtMs == null || !Number.isFinite(startedAtMs)) return max;
+  return Math.max(0, max - Math.floor((Date.now() - startedAtMs) / 1000));
+}
 
 export function formatBalanceShort(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));

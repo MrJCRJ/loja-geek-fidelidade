@@ -116,7 +116,12 @@ function tooltipFromPayload(payload) {
   if (phase === "offline") return "GeekLock — Sem conexão com o servidor";
   if (phase === "locked" || phase === "boot") return "GeekLock — Aguardando VIP";
   if (phase === "unlocked") {
-    if (isAdmin) return "GeekLock — Admin · auto-trava em alguns minutos";
+    if (isAdmin) {
+      const leftTxt = balTxt || elapsed;
+      return leftTxt
+        ? `GeekLock — Equipe · resta ${leftTxt}`
+        : "GeekLock — Equipe · liberado sem conta";
+    }
     const balPart = balTxt ? ` · resta ${balTxt}` : "";
     if (payload?.lowBalanceWarn) return `GeekLock — ${name}${balPart} · SALDO BAIXO`;
     if (!present) {
@@ -182,12 +187,16 @@ function buildTrayMenu(payload) {
   const balTxt = bal != null ? formatTrayTime(bal) : null;
 
   if (unlocked) {
+    const isAdmin = name === "Admin" || payload?.mode === "admin";
+    const displayName = isAdmin ? "Equipe" : name;
     const absentLeft = payload?.absentLeft;
     const present = payload?.present !== false;
     const balTxt = bal != null ? formatTrayTime(bal) : null;
     const restaPart = balTxt != null ? `resta ${balTxt}` : elapsed;
     let statusLine;
-    if (!present) {
+    if (isAdmin) {
+      statusLine = `${restaPart} · sem conta`;
+    } else if (!present) {
       statusLine =
         absentLeft != null && absentLeft > 0
           ? `${restaPart} · ausente · trava em ${absentLeft}s`
@@ -197,7 +206,7 @@ function buildTrayMenu(payload) {
     }
     return Menu.buildFromTemplate([
       {
-        label: `${name} — ${statusLine}`,
+        label: `${displayName} — ${statusLine}`,
         enabled: false,
       },
       { type: "separator" },
@@ -255,23 +264,20 @@ function applyTrayUpdate(payload) {
 
   if (phase === "unlocked") {
     const isAdmin = lastTrayPayload.name === "Admin" || lastTrayPayload.mode === "admin";
-    if (isAdmin) {
-      sessionHud.hide();
-    } else {
-      sessionHud.show({
-        name: lastTrayPayload.name,
-        elapsed: lastTrayPayload.elapsed,
-        present,
-        absentLeft: lastTrayPayload.absentLeft,
-        balanceSeconds: lastTrayPayload.balanceSeconds,
-        lowBalanceWarn: lastTrayPayload.lowBalanceWarn,
-        billingPaused: lastTrayPayload.billingPaused,
-        softLock:
-          lastTrayPayload.absentLeft != null &&
-          lastTrayPayload.absentLeft > 0 &&
-          lastTrayPayload.absentLeft <= 15,
-      });
-    }
+    sessionHud.show({
+      name: isAdmin ? "Equipe" : lastTrayPayload.name,
+      mode: isAdmin ? "admin" : lastTrayPayload.mode,
+      elapsed: lastTrayPayload.elapsed,
+      present,
+      absentLeft: lastTrayPayload.absentLeft,
+      balanceSeconds: lastTrayPayload.balanceSeconds,
+      lowBalanceWarn: lastTrayPayload.lowBalanceWarn,
+      billingPaused: lastTrayPayload.billingPaused,
+      softLock:
+        lastTrayPayload.absentLeft != null &&
+        lastTrayPayload.absentLeft > 0 &&
+        lastTrayPayload.absentLeft <= 15,
+    });
   } else {
     sessionHud.hide();
   }

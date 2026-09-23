@@ -161,13 +161,14 @@ class SessionHud {
     }
     window.__setHud = function (p) {
       var name = (p && p.name) || "VIP";
+      var admin = !!(p && (p.mode === "admin" || name === "Admin" || name === "Equipe"));
       var present = !p || p.present !== false;
       var absent = p && p.absentLeft != null ? p.absentLeft : null;
       var bal = p && p.balanceSeconds != null ? p.balanceSeconds : null;
       var low = !!(p && p.lowBalanceWarn);
       var paused = !!(p && p.billingPaused);
       var soft = !!(p && p.softLock);
-      document.getElementById("name").textContent = name;
+      document.getElementById("name").textContent = admin ? "Equipe" : name;
       var timeEl = document.getElementById("time");
       var balTxt = fmtBal(bal);
       timeEl.textContent = balTxt != null ? "resta " + balTxt : (p && p.time) || "0m 00s";
@@ -178,6 +179,19 @@ class SessionHud {
       bar.classList.toggle("alert", low);
       bar.classList.toggle("soft", false);
       softEl.textContent = "";
+      if (admin) {
+        if (low) {
+          state.textContent = "Trava em breve";
+          state.className = "danger";
+          dot.className = "danger";
+          setPeek(true);
+        } else {
+          state.textContent = "Liberado sem conta";
+          state.className = "";
+          dot.className = "";
+        }
+        return;
+      }
       if (low) {
         state.textContent = "Saldo baixo";
         state.className = "danger";
@@ -236,7 +250,7 @@ class SessionHud {
   }
 
   /**
-   * @param {{ name?: string, elapsed?: number, present?: boolean, absentLeft?: number | null, balanceSeconds?: number | null, lowBalanceWarn?: boolean, billingPaused?: boolean, softLock?: boolean }} payload
+   * @param {{ name?: string, mode?: string, elapsed?: number, present?: boolean, absentLeft?: number | null, balanceSeconds?: number | null, lowBalanceWarn?: boolean, billingPaused?: boolean, softLock?: boolean }} payload
    */
   update(payload) {
     const win = this.ensure();
@@ -249,6 +263,7 @@ class SessionHud {
     }
     const data = {
       name: payload?.name || "VIP",
+      mode: payload?.mode || "",
       time: this.formatTime(payload?.elapsed),
       present: payload?.present !== false,
       absentLeft: payload?.absentLeft ?? null,

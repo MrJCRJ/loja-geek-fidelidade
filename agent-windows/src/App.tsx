@@ -17,7 +17,7 @@ import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
 import { OfflineScreen } from "./OfflineScreen";
 import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
-import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep } from "./kiosk-helpers";
+import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, staffUnlockLeftSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, STAFF_UNLOCK_WARN_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep } from "./kiosk-helpers";
 import { useRecognizeLoop, type PendingLogin } from "./hooks/useRecognizeLoop";
 import { usePresenceLoop } from "./hooks/usePresenceLoop";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
@@ -673,6 +673,10 @@ export default function App() {
       const isAdmin = customerRef.current?.id === "staff";
       const phaseNow = phaseRef.current;
       const liveBal = liveBalanceSeconds(balanceSeconds, balanceSyncedAtRef.current, false);
+      const staffLeft = staffUnlockLeftSeconds(
+        sessionStartedAtRef.current,
+        sessionSafetyRef.current.staffUnlockMaxSeconds,
+      );
       const since = absentSinceRef.current;
       const absentSec = configRef.current?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
       const absentLeftNow =
@@ -688,11 +692,11 @@ export default function App() {
             : phaseNow === "offline"
               ? "offline"
               : "locked",
-        elapsed: isAdmin ? 0 : liveBal ?? elapsed,
+        elapsed: isAdmin ? staffLeft : liveBal ?? elapsed,
         present,
         absentLeft: isAdmin ? null : absentLeftNow,
-        balanceSeconds: isAdmin ? null : liveBal,
-        lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
+        balanceSeconds: isAdmin ? staffLeft : liveBal,
+        lowBalanceWarn: isAdmin ? staffLeft <= STAFF_UNLOCK_WARN_SEC : lowBalanceWarn,
         billingPaused: false,
       });
     };
@@ -720,6 +724,10 @@ export default function App() {
       const isAdmin = customerRef.current?.id === "staff";
       const phaseNow = phaseRef.current;
       const liveBal = liveBalanceSeconds(balanceSeconds, balanceSyncedAtRef.current, false);
+      const staffLeft = staffUnlockLeftSeconds(
+        sessionStartedAtRef.current,
+        sessionSafetyRef.current.staffUnlockMaxSeconds,
+      );
       const since = absentSinceRef.current;
       const absentSec = configRef.current?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
       const absentLeftNow =
@@ -735,11 +743,11 @@ export default function App() {
             : phaseNow === "offline"
               ? "offline"
               : "locked",
-        elapsed: isAdmin ? 0 : liveBal ?? elapsed,
+        elapsed: isAdmin ? staffLeft : liveBal ?? elapsed,
         present,
         absentLeft: isAdmin ? null : absentLeftNow,
-        balanceSeconds: isAdmin ? null : liveBal,
-        lowBalanceWarn: isAdmin ? false : lowBalanceWarn,
+        balanceSeconds: isAdmin ? staffLeft : liveBal,
+        lowBalanceWarn: isAdmin ? staffLeft <= STAFF_UNLOCK_WARN_SEC : lowBalanceWarn,
         billingPaused: false,
       });
     };
@@ -887,21 +895,27 @@ export default function App() {
   // T6 — modo staff não fica aberto para sempre
   useEffect(() => {
     if (phase !== "unlocked" || customer?.id !== "staff") return;
-    const started = sessionStartedAtRef.current || Date.now();
+    if (sessionStartedAtRef.current == null) {
+      sessionStartedAtRef.current = Date.now();
+    }
     const tick = () => {
-      const maxSec = sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC;
-      const left = maxSec - Math.floor((Date.now() - started) / 1000);
+      const left = staffUnlockLeftSeconds(
+        sessionStartedAtRef.current,
+        sessionSafetyRef.current.staffUnlockMaxSeconds,
+      );
       if (left <= 0) {
         sessionStartedAtRef.current = null;
         customerRef.current = null;
         setCustomer(null);
-        setStatus("Admin auto-travado");
+        setStatus("Equipe — tempo esgotado");
         lockUi().catch(() => undefined);
         return;
       }
-      if (left <= 60) {
-        setStatus(`Admin — trava em ${left}s`);
-      }
+      setStatus(
+        left <= STAFF_UNLOCK_WARN_SEC
+          ? `Equipe — trava em ${left}s`
+          : `Equipe — resta ${formatBalanceShort(left)}`,
+      );
     };
     tick();
     const t = window.setInterval(tick, 1000);
@@ -940,7 +954,13 @@ export default function App() {
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus("Modo Admin — auto-trava em alguns minutos");
+      {
+        const minutes = Math.max(
+          1,
+          Math.round((sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC) / 60),
+        );
+        setStatus(`Liberado pela equipe — trava em ${minutes} min`);
+      }
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
