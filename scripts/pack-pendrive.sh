@@ -18,28 +18,18 @@ cp -a "$AGENT/release/win-unpacked/." "$OUT/"
 mkdir -p "$OUT/resources/shared"
 cp -a "$ROOT/shared/." "$OUT/resources/shared/"
 cp -f "$AGENT/config.example.json" "$OUT/config.example.json"
-cp -f "$AGENT/config.example.json" "$OUT/config.json"
+# Sem config.json no pendrive: evita vazar token. O INSTALAR apaga C:\GeekLock e re-pareia.
+rm -f "$OUT/config.json"
 
-cat > "$OUT/LEIA-ME.txt" << 'EOF'
-GeekLock — trava VIP (estação / pendrive)
-
-Pré-requisito: PC CONTROLE com GeekCentral.exe online (ou Docker na LAN).
-
-1ª vez (assistente na tela)
-1) Copie a pasta GeekLock do pendrive para o disco (ex.: C:\GeekLock).
-2) Execute GeekLock.exe — aparece o assistente.
-3) Escolha o GeekCentral encontrado na LAN (ou digite a URL).
-4) Informe o nome da estação (ex.: PC-01) e o código de 6 dígitos
-   mostrado na tela do GeekCentral (não digite o segredo longo).
-5) Permita a webcam. Sem conexão = tela travada.
-
-Config manual (opcional): edite config.json (serverUrl, stationName, sharedSecret, staffPin).
-
-Fluxo: reconhece VIP -> libera PC -> conta horas -> sem rosto ~60s -> trava de novo.
-
-Limitação modo A: Ctrl+Alt+Del ainda existe no Windows (modo B depois).
-EOF
+INSTALLER="$ROOT/scripts/pendrive-geeklock"
+cp -f "$INSTALLER/INSTALAR-GEEKLOCK.bat" "$OUT/INSTALAR-GEEKLOCK.bat"
+cp -f "$INSTALLER/INSTALAR-GEEKLOCK.ps1" "$OUT/INSTALAR-GEEKLOCK.ps1"
+cp -f "$INSTALLER/GeekLock-autostart.vbs" "$OUT/GeekLock-autostart.vbs"
+cp -f "$INSTALLER/LEIA-ME.txt" "$OUT/LEIA-ME.txt"
+# Atalho na raiz do pack (pendrive/INSTALAR-GEEKLOCK.bat) — dois cliques na raiz do USB
+mkdir -p "$ROOT/pendrive"
+cp -f "$INSTALLER/INSTALAR-GEEKLOCK.bat" "$ROOT/pendrive/INSTALAR-GEEKLOCK.bat"
 
 echo "OK: $OUT"
 du -sh "$OUT"
-ls -lah "$OUT/GeekLock.exe" "$OUT/config.json" "$OUT/LEIA-ME.txt"
+ls -lah "$OUT/GeekLock.exe" "$OUT/INSTALAR-GEEKLOCK.bat" "$OUT/LEIA-ME.txt"

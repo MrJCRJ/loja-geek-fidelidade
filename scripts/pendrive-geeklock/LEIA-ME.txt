@@ -1,0 +1,23 @@
+GeekLock — estacao (pendrive)
+
+Instalar (cada PC de jogo)
+1) Nao rode o .exe de dentro do pendrive.
+2) Clique duas vezes em INSTALAR-GEEKLOCK.bat
+   (na raiz do pendrive ou nesta pasta). Aceite o UAC se pedir.
+3) O instalador:
+   - APAGA C:\GeekLock antigo (some o pareamento velho)
+   - copia o pack novo
+   - cria so GeekLock.vbs na Inicializacao
+   - abre o assistente para ligar de novo no Central
+4) Permita a webcam.
+5) URL ja vem: http://192.168.3.70:8787
+   Nome da estacao (ex. PC-01) + codigo de 6 digitos.
+
+URL do Central (loja)
+http://192.168.3.70:8787
+(com a porta 8787 — nao use https e nao use so o IP)
+
+Atualizar / reinstalar
+O mesmo .bat apaga o antigo e pede o codigo de novo.
+
+Limitacao: Ctrl+Alt+Del ainda existe no Windows.

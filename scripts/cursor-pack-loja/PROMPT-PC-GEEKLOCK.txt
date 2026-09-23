@@ -29,28 +29,32 @@ Faca nesta ordem (update, depois validar):
    branch main). Preferir o GitHub. Se nao tiver clone: clonar
    para C:\Users\<usuario>\loja-geek-fidelidade.
 
-3) Trocar o GeekLock em C:\GeekLock pelo NOVO, SEM perder o pareamento:
-   a) Fechar GeekLock.exe (taskkill /IM GeekLock.exe /F).
-   b) Copiar C:\GeekLock\config.json para %TEMP%\geeklock-config.json
+3) Trocar o GeekLock em C:\GeekLock pelo NOVO. O instalador APAGA o antigo
+   e refaz o pareamento (codigo de 6 digitos de novo):
+   a) Preferir o instalador do pendrive (apaga C:\GeekLock + autostart + wizard):
+      D:\INSTALAR-GEEKLOCK.bat  (ou a letra do USB)
+      Se o .bat existir, rode, pareie, e pule b–e.
+   b) Sem instalador: Fechar GeekLock.exe (taskkill /IM GeekLock.exe /F).
+   c) Copiar C:\GeekLock\config.json para %TEMP%\geeklock-config.json
       (se existir).
-   c) Fonte do pack novo, nesta ordem de preferencia:
-      - E:\GeekLock (pendrive ja gerado no PC principal em 23/09)
+   d) Fonte do pack novo, nesta ordem de preferencia:
+      - D:\GeekLock (ou E:\GeekLock) no pendrive
       - senao: no repo, agent-windows → npm run build:web e
         npx electron-builder --win dir --x64 --config.electronVersion=35.7.5
         e copiar agent-windows\release\win-unpacked\*
       Copiar a pasta INTEIRA para C:\GeekLock.
-   d) Restaurar config.json salvo. Se NAO havia token:
+   e) Restaurar config.json salvo. Se NAO havia token:
       criar config com serverUrl exatamente:
       http://192.168.3.70:8787
-   e) Conferir C:\GeekLock\resources\shared\lan-discovery.cjs
+   f) Conferir C:\GeekLock\resources\shared\lan-discovery.cjs
       (sem isso o .exe abre erro JavaScript).
-   f) Em config.json, serverUrl DEVE ser http://192.168.3.70:8787
+   g) Em config.json, serverUrl DEVE ser http://192.168.3.70:8787
       NUNCA https://...  NUNCA so http://192.168.3.70  NUNCA loja.geekloja.com.br
 
 4) Rodar C:\GeekLock\GeekLock.exe e permitir webcam.
 
-5) Se ja tem stationToken: NAO reconfigurar. So validar que
-   NAO fica "Central offline" com o Central no ar.
+5) Depois do instalador: complete o assistente (URL + nome + codigo).
+   Sem token novo o Lock nao fala com o Central.
 
 6) 1a vez / sem token — assistente:
    - Central na LAN ou URL http://192.168.3.70:8787
