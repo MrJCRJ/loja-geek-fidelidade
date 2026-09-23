@@ -46,7 +46,7 @@ describe("Contas da equipe + controle só na LAN", () => {
     await app.close();
   });
 
-  it("admin.geekloja.com.br libera controle; host desconhecido fica só leitura", async () => {
+  it("admin.geekloja.com.br libera controle; host desconhecido esconde /api/admin e bloqueia comando", async () => {
     const app = await createTestApp();
     const bootToken = await adminToken(app);
     await app.inject({
@@ -101,7 +101,8 @@ describe("Contas da equipe + controle só na LAN", () => {
       url: "/api/admin/me",
       headers: { ...authHeaders(homeToken), host: otherHost },
     });
-    expect((meOther.json() as { remoteReadOnly: boolean }).remoteReadOnly).toBe(true);
+    // Painel da equipe só em loja/LAN/admin.geekloja — host estranho some (não vaza /api/admin).
+    expect(meOther.statusCode).toBe(404);
 
     const cmd = await app.inject({
       method: "POST",
