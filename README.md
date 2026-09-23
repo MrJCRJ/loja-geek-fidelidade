@@ -29,7 +29,9 @@ No PC controle:
 2. Execute `GeekCentral.exe` e espere **Online**.
 3. No primeiro boot, defina a senha admin e os segredos (wizard obrigatório). Depois abra o admin.
 
-Nas estações: pasta `GeekLock`, `config.json` com `"serverUrl": "http://IP-DO-CONTROLE:8787"`, rode `GeekLock.exe`.
+Nas estações: siga [`docs/GEEKLOCK-INSTALAR-ESTACOES.md`](docs/GEEKLOCK-INSTALAR-ESTACOES.md) (pendrive `INSTALAR-GEEKLOCK.bat` ou atualizar `C:\GeekLock` sem perder o token). Índice de toda a documentação: [`docs/README.md`](docs/README.md).
+
+URL da loja (não omitir a porta): `"serverUrl": "http://192.168.3.70:8787"`.
 
 > Copie a **pasta inteira**, não só o `.exe`. Dados ficam em `GeekCentral\data\` (faça backup).
 

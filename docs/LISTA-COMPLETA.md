@@ -1,6 +1,6 @@
 # Lista completa de melhorias — projeto todo
 
-Atualizado em **2026-08-25**.  
+Atualizado em **2026-08-25** (histórico). Ops atuais: [`PENDENCIAS.md`](./PENDENCIAS.md) · índice: [`README.md`](./README.md).  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade  
 
 Esta é a **visão do sistema inteiro** (loja, site, apps, dinheiro, segurança).  

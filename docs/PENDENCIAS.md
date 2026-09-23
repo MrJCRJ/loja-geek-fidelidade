@@ -13,7 +13,9 @@ Foco: **URL fixa**, **alternativas baratas**, **Mercado Pago** e o que falta par
 **Atualizar Central (GitHub):** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — botão + release ZIP  
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
 **GeekLock boot lento no reinício:** [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md) — documentado; medir na loja  
-**Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`
+**Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`  
+**Índice de todos os docs:** [`README.md`](./README.md)  
+**GeekLock nas estações (instalar / LAN / timer):** [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md)
 
 Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
@@ -23,7 +25,7 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
 | Área | Situação |
 |------|----------|
-| Código (API, portal, GeekLock) | `[x]` MVP pronto; mudanças locais não commitadas |
+| Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD equipe + instalador pendrive (2026-09-23) |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |

@@ -3,7 +3,8 @@
 Atualizado em **2026-09-23**.  
 **Status:** decisões documentadas — **não implementar nesta visita** (só validar o que já foi para o pendrive).
 
-**Controle no celular** (implementado 2026-09-23): [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md). Na loja: atualizar + CNAME `admin` no túnel existente.
+**Controle no celular** (implementado 2026-09-23): [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md). Na loja: atualizar + CNAME `admin` no túnel existente.  
+**Instalar Lock nas estações + LAN (2026-09-23):** [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md) — da estação **não** dá para empurrar o `.exe` nos outros PCs (SMB recusado). Update Lock via Central continua backlog (D).
 
 ---
 

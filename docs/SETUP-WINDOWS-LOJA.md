@@ -4,6 +4,8 @@
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade  
 Atualizado: **2026-09-22**.
 
+Estações (GeekLock): [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md). Índice: [`README.md`](./README.md).
+
 ---
 
 ## Estado já pronto (não refazer)

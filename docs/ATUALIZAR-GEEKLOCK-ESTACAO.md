@@ -3,6 +3,8 @@
 Atualizado em **2026-09-23** (instalador no pendrive).  
 **Para o agent Cursor no PC da estação.** Repo: https://github.com/MrJCRJ/loja-geek-fidelidade (`main`).
 
+Guia completo (rede, pendrive, atualizar sem perder token, timer da equipe): [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md). Índice: [`README.md`](./README.md).
+
 Prompt para colar no chat Agent deste PC: [`PROMPT-PC-GEEKLOCK.txt`](./PROMPT-PC-GEEKLOCK.txt).
 
 ## Por que atualizar
