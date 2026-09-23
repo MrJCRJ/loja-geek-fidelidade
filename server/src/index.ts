@@ -12,6 +12,7 @@ import { ensurePushTable } from "./push.js";
 import { startGeekLocalMdns } from "./mdns-local.js";
 import { startLocalHttpsFront } from "./local-https.js";
 import { isStaffUiHost, requestHost } from "./request-scope.js";
+import { startStorePublicIpProbe } from "./store-network.js";
 
 async function main() {
   await initSentry();
@@ -59,6 +60,7 @@ async function main() {
   } catch (err) {
     app.log.warn({ err }, "mDNS geek.local não subiu (celular pode usar o IP)");
   }
+  startStorePublicIpProbe(10 * 60_000);
   startTunnelHealthProbe(60_000);
   autoStartTunnelIfEnabled().catch((err) => {
     app.log.warn({ err }, "Falha ao auto-iniciar túnel Cloudflare");

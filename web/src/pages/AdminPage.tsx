@@ -44,6 +44,7 @@ export default function AdminPage() {
   const [bootName, setBootName] = useState("");
   const [bootPass, setBootPass] = useState("");
   const [remoteReadOnly, setRemoteReadOnly] = useState(false);
+  const [offStoreWifi, setOffStoreWifi] = useState<boolean | null>(null);
   const [shopUrl, setShopUrl] = useState("https://loja.geekloja.com.br/admin");
   const [pairCode, setPairCode] = useState("");
   const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
@@ -87,12 +88,17 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      setOffStoreWifi(null);
+      return;
+    }
+    setOffStoreWifi(null);
     api<{
       role: string;
       displayName?: string | null;
       needsBootstrap?: boolean;
       remoteReadOnly?: boolean;
+      offStoreWifi?: boolean;
       shopUrl?: string;
     }>("/api/admin/me")
       .then((me) => {
@@ -100,7 +106,9 @@ export default function AdminPage() {
         setDisplayName(me.displayName || "");
         setNeedsBootstrap(Boolean(me.needsBootstrap));
         setRemoteReadOnly(Boolean(me.remoteReadOnly));
+        setOffStoreWifi(Boolean(me.offStoreWifi));
         if (me.shopUrl) setShopUrl(me.shopUrl);
+        if (me.offStoreWifi) return;
         if (me.role === "clerk") setTab("estacoes");
         if (!me.remoteReadOnly) {
           api<{ code: string }>("/api/admin/pair-code")
@@ -169,7 +177,27 @@ export default function AdminPage() {
   const logout = () => {
     setAdminToken(null);
     setToken(null);
+    setOffStoreWifi(null);
   };
+
+  if (token && offStoreWifi) {
+    return (
+      <div className="shell" style={{ maxWidth: 420 }}>
+        <h1 className="brand">Loja</h1>
+        <div className="panel off-wifi">
+          <strong>Fora do Wi‑Fi da loja</strong>
+          <p>
+            O controle das máquinas só funciona na rede da loja. Conecte no Wi‑Fi da loja e abra de novo este
+            link.
+          </p>
+          <p className="muted">O dono pode operar de casa. A equipe, não.</p>
+          <button className="btn danger" type="button" onClick={logout}>
+            Sair
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!token) {
     return (

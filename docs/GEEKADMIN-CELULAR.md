@@ -8,12 +8,15 @@ Hostname `admin.geekloja.com.br` no túnel + Cloudflare Access: checklist em [`R
 
 ## Em uma frase
 
-O funcionário controla a loja pelo **navegador no celular**. O PC principal só é o motor (API + face + túnel + fala com os Locks). De casa o dono **só vê**, pelo nome `admin.geekloja.com.br`.
+O funcionário controla a loja pelo **navegador no celular**. O PC principal só é o motor (API + face + túnel + fala com os Locks).
+
+**Quem controla de onde (2026-09-23 noite):** o **dono** opera de casa ou da loja. O **funcionário** só opera se o celular estiver na **mesma rede da Central** (Wi‑Fi da loja). Fora disso vê a página “Fora do Wi‑Fi da loja”. `geek.local` no Android **não** resolve — o link do dia a dia é `loja.geekloja.com.br`.
 
 ```
 Celular (navegador / PWA)
     │
-    ├─ loja (controle) ──► http://geek.local
+    ├─ Wi‑Fi da loja ──► https://loja.geekloja.com.br/admin
+    │                    (dono e equipe controlam)
     │                         │
     │                         ▼
     │                   PC principal (motor, sem janela de controle)
@@ -22,9 +25,9 @@ Celular (navegador / PWA)
     │                         └── túnel já existente ──► api.geekloja.com.br
     │                                                      (portal + Pix)
     │
-    └─ casa (só leitura) ──► https://admin.geekloja.com.br
-                              Cloudflare Access (e-mail do dono)
-                              + login conta dono
+    └─ outra rede ──► mesmo link
+                      dono: controla
+                      equipe: página “fora do Wi‑Fi”
 ```
 
 Os GeekLock **não** falam com o celular nem com a casa.
@@ -36,15 +39,15 @@ Os GeekLock **não** falam com o celular nem com a casa.
 | # | Pergunta | Escolha |
 |---|----------|---------|
 | 1 | O que sobra no PC | **Só motor** — sem painel Electron de controle |
-| 2 | Controle dos PCs | **Só na loja** (`geek.local`) |
-| 3 | Ver de casa | **Sim** — GeekAdmin inteiro em **leitura** |
+| 2 | Controle dos PCs | **Dono** em qualquer lugar · **funcionário** só no Wi‑Fi da loja (mesma rede da Central, não `geek.local`) |
+| 3 | Ver de casa | Dono controla · funcionário vê a página “fora do Wi‑Fi” |
 | 4 | UI | GeekAdmin que já existe (`web/`), mobile-first — **sem app nativo, sem painel novo** |
 | 5 | Contas | Cada um tem **usuário + senha**; dono cria/desativa |
 | 6 | Papéis | **Dono** = tudo · **Funcionário** = opera (sem config/túnel/LGPD/contas) |
-| 7 | Quem entra de casa | **Só o dono** (Access + conta dono). Funcionário só em `geek.local` |
+| 7 | Quem entra de casa | Dono opera. Funcionário entra e vê “fora do Wi‑Fi” (API recusa comando) |
 | 8 | Abrir no celular | Link no navegador **e** “Adicionar à tela inicial” (PWA) |
 | 9 | Equipe + auditoria | Aba **Equipe** (contas). Log “quem mexeu” na **Ajuda** (já existe), com o **nome** |
-| 10 | Links | Loja: `http://geek.local` · Casa: `https://admin.geekloja.com.br` |
+| 10 | Links | Dia a dia: `https://loja.geekloja.com.br/admin` · Casa (dono): `https://admin.geekloja.com.br` · `geek.local` é fallback (Android não resolve) |
 | 11 | Quando implementar | **Só quando o dono mandar.** Fila atual não muda. |
 
 ---
@@ -59,8 +62,9 @@ Estes pontos não voltaram à fronteira — ficam assim para não reinventar na 
 | Bootstrap do dono | Enquanto **não** existir conta dono, `ADMIN_PASSWORD` ainda entra. No primeiro acesso local, o GeekAdmin **obriga** criar usuário+senha do dono. Depois disso, senhas compartilhadas (`ADMIN_PASSWORD`, `CLERK_PASSWORD`) **deixam de autenticar**. |
 | Login | Campo usuário + senha (hoje só tem senha). JWT continua; gravar `userId` + `username` + `role` no token. |
 | Auditoria (G7) | Venda de hora, liberar/travar PC, PIN admin, comandos de estação: `actor` = nome do usuário, não `admin`/`clerk`. |
-| Controle só local | A API **recusa** comando de estação (destrava, trava, staff-unlock, etc.) se o pedido veio pelo host de casa ou fora da LAN — mesmo com login de dono. A UI de casa esconde/desabilita esses botões. |
-| `geek.local` | PC anuncia o nome na LAN. Se o Android não resolver `.local`, fallback: QR/atalho com a URL que funciona (nome, e IP por baixo se precisar). Não é o link do dia a dia. |
+| Controle | **Dono** escreve em qualquer host do painel (`loja.` / `admin.` / LAN). **Funcionário** só se estiver na mesma rede da Central: host LAN (`192.168.x`, `geek.local`) **ou** (túnel + `CF-Connecting-IP` igual ao IPv4 público da loja / mesma /24). Não é o nome do Wi‑Fi — é o IP. |
+| Fora do Wi‑Fi | Funcionário logado fora da rede vê página própria. API devolve `off_store_wifi` em comando/caixa. |
+| `geek.local` | PC anuncia mDNS. Android/Chrome **não** resolvem. Não depende disso para a equipe. |
 | Casa | **Novo hostname** no túnel **já existente** `loja-geek-api`. **Não** recriar domínio, túnel nem `api.geekloja.com.br`. |
 | Access | Cloudflare Access só em `admin.geekloja.com.br`. **Não** colocar Access em `/api/health` nem `/api/portal/*` (quebra Pix). |
 | Portal / Pix | Continuam em `https://api.geekloja.com.br`. |
@@ -71,9 +75,11 @@ Estes pontos não voltaram à fronteira — ficam assim para não reinventar na 
 
 | Uso | URL | Quem | O que pode |
 |-----|-----|------|------------|
-| Loja | `http://geek.local` | Dono e funcionários | Controle completo segundo o papel |
-| Casa | `https://admin.geekloja.com.br` | Só o dono | Ver tudo; **não** controla PC |
+| Loja (dia a dia) | `https://loja.geekloja.com.br/admin` | Dono e equipe **no Wi‑Fi da loja** | Controle segundo o papel |
+| Casa | `https://admin.geekloja.com.br` ou o mesmo `loja.` | Dono | Controla |
+| Casa | mesmo link | Funcionário | Página “Fora do Wi‑Fi da loja” |
 | API pública (já existe) | `https://api.geekloja.com.br` | Portal, MP, health | Sem GeekAdmin de operação |
+| Fallback LAN | `http://192.168.3.70:8787/admin` | Equipe se o túnel não mandar o IP | Só no Wi‑Fi |
 
 Túnel atual (`loja-geek-api`, UUID `b9406016-bea4-4398-b6e4-48f43e398af5`): acrescentar ingress, sem apagar o de `api.geekloja.com.br`:
 
@@ -92,23 +98,21 @@ DNS CNAME `admin` → o mesmo túnel. Access self-hosted nesse hostname.
 
 ## Papéis (já existem no código; passam a ser por pessoa)
 
-| Ação | Dono | Funcionário | Dono em casa |
-|------|------|-------------|--------------|
-| Ver estações / Saúde / VIP / caixa | sim | sim | sim (leitura) |
-| Liberar / travar PC, vender hora | sim | sim | **não** |
-| Config, túnel, backup, LGPD | sim | não | leitura |
-| Criar/desativar contas (aba Equipe) | sim | não | leitura (sem criar) |
-| Pareamento (código 6 dígitos) | sim | sim | ver o código? **não precisa** — pareamento é ato de loja |
+| Ação | Dono | Funcionário no Wi‑Fi | Funcionário fora | Dono em casa |
+|------|------|----------------------|------------------|--------------|
+| Ver estações / Saúde / VIP / caixa | sim | sim | página fora do Wi‑Fi | sim |
+| Liberar / travar PC, vender hora | sim | sim | **não** | **sim** |
+| Config, túnel, backup, LGPD | sim | não | não | sim |
+| Criar/desativar contas (aba Equipe) | sim | não | não | sim |
+| Pareamento (código 6 dígitos) | sim | sim | não | sim |
 
 ---
 
 ## Fora de escopo (desta feature)
 
-- App nativo (Android/iOS)
+- App nativo (Android/iOS) / ler o nome do Wi‑Fi (SSID) — só comparamos IP da Central × IP do pedido
 - Painel novo além do GeekAdmin
 - Recriar domínio / túnel `loja-geek-api`
-- Controle dos PCs pela internet
-- Funcionário acessar de casa
 - Estabilidade WS, setup avançado, update Lock, boot rápido do Lock — filas **já** documentadas; não misturar
 
 ---
@@ -121,8 +125,8 @@ DNS CNAME `admin` → o mesmo túnel. Access self-hosted nesse hostname.
 - [x] Aba Equipe (criar/desativar)
 - [x] Funcionário sem Config / Equipe
 - [x] PWA (manifest + service worker)
-- [x] Host de casa = leitura; API recusa comando
-- [x] Funcionário não entra no host de casa
+- [x] Dono controla de casa; funcionário só na rede da Central
+- [x] Página “Fora do Wi‑Fi da loja” para a equipe fora da rede
 - [ ] Na loja: CNAME `admin` no túnel existente + Cloudflare Access
 - [ ] Validar celular + Lock na LAN
 

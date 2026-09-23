@@ -10,7 +10,7 @@ Atualizado em **2026-09-23**.
 
 | # | Decisão | Escolha |
 |---|--------|---------|
-| 1 | O que ver | GeekAdmin **inteiro em leitura** — **não** controla PC |
+| 1 | O que ver | GeekAdmin do **dono** (controla). Funcionário fora do Wi‑Fi da loja não opera — ver [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) |
 | 2 | Como ver | Navegador, URL **com nome** |
 | 3 | Quando | Túnel estável **e** quando o dono mandar o celular |
 | 4 | Segurança | Access (e-mail do dono) + login **conta dono**. Funcionário **não** entra de casa |
@@ -39,7 +39,7 @@ GeekLock (PCs da lan) ──LAN/WS──► GeekCentral (PC loja)
                                                       ▼
                                               Navegador em casa
                                               Access + login conta dono
-                                              (leitura; API recusa comando de PC)
+                                              (dono controla; equipe só no Wi‑Fi da loja)
 ```
 
 Os GeekLock **não** falam com o teu PC. Eles reportam ao Central; tu lê o Central pela internet.
@@ -68,7 +68,7 @@ Ver [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md).
    - Health sem login Access → 200  
    - Abrir `admin.geekloja.com.br` → challenge Cloudflare → login **conta dono**  
    - Tentar destrava de PC por esse link → API recusa  
-7. [ ] Painel em leitura: estações + Saúde + resto visível, sem comando  
+7. [ ] Dono opera de casa; funcionário fora do Wi‑Fi vê a página e não comanda  
 
 Docs Cloudflare: [Access self-hosted](https://developers.cloudflare.com/cloudflare-one/applications/configure-apps/self-hosted-public-app/).
 

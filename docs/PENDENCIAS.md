@@ -1,16 +1,16 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-09-23**.  
-Foco: **URL fixa**, **alternativas baratas**, **Mercado Pago** e o que falta para a loja rodar de verdade.
+Atualizado em **2026-09-23** (noite).  
+Foco: **Mercado Pago**, **secrets**, **primeira release do Central**. URL fixa e túnel **já escolhidos** — não reabrir.
 
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
 **Túnel:** Cloudflare nomeado `loja-geek-api` · GeekCentral Windows  
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
-**Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — ver de casa em `admin.geekloja.com.br`; controle só na loja (`geek.local`)  
+**Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — dono controla de casa (`admin.geekloja.com.br` / `loja.geekloja.com.br`); funcionário só no Wi‑Fi da loja  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
 **Pareamento (próximo build):** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — código 6 dígitos no Central; sem digitar segredo longo  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
-**Atualizar Central (GitHub):** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — botão + release ZIP  
+**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — de casa publica release; na loja o botão instala; **0 releases** ainda  
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
 **GeekLock boot lento no reinício:** [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md) — documentado; medir na loja  
 **Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`  
@@ -25,7 +25,8 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
 | Área | Situação |
 |------|----------|
-| Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD equipe + instalador pendrive (2026-09-23) |
+| Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD + instalador + equipe só no Wi‑Fi da loja |
+| Release GeekCentral | `[ ]` **0 releases** — botão Atualizar na loja sem ZIP; de casa só dá para *publicar* |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |
@@ -62,33 +63,10 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
 ---
 
-## 2. Alternativas mais baratas (ou sem domínio)
+## 2. Alternativas de túnel — **já decidido**
 
-Comparação rápida para **expor a API `:8787`** ao portal e ao MP.
-
-| Opção | Custo típico | URL fixa? | Webhook MP? | Notas |
-|-------|--------------|-----------|-------------|--------|
-| **Cloudflare Tunnel nomeado** | Domínio ~R$ 40/ano; túnel grátis | ✅ Sim | ✅ Sim | **Recomendado** — já tem script no repo |
-| **Cloudflare quick** (`trycloudflare`) | Grátis | ❌ Muda sempre | ⚠️ Ruim | Só dev/teste rápido |
-| **Tailscale Funnel** | Grátis (plano pessoal) | ⚠️ Subdomínio Tailscale | ✅ Se HTTPS estável | Bom se já usa Tailscale na loja |
-| **ngrok** | Grátis limitado; fixo ~US$ 8/mês | ✅ No plano pago | ✅ | Fácil; custo mensal |
-| **localhost.run / serveo** | Grátis | ❌ | ❌ | Não usar em produção |
-| **IP público + roteador** | Grátis (se ISP der IP fixo) | ⚠️ Depende ISP | ✅ | Precisa abrir porta, certificado TLS, DDNS se IP dinâmico |
-| **VPS barata** (Hetzner, Contabo, etc.) | ~€4–6/mês | ✅ Com domínio | ✅ | API na nuvem; loja só face/LAN local — mais trabalho |
-| **Só LAN** (sem portal remoto) | R$ 0 | N/A | ❌ | Clientes não compram pelo site fora da loja |
-
-### Se o orçamento apertar
-
-1. **Mínimo viável:** domínio barato + Cloudflare Tunnel (só paga o domínio 1×/ano).
-2. **Sem domínio por enquanto:** ngrok free para testes; migrar antes de abrir a loja.
-3. **Não usar** quick tunnel (`trycloudflare`) em produção — webhook MP quebra quando reinicia.
-
-### Pendências (escolher caminho)
-
-- [ ] Decidir: **Cloudflare + domínio** vs **ngrok pago** vs **VPS**
-- [ ] Se Cloudflare: registrar/comprar domínio e apontar DNS para Cloudflare
-- [ ] Se ngrok: conta, reservar subdomain, documentar URL no `.env` e Vercel
-- [ ] Documentar URL escolhida em `PUBLIC_API_URL` e no painel Vercel
+Escolhido: **Cloudflare Tunnel nomeado** + domínio `geekloja.com.br`. Não reabrir ngrok / VPS / quick tunnel.  
+Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 
 ---
 
@@ -144,7 +122,7 @@ Comparação rápida para **expor a API `:8787`** ao portal e ao MP.
 | # | Item | Prioridade |
 |---|------|------------|
 | O1 | `STRICT_SECRETS=1` + trocar `ADMIN_PASSWORD` / `JWT_SECRET` default | Alta |
-| O2 | Commitar mudanças locais (GeekLock, portal, túnel, payments) | Média |
+| O2 | Primeira GitHub Release do Central (`GeekCentral-win-x64.zip`) | Alta |
 | O3 | Regenerar pendrives: `pack:central` / `pack:lock` | Alta (após URL + MP) |
 | O4 | `npm run loja:ready` com checklist completo | Alta |
 | O5 | Backup automático `data/` testado | Média |
@@ -156,14 +134,14 @@ Comparação rápida para **expor a API `:8787`** ao portal e ao MP.
 ## 5. Ordem sugerida (fazer nesta sequência)
 
 ```
-1. Domínio + Cloudflare Tunnel nomeado     → URL fixa
-2. Vercel VITE_API_URL + redeploy          → portal fala com a loja
-3. App “Loja Geek” no MP + token novo      → credenciais válidas
-4. Webhook MP na URL fixa                  → Pix credita sozinho
-5. Teste compra + assinatura (sandbox)     → scripts/test-mercadopago.sh
-6. STRICT_SECRETS + loja:ready             → segurança
-7. Token APP_USR- produção                 → cobrar de verdade
-8. Regenerar GeekCentral / GeekLock        → PCs da loja
+1. [x] Domínio + Cloudflare Tunnel nomeado
+2. [x] Vercel VITE_API_URL + redeploy
+3. [ ] App “Loja Geek” no MP + token novo
+4. [ ] Webhook MP na URL fixa
+5. [ ] Teste compra + assinatura (sandbox)
+6. [ ] STRICT_SECRETS + loja:ready
+7. [ ] Token APP_USR- produção
+8. [ ] Primeira release do Central + atualizar na loja
 ```
 
 ---

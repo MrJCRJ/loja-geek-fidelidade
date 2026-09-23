@@ -1,6 +1,6 @@
 # Lista completa de melhorias — projeto todo
 
-Atualizado em **2026-08-25** (histórico). Ops atuais: [`PENDENCIAS.md`](./PENDENCIAS.md) · índice: [`README.md`](./README.md).  
+Atualizado em **2026-09-23** (só status ops A1–A2 / C12–C13). Fila do dia: [`PENDENCIAS.md`](./PENDENCIAS.md) · índice: [`README.md`](./README.md).  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade  
 
 Esta é a **visão do sistema inteiro** (loja, site, apps, dinheiro, segurança).  
@@ -14,8 +14,8 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
 | # | Item | Status |
 |---|------|--------|
-| A1 | Túnel Cloudflare **com nome fixo** + DNS + autostart | `[ ]` |
-| A2 | `VITE_API_URL` do portal apontando para essa URL fixa | `[ ]` |
+| A1 | Túnel Cloudflare **com nome fixo** + DNS + autostart | `[~]` túnel/DNS ok; autostart Windows na loja falta |
+| A2 | `VITE_API_URL` do portal apontando para essa URL fixa | `[x]` |
 | A3 | Pix real: `MP_ACCESS_TOKEN` + webhook HTTPS | `[ ]` |
 | A4 | `STRICT_SECRETS=1` + senhas fortes no PC controle | `[ ]` |
 | A5 | Rodar `npm run loja:ready` e marcar [`loja-ready.md`](./loja-ready.md) | `[ ]` |
@@ -57,8 +57,8 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | C9 | Caixa no balcão: vender horas sem portal (atalho rápido) | `[x]` |
 | C10 | Impressão / compartilhar token de estação (QR) | `[x]` |
 | C11 | Alertas: face-service caiu, estação offline, disco cheio | `[~]` Saúde + telemetria |
-| C12 | Atualização do Central sem reinstalar pasta toda | `[~]` electron-updater base |
-| C13 | Modo “só leitura” para ajudante de balcão (sem config) | `[ ]` |
+| C12 | Atualização do Central sem reinstalar pasta toda | `[~]` botão GitHub Releases; **0 releases**; de casa só publicar |
+| C13 | Modo “só leitura” para ajudante de balcão (sem config) | `[x]` papel clerk + equipe só no Wi‑Fi da loja |
 
 ---
 

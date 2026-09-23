@@ -1,5 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
-import { isLanControlHost, requestHost } from "./request-scope.js";
+import { isStaffUiHost, requestHost } from "./request-scope.js";
+import { isOnStoreNetwork } from "./store-network.js";
 import { getStationByToken } from "./stations.js";
 
 export type StaffRole = "admin" | "clerk";
@@ -54,10 +55,25 @@ export async function ownerGuard(req: FastifyRequest, reply: FastifyReply) {
   return true;
 }
 
+/** Dono: qualquer host do painel. Funcionário: só na rede da Central. */
+export function staffCanWrite(req: FastifyRequest): boolean {
+  const role = getAuthRole(req);
+  if (role === "admin") return isStaffUiHost(requestHost(req));
+  if (role === "clerk") return isOnStoreNetwork(req);
+  return false;
+}
+
 export async function requireLanWrite(req: FastifyRequest, reply: FastifyReply) {
-  if (isLanControlHost(requestHost(req))) return true;
+  if (staffCanWrite(req)) return true;
+  if (getAuthRole(req) === "clerk") {
+    reply.code(403).send({
+      error: "Você está fora do Wi‑Fi da loja. Controle das máquinas só na rede da loja.",
+      code: "off_store_wifi",
+    });
+    return false;
+  }
   reply.code(403).send({
-    error: "De casa só dá para ver. Controle, caixa e cadastro só na loja (geek.local).",
+    error: "De casa só dá para ver. Controle, caixa e cadastro só na loja.",
     code: "remote_readonly",
   });
   return false;

@@ -5,6 +5,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach } from "vitest";
 import { buildApp } from "../src/app.js";
 import { closeDb } from "../src/db.js";
+import { resetRateLimitBuckets } from "../src/security.js";
 
 export const TEST_ADMIN_PASSWORD = "test-admin-pass";
 export const TEST_STATION_SECRET = "test-station-secret";
@@ -30,6 +31,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  resetRateLimitBuckets();
   closeDb();
   if (tmpDir && fs.existsSync(tmpDir)) {
     fs.rmSync(tmpDir, { recursive: true, force: true });

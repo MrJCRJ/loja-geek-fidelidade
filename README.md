@@ -141,15 +141,13 @@ Enquanto o PC da loja estiver desligado, o portal não credita nem reconhece.
 
 ## Documentação
 
+Índice: [`docs/README.md`](docs/README.md) · estado do dia: [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md)
+
 | Doc | Uso |
 |-----|-----|
-| [`docs/roadmap.md`](docs/roadmap.md) | Planejamento consolidado |
-| [`docs/portal-backlog.md`](docs/portal-backlog.md) | Pendências do portal |
+| [`docs/GEEKADMIN-CELULAR.md`](docs/GEEKADMIN-CELULAR.md) | Quem controla de onde |
+| [`docs/UPDATE-GEEKCENTRAL.md`](docs/UPDATE-GEEKCENTRAL.md) | Atualizar Central (release + botão) |
 | [`docs/loja-ready.md`](docs/loja-ready.md) | Checklist túnel + Pix |
-| [`docs/teorias-producao.md`](docs/teorias-producao.md) | Teorias de incidentes em produção (GeekLock) |
-| [`docs/ECOSSISTEMA.md`](docs/ECOSSISTEMA.md) | Ferramentas/projetos úteis (explicado em português simples) |
-| [`docs/UX-LISTAS-E-COMPRA.md`](docs/UX-LISTAS-E-COMPRA.md) | UX: histórico top 15, compra por hora ou R$ |
-| [`docs/LISTA-COMPLETA.md`](docs/LISTA-COMPLETA.md) | Melhorias do **projeto todo** (ops, apps, Pix, portal…) |
 | [`docs/portal-api-tunnel.md`](docs/portal-api-tunnel.md) | Cloudflare Tunnel |
 
 ```bash
@@ -163,7 +161,7 @@ GitHub (privado): https://github.com/MrJCRJ/loja-geek-fidelidade
 
 ## Continuar em outro PC
 
-- **Lista de melhorias (atual):** [`docs/MELHORIAS.md`](./docs/MELHORIAS.md)
+- **Continuar:** [`docs/PENDENCIAS.md`](./docs/PENDENCIAS.md) · índice [`docs/README.md`](./docs/README.md)
 - Modos GeekLock vs browser: [`docs/estacao-modos.md`](./docs/estacao-modos.md)
 - Roadmap: [`docs/roadmap.md`](./docs/roadmap.md)
 - Auditoria histórica: [`AUDITORIA.md`](./AUDITORIA.md)

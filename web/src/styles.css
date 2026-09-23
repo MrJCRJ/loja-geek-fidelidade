@@ -253,6 +253,21 @@ a {
   font-size: 0.9rem;
 }
 
+.off-wifi {
+  margin-top: 1rem;
+}
+
+.off-wifi strong {
+  display: block;
+  font-size: 1.25rem;
+  margin-bottom: 0.6rem;
+}
+
+.off-wifi p {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+}
+
 .tag {
   display: inline-block;
   border: 1px solid var(--line);

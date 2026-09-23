@@ -1,9 +1,14 @@
-import { describe, expect, it } from "vitest";
-import { HOME_HOST } from "../src/request-scope.js";
+import { afterEach, describe, expect, it } from "vitest";
+import { HOME_HOST, SHOP_PUBLIC_HOST } from "../src/request-scope.js";
 import { createStaffUser, hasNamedOwner } from "../src/staff-users.js";
+import { setStorePublicIpForTest } from "../src/store-network.js";
 import { TEST_ADMIN_PASSWORD, adminToken, authHeaders, createTestApp } from "./helpers.js";
 
 describe("Contas da equipe + controle só na LAN", () => {
+  afterEach(() => {
+    setStorePublicIpForTest(null);
+  });
+
   it("senha compartilhada funciona até existir dono; depois exige usuário", async () => {
     const app = await createTestApp();
     expect(hasNamedOwner()).toBe(false);
@@ -112,6 +117,90 @@ describe("Contas da equipe + controle só na LAN", () => {
     });
     expect(cmd.statusCode).toBe(403);
     expect((cmd.json() as { code: string }).code).toBe("remote_readonly");
+
+    await app.close();
+  });
+
+  it("funcionário só controla no Wi‑Fi da loja; dono controla de casa", async () => {
+    setStorePublicIpForTest("203.0.113.10");
+    const app = await createTestApp();
+    const bootToken = await adminToken(app);
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/bootstrap-owner",
+      headers: authHeaders(bootToken),
+      payload: { username: "dono", password: "senha-dona-1", displayName: "Dono" },
+    });
+    const ownerLogin = await app.inject({
+      method: "POST",
+      url: "/api/admin/login",
+      payload: { username: "dono", password: "senha-dona-1" },
+    });
+    const ownerToken = (ownerLogin.json() as { token: string }).token;
+    await app.inject({
+      method: "POST",
+      url: "/api/admin/staff",
+      headers: authHeaders(ownerToken),
+      payload: { username: "joao", password: "joao-123", displayName: "João", role: "clerk" },
+    });
+
+    const clerkLogin = await app.inject({
+      method: "POST",
+      url: "/api/admin/login",
+      headers: { host: SHOP_PUBLIC_HOST },
+      payload: { username: "joao", password: "joao-123" },
+    });
+    const clerkToken = (clerkLogin.json() as { token: string }).token;
+
+    const meHome = await app.inject({
+      method: "GET",
+      url: "/api/admin/me",
+      headers: {
+        ...authHeaders(clerkToken),
+        host: SHOP_PUBLIC_HOST,
+        "cf-connecting-ip": "198.51.100.20",
+      },
+    });
+    expect(meHome.statusCode).toBe(200);
+    const homeBody = meHome.json() as { offStoreWifi: boolean; remoteReadOnly: boolean };
+    expect(homeBody.offStoreWifi).toBe(true);
+    expect(homeBody.remoteReadOnly).toBe(true);
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/stations/x/command",
+      headers: {
+        ...authHeaders(clerkToken),
+        host: SHOP_PUBLIC_HOST,
+        "cf-connecting-ip": "198.51.100.20",
+      },
+      payload: { command: "unlock_screen" },
+    });
+    expect(blocked.statusCode).toBe(403);
+    expect((blocked.json() as { code: string }).code).toBe("off_store_wifi");
+
+    const meShop = await app.inject({
+      method: "GET",
+      url: "/api/admin/me",
+      headers: {
+        ...authHeaders(clerkToken),
+        host: SHOP_PUBLIC_HOST,
+        "cf-connecting-ip": "203.0.113.10",
+      },
+    });
+    expect((meShop.json() as { offStoreWifi: boolean }).offStoreWifi).toBe(false);
+
+    const ownerHomeCmd = await app.inject({
+      method: "POST",
+      url: "/api/stations/x/command",
+      headers: {
+        ...authHeaders(ownerToken),
+        host: HOME_HOST,
+        "cf-connecting-ip": "198.51.100.20",
+      },
+      payload: { command: "message", text: "ok", durationSec: 3 },
+    });
+    expect(ownerHomeCmd.statusCode).toBe(200);
 
     await app.close();
   });

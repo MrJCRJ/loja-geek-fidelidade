@@ -43,9 +43,11 @@ import {
   homeAdminUrl,
   isLanControlHost,
   isRemoteAdminHost,
+  isStaffUiHost,
   requestHost,
   shopAdminUrl,
 } from "./request-scope.js";
+import { isOnStoreNetwork } from "./store-network.js";
 import {
   createStaffUser,
   hasNamedOwner,
@@ -240,15 +242,19 @@ export async function registerRoutes(app: FastifyInstance) {
     if (!(await adminGuard(req, reply))) return;
     const host = requestHost(req);
     const actor = getAuthPayload(req);
-    const lanControl = isLanControlHost(host);
+    const role = getAuthRole(req) || "admin";
+    const onStoreNetwork = isOnStoreNetwork(req);
+    const canWrite = role === "admin" ? isStaffUiHost(host) : onStoreNetwork;
     return {
-      role: getAuthRole(req) || "admin",
+      role,
       userId: actor?.userId || null,
       username: actor?.username || null,
       displayName: actor?.displayName || null,
       needsBootstrap: Boolean(actor?.bootstrap && actor.role === "admin" && !hasNamedOwner()),
-      remoteReadOnly: !lanControl,
-      lanControl,
+      remoteReadOnly: !canWrite,
+      onStoreNetwork,
+      offStoreWifi: role === "clerk" && !onStoreNetwork,
+      lanControl: canWrite,
       host,
       shopUrl: shopAdminUrl(config.port),
       homeUrl: homeAdminUrl(),
@@ -257,7 +263,10 @@ export async function registerRoutes(app: FastifyInstance) {
 
   app.get("/api/admin/pair-code", async (req, reply) => {
     if (!(await adminGuard(req, reply))) return;
-    if (!isLanControlHost(requestHost(req))) {
+    if (getAuthRole(req) === "clerk" && !isOnStoreNetwork(req)) {
+      return reply.code(403).send({ error: "Código de pareamento só no Wi‑Fi da loja.", code: "off_store_wifi" });
+    }
+    if (!isStaffUiHost(requestHost(req))) {
       return reply.code(403).send({ error: "Código de pareamento só na loja.", code: "remote_readonly" });
     }
     return ensurePairCode();

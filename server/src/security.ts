@@ -5,6 +5,10 @@ import { config } from "./config.js";
 const rateBuckets = new Map<string, { count: number; resetAt: number }>();
 
 /** Retorna true se a requisição pode seguir; false se excedeu o limite. */
+export function resetRateLimitBuckets() {
+  rateBuckets.clear();
+}
+
 export function rateLimit(key: string, limit: number, windowMs: number): boolean {
   const now = Date.now();
   const cur = rateBuckets.get(key);
