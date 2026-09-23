@@ -23,7 +23,14 @@ DNS Cloudflare: `nora.ns.cloudflare.com` / `terry.ns.cloudflare.com` (já Active
 
 ---
 
-## Prompt para colar no Cursor (PC Windows da loja)
+## Prompts para colar no Cursor (pendrive `Cursor-Agent\`)
+
+- **PC principal** (GeekCentral): [`PROMPT-PC-PRINCIPAL.txt`](./PROMPT-PC-PRINCIPAL.txt)
+- **PC GeekLock** (estação): [`PROMPT-PC-GEEKLOCK.txt`](./PROMPT-PC-GEEKLOCK.txt)
+
+Não use o mesmo prompt nos dois PCs.
+
+## Prompt legado (só PC principal — preferir o arquivo acima)
 
 ```
 Leia docs/SETUP-WINDOWS-LOJA.md e docs/PENDENCIAS.md neste repo.

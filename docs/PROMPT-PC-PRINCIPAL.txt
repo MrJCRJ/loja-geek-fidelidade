@@ -1,0 +1,46 @@
+Leia docs/SETUP-WINDOWS-LOJA.md, docs/GEEKADMIN-CELULAR.md,
+docs/REMOTE-MONITOR.md e docs/PENDENCIAS.md
+(no repo depois do git pull, ou neste pendrive em docs\).
+
+Este PC e o PRINCIPAL (GeekCentral): motor da loja.
+O celular controla em http://geek.local
+Os GeekLock falam SO com este PC (LAN). Voce NAO configura estacao aqui.
+
+Ja existem (NAO recriar dominio/tunel/DNS de api):
+- geekloja.com.br
+- Tunel loja-geek-api (UUID b9406016-bea4-4398-b6e4-48f43e398af5)
+- API https://api.geekloja.com.br
+- Portal https://loja-geek-portal.vercel.app
+
+Confirme se %USERPROFILE%\.cursor\rules tem grill-automatico.mdc e
+loja-geek-handoff.mdc, e se .cursor\skills tem grilling + grill-me.
+Se faltar: Cursor-Agent\cursor-pack\INSTALAR-NO-WINDOWS.ps1 e reabrir o Cursor.
+
+Faca nesta ordem:
+1) git pull na pasta do repo (ou clonar
+   https://github.com/MrJCRJ/loja-geek-fidelidade.git). Preferir o main do GitHub.
+   Se ainda nao tiver clone: pode copiar GeekCentral do pendrive para C:\GeekCentral
+   como fallback, depois puxar o Git.
+2) Copiar GeekCentral\cloudflared-COPIAR-PARA-USERPROFILE\*
+   para %USERPROFILE%\.cloudflared\
+   Editar config.yml: trocar SEU_USUARIO. Ingress DEVE ter
+   api.geekloja.com.br E admin.geekloja.com.br (os dois no mesmo tunel).
+3) Subir GeekCentral (bandeja / motor, sem janela de controle).
+   Tunel Nomeado + auto-start: loja-geek-api → https://api.geekloja.com.br
+4) Cloudflare DNS: CNAME admin → o mesmo tunel (NAO apagar api).
+   Access so em admin.geekloja.com.br — NUNCA em api (quebra Pix).
+   Checklist: docs/REMOTE-MONITOR.md
+5) Testar:
+   - http://127.0.0.1:8787/api/health
+   - https://api.geekloja.com.br/api/health → {"ok":true}
+6) No celular (WiFi da loja): http://geek.local
+   (se o nome falhar, usar o IP LAN que o Central mostra).
+   Primeiro login: criar conta DONO. Depois funcionarios na aba Equipe.
+7) .env local: PUBLIC_API_URL, PORTAL_ORIGIN, CLOUDFLARED_* — NUNCA commit.
+   Se possivel STRICT_SECRETS=1 e senha admin default trocada (depois vira conta dono).
+
+NAO implementar: setup avancado (A), update Lock via Central (D),
+Mercado Pago live, boot rapido do Lock.
+
+Nao apague o tunel. Nao mude o hostname de api.geekloja.com.br sem confirmar.
+Responda em portugues. Feature/UI nova: grilling (uma rodada) sem /grill-me.

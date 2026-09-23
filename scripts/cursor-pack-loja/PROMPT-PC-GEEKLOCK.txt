@@ -1,0 +1,38 @@
+Leia docs/GEEKADMIN-CELULAR.md, docs/PAIRING-CODIGO-CURTO.md,
+docs/GEEKLOCK-BOOT-RAPIDO.md e docs/CENTRAL-LOCK-MELHORIAS.md
+(no repo depois do git pull, ou neste pendrive em docs\).
+
+Este PC e ESTAÇÃO (GeekLock). NAO sobe API. NAO mexe tunel, DNS, dominio,
+.env do Central nem cloudflared. O Lock so fala com o PC PRINCIPAL na LAN.
+
+Ja existem (NAO recriar):
+- geekloja.com.br
+- Tunel loja-geek-api
+- API no PC principal (porta 8787 na LAN)
+
+Confirme se %USERPROFILE%\.cursor\rules tem grill-automatico.mdc e
+loja-geek-handoff.mdc, e se .cursor\skills tem grilling + grill-me.
+Se faltar: Cursor-Agent\cursor-pack\INSTALAR-NO-WINDOWS.ps1 e reabrir o Cursor.
+
+Faca nesta ordem:
+1) Confirmar que o PC PRINCIPAL ja esta Online (API no ar) ANTES de parear.
+2) git pull se este PC tiver clone do repo. Senao: copiar a pasta GeekLock
+   do pendrive para C:\GeekLock (substituir se ja existir, manter config.json
+   se a estacao ja estava pareada).
+3) Rodar C:\GeekLock\GeekLock.exe
+4) 1a vez / assistente:
+   - achar o GeekCentral na LAN (ou URL http://IP-DO-PC-PRINCIPAL:8787)
+   - nome da estacao (ex.: PC-01)
+   - codigo de 6 digitos: no CELULAR do dono em http://geek.local
+     (GeekAdmin, pareamento). NAO precisa da janela Electron do Central.
+5) Permitir webcam. Sem Central = tela "Central offline" (reconecta sozinho).
+6) Se ja existir config.json com token: NAO pedir para reconfigurar.
+7) Validar: trava; derrubar API no Central → banner Central offline;
+   subir API → reconecta sem reiniciar o .exe.
+8) Cronometrar o boot do Lock apos reinicio do Windows e anotar
+   (docs/GEEKLOCK-BOOT-RAPIDO.md). NAO implementar boot rapido agora.
+
+NAO implementar: update Lock via Central, setup avancado, MP live.
+NAO instalar tunel neste PC. NAO abrir porta publica.
+
+Responda em portugues. Feature/UI nova: grilling (uma rodada) sem /grill-me.

@@ -11,7 +11,8 @@ Isto NAO sincroniza pela conta. Sem estes arquivos o agent NAO faz grill-me sozi
 
 3) Feche e reabra o Cursor.
 4) Abra C:\GeekCentral ou o clone do repo.
-5) Cole o PROMPT-PARA-O-AGENT.txt (pasta Cursor-Agent).
+5) Cole o prompt certo: PC principal → PROMPT-PC-PRINCIPAL.txt
+   Estacao Lock → PROMPT-PC-GEEKLOCK.txt.
 
 Teste: peca uma feature de UI — deve grilar (uma rodada) sem /grill-me.
 

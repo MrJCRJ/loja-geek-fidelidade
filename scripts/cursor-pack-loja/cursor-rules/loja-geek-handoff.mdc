@@ -7,7 +7,8 @@ alwaysApply: true
 
 Se a conversa for sobre a loja, GeekCentral, GeekLock, túnel, pareamento ou pendrive:
 
-1. Ler `docs/SETUP-WINDOWS-LOJA.md`, `docs/CENTRAL-LOCK-MELHORIAS.md` e `docs/PENDENCIAS.md` no repo `loja-geek-fidelidade`.
+1. Ler `docs/SETUP-WINDOWS-LOJA.md`, `docs/GEEKADMIN-CELULAR.md`, `docs/CENTRAL-LOCK-MELHORIAS.md` e `docs/PENDENCIAS.md` no repo `loja-geek-fidelidade`.
 2. Não recriar domínio/túnel (`geekloja.com.br`, `loja-geek-api`).
-3. Não implementar backlog (estabilidade WS, boot rápido do Lock, update Lock, MP live) até o usuário confirmar.
-4. Responder em português. Grilling automático em features/UI (skill grilling / grill-me).
+3. PC principal: prompt `PROMPT-PC-PRINCIPAL.txt`. Estação GeekLock: `PROMPT-PC-GEEKLOCK.txt`.
+4. Não implementar backlog (setup avançado, update Lock, MP live, boot rápido) até o usuário confirmar.
+5. Responder em português. Grilling automático em features/UI (skill grilling / grill-me).

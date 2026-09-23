@@ -13,4 +13,6 @@ Copy-Item -Force -Recurse (Join-Path $Pack "cursor-skills\*") $Skills
 
 Write-Host "OK: rules em $Rules"
 Write-Host "OK: skills em $Skills"
-Write-Host "Feche e reabra o Cursor. Abra o repo da loja e cole PROMPT-PARA-O-AGENT.txt"
+Write-Host "Feche e reabra o Cursor."
+Write-Host "PC principal: cole PROMPT-PC-PRINCIPAL.txt"
+Write-Host "Estacao Lock: cole PROMPT-PC-GEEKLOCK.txt"

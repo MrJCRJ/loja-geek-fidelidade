@@ -40,7 +40,9 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 
 3. Fechar e reabrir o Cursor.  
 4. Abrir a pasta do projeto (`C:\GeekCentral` ou clone do repo).  
-5. Chat **Agent** — cole `Cursor-Agent\PROMPT-PARA-O-AGENT.txt`.
+5. Chat **Agent** — cole o prompt certo:
+   - PC principal: `Cursor-Agent\PROMPT-PC-PRINCIPAL.txt` (também em `docs/`)
+   - Estação GeekLock: `Cursor-Agent\PROMPT-PC-GEEKLOCK.txt`
 
 Teste: peça uma feature de UI. Esperado: **uma rodada de grilling** sem você digitar `/grill-me`.
 
