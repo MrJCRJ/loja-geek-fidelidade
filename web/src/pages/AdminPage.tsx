@@ -46,7 +46,6 @@ export default function AdminPage() {
   const [remoteReadOnly, setRemoteReadOnly] = useState(false);
   const [offStoreWifi, setOffStoreWifi] = useState<boolean | null>(null);
   const [shopUrl, setShopUrl] = useState("https://loja.geekloja.com.br/admin");
-  const [pairCode, setPairCode] = useState("");
   const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
   const [installHint, setInstallHint] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
@@ -110,11 +109,6 @@ export default function AdminPage() {
         if (me.shopUrl) setShopUrl(me.shopUrl);
         if (me.offStoreWifi) return;
         if (me.role === "clerk") setTab("estacoes");
-        if (!me.remoteReadOnly) {
-          api<{ code: string }>("/api/admin/pair-code")
-            .then((p) => setPairCode(p.code || ""))
-            .catch(() => undefined);
-        }
         return data.refreshNow();
       })
       .catch((err) => setError(err instanceof Error ? err.message : "Falha ao validar sessão"));
@@ -379,12 +373,6 @@ export default function AdminPage() {
           No celular: menu do navegador → Adicionar à tela inicial. Link da loja: {shopUrl}
         </div>
       )}
-      {!remoteReadOnly && !clerk && pairCode && tab !== "estacoes" && (
-        <p className="muted" style={{ margin: "0 0 0.75rem" }}>
-          Pareamento GeekLock: <strong className="mono">{pairCode}</strong>
-        </p>
-      )}
-
       {sysAlerts.length > 0 && !clerk && (
         <div className={`banner ${sysAlerts.some((a) => a.severity === "error") ? "" : "warn"}`}>
           {sysAlerts[0].message}
@@ -451,7 +439,6 @@ export default function AdminPage() {
           onToast={toast.push}
           askConfirm={askConfirm}
           remoteReadOnly={remoteReadOnly}
-          pairCode={pairCode}
           compact={clerk}
         />
       )}

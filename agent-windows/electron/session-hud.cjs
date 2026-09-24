@@ -129,7 +129,7 @@ class SessionHud {
   <div id="bar">
     <span id="dot"></span>
     <span id="name">VIP</span>
-    <span id="time">0m 00s</span>
+    <span id="time">00:00:00</span>
     <span id="state">Presente</span>
     <span id="soft">Volte à cadeira — trava em breve</span>
   </div>
@@ -154,10 +154,7 @@ class SessionHud {
       var h = Math.floor(s / 3600);
       var m = Math.floor((s % 3600) / 60);
       var r = s % 60;
-      if (h > 0) {
-        return h + "h " + String(m).padStart(2, "0") + "m " + String(r).padStart(2, "0") + "s";
-      }
-      return m + "m " + String(r).padStart(2, "0") + "s";
+      return String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":" + String(r).padStart(2, "0");
     }
     window.__setHud = function (p) {
       var name = (p && p.name) || "VIP";
@@ -245,8 +242,7 @@ class SessionHud {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     const r = s % 60;
-    if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
-    return `${m}m ${String(r).padStart(2, "0")}s`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
   }
 
   /**

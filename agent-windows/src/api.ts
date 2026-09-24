@@ -60,6 +60,14 @@ export async function claimStation(config: GeekLockConfig) {
   });
 }
 
+/** Na LAN: só o nome. */
+export async function pairStationLan(config: GeekLockConfig) {
+  return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/pair-lan", {
+    method: "POST",
+    body: JSON.stringify({ name: config.stationName }),
+  });
+}
+
 /** Pareamento por código de 6 dígitos (sem sharedSecret). */
 export async function pairStation(config: GeekLockConfig, pairCode: string) {
   return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/pair", {
@@ -77,15 +85,16 @@ export type SessionSafetyConfig = {
   presenceMinFaceRatio: number;
 };
 
-export async function heartbeat(config: GeekLockConfig) {
+export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
   return apiFetch<{
     ok: boolean;
     station?: { id: string; name: string };
     sessionSafety?: SessionSafetyConfig;
     portalPublicUrl?: string;
+    lockUpdate?: { needed: boolean; latestVersion?: string } | null;
   }>(config, "/api/stations/heartbeat", {
     method: "POST",
-    body: JSON.stringify({ token: config.stationToken }),
+    body: JSON.stringify({ token: config.stationToken, lockVersion }),
   });
 }
 

@@ -59,6 +59,26 @@ type CentralUpdate = {
   source?: string;
 };
 
+type LockStationRow = {
+  id: string;
+  name: string;
+  online: boolean;
+  version: string;
+  status: "current" | "outdated" | "unknown" | "offline_outdated" | "offline_unknown";
+};
+
+type LockUpdate = {
+  ok: boolean;
+  error?: string;
+  latestVersion?: string;
+  hasGithub?: boolean;
+  source?: string;
+  packageReady?: boolean;
+  stations?: LockStationRow[];
+  outdatedCount?: number;
+  offlineOutdated?: string[];
+};
+
 type Props = {
   settings: AdminSettings;
   setSettings: (s: AdminSettings) => void;
@@ -84,6 +104,7 @@ export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm 
   const [tunnelBusy, setTunnelBusy] = useState(false);
   const [busy, setBusy] = useState(false);
   const [centralUpd, setCentralUpd] = useState<CentralUpdate | null>(null);
+  const [lockUpd, setLockUpd] = useState<LockUpdate | null>(null);
   const [updBusy, setUpdBusy] = useState(false);
 
   const loadTunnel = async () => {
@@ -110,7 +131,12 @@ export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm 
       setReadiness(r);
       await loadTunnel();
       try {
-        setCentralUpd(await api<CentralUpdate>("/api/admin/central-update"));
+        const [c, l] = await Promise.all([
+          api<CentralUpdate>("/api/admin/central-update"),
+          api<LockUpdate>("/api/admin/lock-update"),
+        ]);
+        setCentralUpd(c);
+        setLockUpd(l);
       } catch {
         /* dono-only; clerk não chega aqui */
       }
@@ -925,6 +951,94 @@ export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm 
             }}
           >
             {updBusy ? "…" : "Baixar e instalar"}
+          </button>
+        </div>
+      </section>
+
+      <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
+        <h2>Atualizar GeekLock</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          GitHub: <span className="mono">{lockUpd?.latestVersion || "—"}</span>
+          {lockUpd?.outdatedCount ? ` · ${lockUpd.outdatedCount} desatualizado(s)` : ""}
+        </p>
+        {lockUpd?.offlineOutdated && lockUpd.offlineOutdated.length > 0 && (
+          <p className="muted">
+            Desligados (atualizam sozinhos ao ligar): {lockUpd.offlineOutdated.join(", ")}
+          </p>
+        )}
+        {lockUpd?.error && <p className="muted">{lockUpd.error}</p>}
+        <ul className="feed">
+          {(lockUpd?.stations || []).map((s) => (
+            <li key={s.id}>
+              <span
+                className={`tag ${s.status === "current" ? "ouro" : s.online ? "noface" : "noface"}`}
+              >
+                {s.status === "current"
+                  ? "ok"
+                  : s.status === "outdated"
+                    ? "desatualizado"
+                    : s.status === "offline_outdated"
+                      ? "desligado"
+                      : "sem versão"}
+              </span>{" "}
+              {s.name} <span className="mono">{s.version || "—"}</span>
+            </li>
+          ))}
+        </ul>
+        <div className="row">
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={updBusy}
+            onClick={async () => {
+              setUpdBusy(true);
+              try {
+                setLockUpd(await api<LockUpdate>("/api/admin/lock-update"));
+                onToast("Locks verificados", "ok");
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha ao verificar Locks");
+              } finally {
+                setUpdBusy(false);
+              }
+            }}
+          >
+            Verificar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={updBusy || !lockUpd?.ok}
+            onClick={async () => {
+              const ok = askConfirm
+                ? await askConfirm({
+                    title: "Atualizar os GeekLocks?",
+                    message:
+                      "Os PCs ligados baixam agora. Os desligados atualizam sozinhos na próxima vez que ligarem. Preserva o pareamento.",
+                    confirmLabel: "Atualizar Locks",
+                  })
+                : true;
+              if (!ok) return;
+              setUpdBusy(true);
+              try {
+                const r = await api<{ sent: string[]; waitingOffline: string[]; latestVersion?: string }>(
+                  "/api/admin/lock-update/apply",
+                  { method: "POST", body: "{}" },
+                );
+                onToast(
+                  r.sent?.length
+                    ? `Atualizando: ${r.sent.join(", ")}`
+                    : "Nenhum PC ligado. Os desligados pegam ao ligar.",
+                  "info",
+                );
+                setLockUpd(await api<LockUpdate>("/api/admin/lock-update"));
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha ao atualizar Locks");
+              } finally {
+                setUpdBusy(false);
+              }
+            }}
+          >
+            {updBusy ? "…" : "Atualizar Locks"}
           </button>
         </div>
       </section>

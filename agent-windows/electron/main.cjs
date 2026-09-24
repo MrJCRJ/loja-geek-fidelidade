@@ -87,8 +87,7 @@ function formatTrayTime(seconds) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
-  return `${m}m ${String(r).padStart(2, "0")}s`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
 /** Status para o menu (sem tempo / presença — evita rebuild). */
@@ -593,6 +592,28 @@ ipcMain.handle("failure:clear", () => {
 ipcMain.handle("failure:write", (_e, payload) => {
   writeLastFailure(payload?.kind || "app", payload?.message || "");
   return { ok: true };
+});
+
+ipcMain.handle("app:version", () => {
+  try {
+    const { currentVersion } = require("./lock-update.cjs");
+    return currentVersion();
+  } catch {
+    return app.getVersion();
+  }
+});
+
+ipcMain.handle("lock:apply-update", async () => {
+  const cfg = loadConfig();
+  const { downloadAndInstall } = require("./lock-update.cjs");
+  const result = await downloadAndInstall(cfg.serverUrl, cfg.stationToken, debug);
+  if (result.ok && result.willRelaunch) {
+    setTimeout(() => {
+      app.isQuitting = true;
+      app.quit();
+    }, 800);
+  }
+  return result;
 });
 
 ipcMain.on("tray:update", (_e, payload) => {

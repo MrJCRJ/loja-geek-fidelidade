@@ -12,7 +12,7 @@ Atualizado em **2026-09-23**.
 
 O PC da loja usa o `gh` já logado ou o token em `data\config.json`. Sem colar token no celular.
 
-`data\` (banco, config, túnel) **não** é apagada. GeekLock é outro pacote — [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md).
+`data\` (banco, config, túnel) **não** é apagada. GeekLock é outro botão: Config → **Atualizar GeekLock** (release `lock-v*` + `GeekLock-win-x64.zip`). PC desligado atualiza sozinho ao ligar.
 
 ## No celular (dono)
 

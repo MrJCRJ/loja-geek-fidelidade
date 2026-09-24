@@ -33,9 +33,10 @@ Precisa de `{"ok":true,...}`. Se falhar, o Central não está no ar — **não**
 
 ## O que já está no código (2026-09-23)
 
-- Equipe libera PC **sem conta** no GeekAdmin: **15 min / 30 min / 1 h / 2 h**.
-- No Lock aparece HUD no canto: **Equipe · resta Xm Xs · Liberado sem conta**. No último minuto avisa; no zero trava sozinho.
+- Equipe libera PC **sem conta** no GeekAdmin: roda hora + minuto (mín. **30 min**, máx. **23h 59min**).
+- No Lock o tempo da equipe é relógio **HH:MM:SS** (segundo a segundo). No zero trava sozinho.
 - PIN Admin no próprio Lock usa o tempo padrão da Config (10 min se ninguém mudou).
+- Atualizar todos os Locks: celular (dono) → Config → **Atualizar GeekLock**. PC desligado pega a versão ao ligar.
 - Instalador de pendrive: `scripts/pendrive-geeklock/` (`INSTALAR-GEEKLOCK.bat` + `.ps1` + autostart). O pack **não** leva `config.json` (evita token no USB).
 
 Commit do HUD: `d5d148c`. Commit do instalador: `304c5f8`.
@@ -78,10 +79,8 @@ Em **cada** PC de jogo:
 2. Clique `INSTALAR-GEEKLOCK.bat` (aceite UAC se pedir).
 3. O instalador **apaga** `C:\GeekLock` antigo (some o pareamento), copia o pack, cria `GeekLock.vbs` na Inicialização e abre o assistente.
 4. Permita a webcam.
-5. URL: `http://192.168.3.70:8787`
-6. Nome único (`PC-02`, `PC-03`…) + **código de 6 dígitos**.
-
-Código: celular do dono no Wi‑Fi da loja → `https://loja.geekloja.com.br` → aba PCs / Estações.
+5. Na rede da loja o Central aparece sozinho (ou URL `http://192.168.3.70:8787`).
+6. Nome único (`PC-02`, `PC-03`…) → **Conectar**. Sem código.
 
 Prompt do agent se estiver no PC da estação: [ATUALIZAR-GEEKLOCK-ESTACAO.md](./ATUALIZAR-GEEKLOCK-ESTACAO.md) + [PROMPT-PC-GEEKLOCK.txt](./PROMPT-PC-GEEKLOCK.txt).
 

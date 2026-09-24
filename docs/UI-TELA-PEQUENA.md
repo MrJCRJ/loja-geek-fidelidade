@@ -18,7 +18,7 @@ Hoje: janela Electron **920×780**; `.grid` 2 colunas até 700px; `.shell` max 8
 | # | Decisão | Escolha |
 |---|--------|---------|
 | 1 | Problema | Tela pequena; quebra geral (sem print/resolução) |
-| 2 | Quando | **Junto** no próximo build (com código 6 dígitos) |
+| 2 | Quando | **Junto** no próximo build |
 | 3 | Estratégia | **(C)** Responsivo **+** modo **Compacto** (toggle) |
 | 4 | Hierarquia no ecrã pequeno | Status (API/Face) + **código pareamento** + túnel resumido no topo; resto com scroll |
 | 5 | Agora | Só documentar |
@@ -43,7 +43,7 @@ Hoje: janela Electron **920×780**; `.grid` 2 colunas até 700px; `.shell` max 8
 ### C — Ordem visual (topo → baixo)
 
 1. Brand + pills Online / API / Face  
-2. **Código de 6 dígitos** (pareamento) — grande o suficiente para ler de longe, mas sem estourar a largura  
+2. ~~Código de 6 dígitos~~ — **removido**; pareamento é LAN + nome do PC  
 3. Túnel / URL pública (resumo + copiar)  
 4. Checklist + atalhos + config avançada (scroll)
 

@@ -154,6 +154,13 @@ export function initDb(databasePath?: string) {
   ensureCol("password_hash", "password_hash TEXT");
   ensureCol("email_verified_at", "email_verified_at TEXT");
 
+  const stationCols = (conn.prepare("PRAGMA table_info(stations)").all() as TableInfoRow[]).map(
+    (c) => c.name,
+  );
+  if (!stationCols.includes("lock_version")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN lock_version TEXT");
+  }
+
   conn.exec(`
     CREATE TABLE IF NOT EXISTS web_orders (
       id TEXT PRIMARY KEY,

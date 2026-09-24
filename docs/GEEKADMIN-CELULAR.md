@@ -104,7 +104,8 @@ DNS CNAME `admin` → o mesmo túnel. Access self-hosted nesse hostname.
 | Liberar / travar PC, vender hora | sim | sim | **não** | **sim** |
 | Config, túnel, backup, LGPD | sim | não | não | sim |
 | Criar/desativar contas (aba Equipe) | sim | não | não | sim |
-| Pareamento (código 6 dígitos) | sim | sim | não | sim |
+| Pareamento (Lock acha o Central na LAN) | sim | — | não | — |
+| Atualizar GeekLock (botão) | sim | não | não | sim |
 
 ---
 
@@ -113,7 +114,7 @@ DNS CNAME `admin` → o mesmo túnel. Access self-hosted nesse hostname.
 - App nativo (Android/iOS) / ler o nome do Wi‑Fi (SSID) — só comparamos IP da Central × IP do pedido
 - Painel novo além do GeekAdmin
 - Recriar domínio / túnel `loja-geek-api`
-- Estabilidade WS, setup avançado, update Lock, boot rápido do Lock — filas **já** documentadas; não misturar
+- Setup avançado e boot rápido do Lock — filas **já** documentadas; não misturar
 
 ---
 

@@ -161,7 +161,7 @@ Diálogo **"A JavaScript error occurred"** (não é Java/JDK): faltava `shared/l
 
 Ver [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md). No pendrive: `resources/shared/lan-discovery.cjs` já com o módulo real.
 
-**Já no pendrive (validar na loja):** código 6 dígitos, UI compacta, pack Cursor (`docs/CURSOR-PACK-LOJA.md`).  
+**Já no pendrive (validar na loja):** pareamento LAN, UI compacta, pack Cursor (`docs/CURSOR-PACK-LOJA.md`).  
 **Medir / não implementar agora:** boot lento do Lock — [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md).
 
 ---

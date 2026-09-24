@@ -1,0 +1,64 @@
+name: Release GeekLock
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Versão sem v (ex. 1.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            agent-windows/package-lock.json
+
+      - name: Native build tools
+        run: sudo apt-get update && sudo apt-get install -y zip rsync
+
+      - name: Set version
+        run: |
+          VER="${{ inputs.version }}"
+          node -e "
+            const fs=require('fs');
+            const p='agent-windows/package.json';
+            const j=JSON.parse(fs.readFileSync(p,'utf8'));
+            j.version=process.env.VER;
+            fs.writeFileSync(p, JSON.stringify(j,null,2)+'\n');
+          "
+        env:
+          VER: ${{ inputs.version }}
+
+      - name: Pack GeekLock
+        run: bash scripts/pack-pendrive.sh
+
+      - name: Make release ZIP
+        run: bash scripts/make-lock-release-zip.sh "${{ inputs.version }}"
+
+      - name: Upload GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: lock-v${{ inputs.version }}
+          name: GeekLock ${{ inputs.version }}
+          body: |
+            Pacote Windows das estações.
+
+            No celular (dono): Config → **Atualizar GeekLock**.
+            PCs desligados atualizam sozinhos ao ligar.
+            Asset: `GeekLock-win-x64.zip`
+          files: dist-release/GeekLock-win-x64.zip
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

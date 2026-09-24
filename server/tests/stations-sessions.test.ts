@@ -66,6 +66,54 @@ describe("Estações", () => {
     await app.close();
   });
 
+  it("pair-lan na LAN cria estação sem código", async () => {
+    const app = await createTestApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair-lan",
+      headers: { host: "192.168.3.70" },
+      payload: { name: "PC-LAN" },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { name: string; token: string };
+    expect(body.name).toBe("PC-LAN");
+    expect(body.token).toBeTruthy();
+    await app.close();
+  });
+
+  it("pair-lan fora da loja bloqueia", async () => {
+    const app = await createTestApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair-lan",
+      headers: { host: "admin.geekloja.com.br" },
+      payload: { name: "PC-Casa" },
+    });
+    expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("heartbeat guarda versão do Lock", async () => {
+    const app = await createTestApp();
+    const station = await claimStation(app);
+    const hb = await app.inject({
+      method: "POST",
+      url: "/api/stations/heartbeat",
+      payload: { token: station.token, lockVersion: "1.0.0" },
+    });
+    expect(hb.statusCode).toBe(200);
+    const token = await adminToken(app);
+    const list = await app.inject({
+      method: "GET",
+      url: "/api/stations",
+      headers: authHeaders(token),
+    });
+    const body = list.json() as { stations: Array<{ id: string; lock_version?: string }> };
+    const found = body.stations.find((s) => s.id === station.id);
+    expect(found?.lock_version).toBe("1.0.0");
+    await app.close();
+  });
+
   it("admin cria estação via painel", async () => {
     const app = await createTestApp();
     const token = await adminToken(app);

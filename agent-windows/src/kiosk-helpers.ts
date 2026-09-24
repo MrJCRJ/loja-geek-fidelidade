@@ -49,8 +49,7 @@ export function formatBalanceShort(seconds: number) {
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
   const r = s % 60;
-  if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m ${String(r).padStart(2, "0")}s`;
-  return `${m}m ${String(r).padStart(2, "0")}s`;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
 /** Saldo ao vivo entre heartbeats (desconta 1s/s quando cobrança ativa). */

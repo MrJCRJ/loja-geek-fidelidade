@@ -8,7 +8,8 @@ export type StationCommand =
   | "unlock_screen"
   | "end_session"
   | "message"
-  | "reload";
+  | "reload"
+  | "apply_update";
 
 export type StationStatusPayload = {
   phase: string;
@@ -71,7 +72,7 @@ export class StationSocket {
       payload.mode,
       payload.customerName || "",
       payload.present === false ? "0" : "1",
-      Math.floor((payload.elapsed || 0) / 5),
+      Math.floor(payload.balanceSeconds ?? payload.elapsed ?? 0),
     ].join("|");
     const now = Date.now();
     if (key === this.lastStatusKey && now - this.lastStatusAt < 1000) return;

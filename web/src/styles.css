@@ -597,18 +597,6 @@ a {
   font-size: 0.9em;
 }
 
-.pair-box {
-  margin-bottom: 1rem;
-}
-
-.pair-code-digits {
-  margin: 0;
-  font-size: 2.4rem;
-  font-weight: 700;
-  letter-spacing: 0.28em;
-  line-height: 1.1;
-}
-
 .metrics-grid {
   display: grid;
   gap: 0.75rem;
@@ -871,4 +859,46 @@ a {
   width: 100%;
   font-size: 1.05rem;
   font-weight: 600;
+}
+
+.time-wheels {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.time-wheel-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.time-wheel {
+  height: 148px;
+  width: 76px;
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  border: 1px solid var(--border, #2a3344);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.time-wheel-item {
+  display: block;
+  width: 100%;
+  height: 48px;
+  scroll-snap-align: center;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.15rem;
+}
+
+.time-wheel-item.on {
+  background: var(--accent, #7dd3c0);
+  color: #111;
+  font-weight: 700;
 }

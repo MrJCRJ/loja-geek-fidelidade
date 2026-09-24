@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { pairStation, checkHealth, openUserCamera, attachCameraStream } from "./api";
+import { pairStationLan, checkHealth, openUserCamera, attachCameraStream } from "./api";
 import type { DiscoveryPeer, GeekLockConfig } from "./vite-env";
 
 type Props = {
@@ -10,7 +10,6 @@ export function SetupWizard({ onDone }: Props) {
   const [peers, setPeers] = useState<DiscoveryPeer[]>([]);
   const [serverUrl, setServerUrl] = useState("");
   const [stationName, setStationName] = useState("PC-01");
-  const [pairCode, setPairCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
@@ -18,6 +17,7 @@ export function SetupWizard({ onDone }: Props) {
   const [camMsg, setCamMsg] = useState("Teste a câmera (DroidCam ou webcam USB) antes de conectar.");
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const autoPicked = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,6 +28,10 @@ export function SetupWizard({ onDone }: Props) {
         if (cancelled) return;
         const list = await window.geeklock.getDiscoveryPeers();
         setPeers(list);
+        if (!autoPicked.current && list.length > 0) {
+          autoPicked.current = true;
+          setServerUrl(list[0].serverUrl);
+        }
         timer = window.setTimeout(tick, 1500);
       };
       tick();
@@ -64,17 +68,12 @@ export function SetupWizard({ onDone }: Props) {
     setError("");
     const url = serverUrl.trim().replace(/\/$/, "");
     const name = stationName.trim();
-    const code = pairCode.replace(/\D/g, "");
     if (!url || !/^https?:\/\//i.test(url)) {
-      setError("Informe a URL do GeekCentral (ex.: http://192.168.0.10:8787)");
+      setError("Espere achar o GeekCentral na rede, ou informe http://192.168.3.70:8787");
       return;
     }
     if (!name) {
       setError("Informe o nome da estação (ex.: PC-01)");
-      return;
-    }
-    if (code.length !== 6) {
-      setError("Digite o código de 6 dígitos mostrado no GeekCentral");
       return;
     }
     setBusy(true);
@@ -87,7 +86,7 @@ export function SetupWizard({ onDone }: Props) {
         stationToken: "",
       });
       await checkHealth(cfg);
-      const claimed = await pairStation(cfg, code);
+      const claimed = await pairStationLan(cfg);
       cfg = await window.geeklock.saveToken(claimed.token);
       cfg = await window.geeklock.saveConfig({ setupComplete: true });
       await window.geeklock.stopDiscovery();
@@ -95,7 +94,7 @@ export function SetupWizard({ onDone }: Props) {
       setScanning(false);
       onDone(cfg);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Falha ao conectar / parear";
+      const msg = err instanceof Error ? err.message : "Falha ao conectar";
       setError(msg);
       window.geeklock.writeLastFailure({ kind: "setup", message: msg });
     } finally {
@@ -109,7 +108,7 @@ export function SetupWizard({ onDone }: Props) {
         <h1 className="brand" style={{ fontSize: "2rem" }}>
           GeekLock
         </h1>
-        <p className="muted">Assistente da 1ª vez — escolha o PC controle e digite o código.</p>
+        <p className="muted">Na rede da loja o Central aparece sozinho. Só confirme o nome deste PC.</p>
 
         <div className="field">
           <label>Teste de câmera</label>
@@ -117,26 +116,22 @@ export function SetupWizard({ onDone }: Props) {
             <video ref={videoRef} muted playsInline />
             {!camOk && <div className="video-placeholder">{camMsg}</div>}
           </div>
-          <p className="muted" style={{ marginTop: 0, fontSize: "0.85rem" }}>
-            DroidCam no celular (Wi‑Fi) ou webcam USB. Rosto iluminado de frente; evite janela atrás da cabeça e
-            óculos escuros.
-          </p>
           <button className="btn ghost" type="button" onClick={testCamera}>
             {camOk ? "Testar de novo" : "Abrir webcam"}
           </button>
         </div>
 
         <div className="field">
-          <label>Centrais encontrados na LAN</label>
+          <label>GeekCentral na rede</label>
           {peers.length === 0 ? (
-            <p className="muted">{scanning ? "Procurando GeekCentral…" : "Nenhuma encontrada"}</p>
+            <p className="muted">{scanning ? "Procurando…" : "Nenhum Central na LAN"}</p>
           ) : (
             <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
               {peers.map((p) => (
                 <button
                   key={p.serverUrl}
                   type="button"
-                  className="btn ghost"
+                  className={`btn ${p.serverUrl === serverUrl ? "" : "ghost"}`}
                   style={{ justifyContent: "flex-start", textAlign: "left" }}
                   onClick={() => setServerUrl(p.serverUrl)}
                 >
@@ -151,36 +146,13 @@ export function SetupWizard({ onDone }: Props) {
         </div>
 
         <div className="field">
-          <label>URL do servidor</label>
-          <input
-            value={serverUrl}
-            onChange={(e) => setServerUrl(e.target.value)}
-            placeholder="http://192.168.0.10:8787"
-          />
-        </div>
-        <div className="field">
           <label>Nome desta estação</label>
           <input value={stationName} onChange={(e) => setStationName(e.target.value)} placeholder="PC-01" />
         </div>
-        <div className="field">
-          <label>Código do GeekCentral (6 dígitos)</label>
-          <input
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            value={pairCode}
-            onChange={(e) => setPairCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            placeholder="Ex.: 482913"
-            maxLength={6}
-            style={{ fontSize: "1.35rem", letterSpacing: "0.2em", fontFamily: "ui-monospace, monospace" }}
-          />
-          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
-            Olhe o número grande na tela do PC controle (válido até usar ou 15 min).
-          </p>
-        </div>
         {error && <p className="error-text">{error}</p>}
         <div className="row">
-          <button className="btn" type="button" disabled={busy} onClick={submit}>
-            {busy ? "Conectando…" : "Salvar e conectar"}
+          <button className="btn" type="button" disabled={busy || !serverUrl} onClick={submit}>
+            {busy ? "Conectando…" : "Conectar"}
           </button>
         </div>
       </div>

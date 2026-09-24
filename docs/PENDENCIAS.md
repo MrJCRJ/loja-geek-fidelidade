@@ -8,7 +8,7 @@ Foco: **Mercado Pago**, **secrets**, **primeira release do Central**. URL fixa e
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
 **Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — dono controla de casa (`admin.geekloja.com.br` / `loja.geekloja.com.br`); funcionário só no Wi‑Fi da loja  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
-**Pareamento (próximo build):** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — código 6 dígitos no Central; sem digitar segredo longo  
+**Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
 **Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — de casa publica release; na loja o botão instala; **0 releases** ainda  
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  

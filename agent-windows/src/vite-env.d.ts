@@ -63,6 +63,8 @@ declare global {
       onRequestQuit: (cb: () => void) => () => void;
       onRequestStaffPin: (cb: () => void) => () => void;
       onRequestLock: (cb: () => void) => () => void;
+      getAppVersion: () => Promise<string>;
+      applyLockUpdate: () => Promise<{ ok: boolean; error?: string; willRelaunch?: boolean; already?: boolean }>;
       updateTray: (payload: {
         phase: string;
         name?: string;

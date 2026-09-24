@@ -70,7 +70,7 @@ Sem A1–A3 o site não cobra e não fala com a loja de forma estável.
 | D2 | Aviso de saldo baixo + HUD com resto de horas | `[x]` |
 | D3 | Auto-trava modo Admin/PIN | `[x]` |
 | D4 | Pausar cobrança quando VIP ausente | `[x]` |
-| D5 | Atualização automática do .exe | `[~]` electron-updater base |
+| D5 | Atualização automática do .exe | `[x]` botão no celular + catch-up do PC desligado |
 | D6 | Fechar / avisar Steam-Discord ao travar (integração) | `[x]` splash + banner ao hard lock |
 | D7 | Modo quiosque Windows (Assigned Access) documentado | `[~]` docs/quiosque-windows.md |
 | D8 | Indicador claro “crédito pausado” / “ausente Xs” | `[x]` HUD |

@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
-import { api, formatDuration, type Station } from "../../api";
+import { api, formatClock, formatDuration, type Station } from "../../api";
 import { QrCode } from "../components/QrCode";
+import { TimeDurationPicker, durationToSeconds } from "../components/TimeDurationPicker";
 import type { LiveStationStatus } from "../types";
 
 type Props = {
@@ -17,7 +18,6 @@ type Props = {
     confirmLabel?: string;
   }) => Promise<boolean>;
   remoteReadOnly?: boolean;
-  pairCode?: string;
   compact?: boolean;
 };
 
@@ -30,10 +30,8 @@ export function EstacoesTab({
   onToast,
   askConfirm,
   remoteReadOnly,
-  pairCode,
   compact,
 }: Props) {
-  const [showPair, setShowPair] = useState(true);
   const [stationName, setStationName] = useState("");
   const [messageText, setMessageText] = useState("Olá da central!");
   const [messageTitle, setMessageTitle] = useState("Aviso da loja");
@@ -41,13 +39,9 @@ export function EstacoesTab({
   const [messageDuration, setMessageDuration] = useState(15);
   const [createdToken, setCreatedToken] = useState<{ name: string; token: string } | null>(null);
   const [liberarId, setLiberarId] = useState<string | null>(null);
+  const [unlockH, setUnlockH] = useState(0);
+  const [unlockM, setUnlockM] = useState(30);
   const onlineMap = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
-  const unlockPresets = [
-    { label: "15 min", sec: 15 * 60 },
-    { label: "30 min", sec: 30 * 60 },
-    { label: "1 h", sec: 60 * 60 },
-    { label: "2 h", sec: 2 * 60 * 60 },
-  ];
 
   const messageBody = () => ({
     command: "message" as const,
@@ -68,8 +62,9 @@ export function EstacoesTab({
     })
       .then(() => {
         if (command === "unlock_screen" && durationSec) {
-          const min = Math.round(durationSec / 60);
-          onToast(min >= 60 ? `Liberado por ${min / 60} h` : `Liberado por ${min} min`, "ok");
+          const h = Math.floor(durationSec / 3600);
+          const m = Math.round((durationSec % 3600) / 60);
+          onToast(h ? `Liberado por ${h}h ${String(m).padStart(2, "0")}m` : `Liberado por ${m} min`, "ok");
           return;
         }
         onToast(`Comando ${command} enviado`, "ok");
@@ -81,35 +76,12 @@ export function EstacoesTab({
     sendCmd(stationId, "unlock_screen", undefined, sec);
   };
 
-  const pairBox =
-    pairCode && !remoteReadOnly ? (
-      <section className="panel pair-box">
-        <p className="muted" style={{ margin: "0 0 0.35rem" }}>
-          Senha / código para cadastrar o GeekLock
-        </p>
-        <p className="pair-code-digits mono">{showPair ? pairCode : "••••••"}</p>
-        <p className="muted" style={{ margin: "0.35rem 0 0.75rem" }}>
-          No Lock: <span className="mono">http://192.168.3.70:8787</span> + este código
-        </p>
-        <div className="row">
-          <button className="btn" type="button" onClick={() => setShowPair((v) => !v)}>
-            {showPair ? "Ocultar" : "Visualizar senha"}
-          </button>
-          <button
-            className="btn ghost"
-            type="button"
-            onClick={() =>
-              navigator.clipboard.writeText(pairCode).then(
-                () => onToast("Código copiado", "ok"),
-                () => onError("Falha ao copiar"),
-              )
-            }
-          >
-            Copiar
-          </button>
-        </div>
-      </section>
-    ) : null;
+  const pairBox = !remoteReadOnly ? (
+    <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+      GeekLock novo: na rede da loja ele acha o Central sozinho. Só ponha o nome do PC (ex. PC-02) e
+      Conectar.
+    </p>
+  ) : null;
 
   if (compact) {
     return (
@@ -122,7 +94,7 @@ export function EstacoesTab({
             const st = liveStatus[s.id];
             const modeLabel =
               st?.mode === "admin"
-                ? "Liberado"
+                ? `Liberado · ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
                 : st?.mode === "vip"
                   ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
                   : st?.phase === "locked" || st?.phase === "boot"
@@ -130,6 +102,12 @@ export function EstacoesTab({
                     : online
                       ? "Livre"
                       : "Offline";
+            const ver = s.lock_version || "?";
+            const verHint = !s.lock_version
+              ? "versão desconhecida"
+              : online
+                ? `v${ver}`
+                : `v${ver} · desligado`;
             return (
               <section key={s.id} className="panel pc-card">
                 <div className="pc-card-head">
@@ -138,19 +116,31 @@ export function EstacoesTab({
                 </div>
                 <p className="muted" style={{ margin: "0 0 0.75rem" }}>
                   {modeLabel}
+                  <span className="mono" style={{ marginLeft: "0.5rem" }}>
+                    {verHint}
+                  </span>
                 </p>
                 {!remoteReadOnly && liberarId === s.id ? (
                   <div>
                     <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-                      Liberar por quanto tempo?
+                      Tempo (mín. 30 min, máx. 23h 59min)
                     </p>
-                    <div className="time-chips">
-                      {unlockPresets.map((p) => (
-                        <button className="btn" type="button" key={p.sec} onClick={() => liberarPor(s.id, p.sec)}>
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
+                    <TimeDurationPicker
+                      hours={unlockH}
+                      minutes={unlockM}
+                      onChange={(h, m) => {
+                        setUnlockH(h);
+                        setUnlockM(m);
+                      }}
+                    />
+                    <button
+                      className="btn"
+                      type="button"
+                      style={{ marginTop: "0.5rem", width: "100%" }}
+                      onClick={() => liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
+                    >
+                      Liberar {unlockH}h {String(unlockM).padStart(2, "0")}min
+                    </button>
                     <button className="btn ghost" type="button" style={{ marginTop: "0.5rem", width: "100%" }} onClick={() => setLiberarId(null)}>
                       Cancelar
                     </button>
@@ -184,6 +174,17 @@ export function EstacoesTab({
         {remoteReadOnly && <p className="muted">De casa não dá para travar/destravar PC.</p>}
         {!remoteReadOnly && (
         <>
+        <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+          Tempo ao Liberar / Destravar (mín. 30 min, máx. 23h 59min)
+        </p>
+        <TimeDurationPicker
+          hours={unlockH}
+          minutes={unlockM}
+          onChange={(h, m) => {
+            setUnlockH(h);
+            setUnlockM(m);
+          }}
+        />
         <form
           className="row"
           onSubmit={(e) => {
@@ -252,13 +253,14 @@ export function EstacoesTab({
               <th>Conexão</th>
               <th>Estado ao vivo</th>
               <th>IP</th>
+              <th>Versão</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
             {stations.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={6}>
                   <div className="empty-state">
                     <strong>Nenhuma estação</strong>
                     <p>Crie uma acima ou faça claim pelo GeekLock / browser.</p>
@@ -271,7 +273,7 @@ export function EstacoesTab({
               const st = liveStatus[s.id];
               const modeLabel =
                 st?.mode === "admin"
-                  ? "Admin liberado"
+                  ? `Admin · ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
                   : st?.mode === "vip"
                     ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
                     : st?.phase === "locked" || st?.phase === "boot"
@@ -297,6 +299,7 @@ export function EstacoesTab({
                     )}
                   </td>
                   <td>{s.last_ip || "—"}</td>
+                  <td className="mono">{s.lock_version || "—"}</td>
                   <td className="row" style={{ flexWrap: "wrap" }}>
                     {remoteReadOnly ? (
                       <span className="muted">só ver</span>
@@ -305,7 +308,11 @@ export function EstacoesTab({
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "lock_screen")}>
                       Travar
                     </button>
-                    <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "unlock_screen")}>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
+                    >
                       Destravar
                     </button>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
@@ -435,7 +442,10 @@ export function EstacoesTab({
             onClick={() =>
               api("/api/stations/command-all", {
                 method: "POST",
-                body: JSON.stringify({ command: "unlock_screen" }),
+                body: JSON.stringify({
+                  command: "unlock_screen",
+                  durationSec: durationToSeconds(unlockH, unlockM),
+                }),
               })
                 .then(() => onToast("Destravar todos enviado", "ok"))
                 .catch((e) => onError(e.message))

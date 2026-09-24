@@ -38,7 +38,6 @@ import {
   actorLabel,
   stationFromHeader,
 } from "./http-guards.js";
-import { ensurePairCode, rotatePairCode } from "./pair-code.js";
 import {
   homeAdminUrl,
   isLanControlHost,
@@ -264,22 +263,6 @@ export async function registerRoutes(app: FastifyInstance) {
       shopUrl: shopAdminUrl(config.port),
       homeUrl: homeAdminUrl(),
     };
-  });
-
-  app.get("/api/admin/pair-code", async (req, reply) => {
-    if (!(await adminGuard(req, reply))) return;
-    if (getAuthRole(req) === "clerk" && !isOnStoreNetwork(req)) {
-      return reply.code(403).send({ error: "Código de pareamento só no Wi‑Fi da loja.", code: "off_store_wifi" });
-    }
-    if (!isStaffUiHost(requestHost(req))) {
-      return reply.code(403).send({ error: "Código de pareamento só na loja.", code: "remote_readonly" });
-    }
-    return ensurePairCode();
-  });
-
-  app.post("/api/admin/pair-code/rotate", async (req, reply) => {
-    if (!(await ownerWriteGuard(req, reply))) return;
-    return rotatePairCode();
   });
 
   app.get("/api/admin/staff", async (req, reply) => {

@@ -10,6 +10,12 @@ function splitSeconds(seconds: number) {
   return { s, h, m, r };
 }
 
+/** Relógio HH:MM:SS (equipe / HUD). */
+export function formatClock(seconds: number): string {
+  const { h, m, r } = splitSeconds(seconds);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+}
+
 /** Sessão / elapsed: `1h 05m` ou `5m 30s`. */
 export function formatDuration(seconds: number): string {
   const { h, m, r } = splitSeconds(seconds);

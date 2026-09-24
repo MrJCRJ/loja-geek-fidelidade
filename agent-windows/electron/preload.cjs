@@ -40,4 +40,6 @@ contextBridge.exposeInMainWorld("geeklock", {
     return () => ipcRenderer.removeListener("session:request-lock", handler);
   },
   updateTray: (payload) => ipcRenderer.send("tray:update", payload),
+  getAppVersion: () => ipcRenderer.invoke("app:version"),
+  applyLockUpdate: () => ipcRenderer.invoke("lock:apply-update"),
 });

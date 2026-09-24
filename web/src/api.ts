@@ -1,5 +1,5 @@
 import { ApiError } from "../../shared/api-error";
-import { formatDuration as formatDurationShared } from "../../shared/format-time";
+import { formatClock as formatClockShared, formatDuration as formatDurationShared } from "../../shared/format-time";
 
 export type CustomerLevel = "bronze" | "prata" | "ouro";
 
@@ -28,6 +28,7 @@ export type Station = {
   last_seen_at?: string | null;
   last_ip?: string | null;
   online?: number;
+  lock_version?: string | null;
   created_at?: string;
 };
 
@@ -86,6 +87,10 @@ export type SessionStats = {
 
 export function formatDuration(seconds: number) {
   return formatDurationShared(seconds);
+}
+
+export function formatClock(seconds: number) {
+  return formatClockShared(seconds);
 }
 
 const TOKEN_KEY = "lg_admin_token";

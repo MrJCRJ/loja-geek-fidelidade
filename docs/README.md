@@ -27,7 +27,7 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 | [SETUP-WINDOWS-LOJA.md](./SETUP-WINDOWS-LOJA.md) | PC **principal** no Windows — sem recriar túnel |
 | [GEEKLOCK-INSTALAR-ESTACOES.md](./GEEKLOCK-INSTALAR-ESTACOES.md) | Instalar / atualizar Lock nas estações (pendrive; SMB não empurra) |
 | [ATUALIZAR-GEEKLOCK-ESTACAO.md](./ATUALIZAR-GEEKLOCK-ESTACAO.md) | Prompt curto no PC da estação |
-| [PAIRING-CODIGO-CURTO.md](./PAIRING-CODIGO-CURTO.md) | Código de 6 dígitos |
+| [PAIRING-CODIGO-CURTO.md](./PAIRING-CODIGO-CURTO.md) | Pareamento LAN (sem código) |
 | [PROMPT-PC-PRINCIPAL.txt](./PROMPT-PC-PRINCIPAL.txt) | Colar no Cursor do PC principal |
 | [PROMPT-PC-GEEKLOCK.txt](./PROMPT-PC-GEEKLOCK.txt) | Colar no Cursor do GeekLock |
 

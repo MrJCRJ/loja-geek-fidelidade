@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import os from "node:os";
-import { HOME_HOST, SHOP_HOST, SHOP_PUBLIC_HOST, requestHost } from "./request-scope.js";
+import { HOME_HOST, PUBLIC_API_HOST, SHOP_HOST, SHOP_PUBLIC_HOST, requestHost } from "./request-scope.js";
 
 /** IPv4 público da loja (NAT). Env ganha; senão o probe preenche. */
 let storePublicIp = (process.env.STORE_PUBLIC_IP || "").trim() || null;
@@ -77,12 +77,20 @@ function isPublicStaffHost(host: string): boolean {
   return host === SHOP_PUBLIC_HOST || host === HOME_HOST;
 }
 
-/**
- * Mesma rede da Central?
- * - Host LAN (IP privado / geek.local / localhost) → sim.
- * - Host público (loja./admin.geekloja) via túnel: 127.0.0.1 NÃO conta.
- *   Vale CF-Connecting-IP na mesma /24 da LAN, ou igual ao IPv4 público da loja.
- */
+/** Parear Lock: só rede da loja, nunca túnel/internet. */
+export function isLanPairAllowed(
+  req: FastifyRequest | { ip?: string; headers?: Record<string, string | string[] | undefined> },
+): boolean {
+  const host = requestHost(req);
+  if (host === PUBLIC_API_HOST || host === HOME_HOST || host === SHOP_PUBLIC_HOST) return false;
+  if (host === SHOP_HOST || host.endsWith(".local") || isPrivateIpv4(host) || isLoopbackHost(host)) {
+    return true;
+  }
+  const ip = clientFacingIp(req);
+  if (isPrivateIpv4(ip) && ip !== "127.0.0.1" && !ip.startsWith("127.")) return true;
+  return false;
+}
+
 export function isOnStoreNetwork(
   req: FastifyRequest | { ip?: string; headers?: Record<string, string | string[] | undefined> },
 ): boolean {

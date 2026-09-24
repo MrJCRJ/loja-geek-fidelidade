@@ -4,7 +4,7 @@ Atualizado em **2026-09-23**.
 **Status:** decisões documentadas — **não implementar nesta visita** (só validar o que já foi para o pendrive).
 
 **Controle no celular** (implementado 2026-09-23): [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md). Na loja: atualizar + CNAME `admin` no túnel existente.  
-**Instalar Lock nas estações + LAN (2026-09-23):** [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md) — da estação **não** dá para empurrar o `.exe` nos outros PCs (SMB recusado). Update Lock via Central continua backlog (D).
+**Instalar Lock nas estações + LAN (2026-09-23):** [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md). Update Lock via Central: Config → **Atualizar GeekLock** (PCs desligados atualizam ao ligar).
 
 ---
 
@@ -20,10 +20,10 @@ Atualizado em **2026-09-23**.
 
 **Ordem futura (após B):**
 
-1. ~~Pareamento código 6 dígitos~~ — **já feito**  
+1. ~~Pareamento~~ — LAN: Lock acha o Central + nome + Conectar  
 2. **(B) Estabilidade** — próxima  
 3. **(A) Setup** — fila de estações / código multi-uso / checklist  
-4. **(D) Update Lock via Central** — empurrar ZIP do Lock a partir do Central  
+4. ~~**(D) Update Lock via Central**~~ — **implementado** (botão + catch-up do PC que estava desligado)  
 5. **(E) GeekAdmin no celular** — [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — **implementado** (validar na loja)  
 
 ---
@@ -33,7 +33,7 @@ Atualizado em **2026-09-23**.
 | Item | Doc | O que fazer na loja |
 |------|-----|---------------------|
 | Fix `lan-discovery` (erro “JavaScript”) | [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) | Recopiar GeekCentral + GeekLock para `C:\` |
-| Código 6 dígitos | [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) | Central Online → digitar código no Lock |
+| Pareamento LAN | [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) | Lock acha o Central; só o nome do PC |
 | UI tela pequena | [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) | Modo compacto no Central |
 | Atualizar Central (GitHub) | [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) | Token + Verificar (precisa de **release** publicado) |
 | Setup Windows / túnel | [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md) | Túnel Nomeado + auto-start |
@@ -78,11 +78,12 @@ Ideias alinhadas ao grilling:
 
 ---
 
-## (D) Update Lock via Central — backlog (depois de A)
+## (D) Update Lock via Central — implementado
 
-- Release `GeekLock-win-x64.zip` (espelho do fluxo Central)  
-- Central: “há update Lock” + comando/WS para estações baixarem  
-- Manter `config.json` da estação  
+- Release `GeekLock-win-x64.zip` (Actions → **Release GeekLock**, tag `lock-vX.Y.Z`)
+- Celular (dono): Config → **Atualizar GeekLock** — lista quem está ok / desatualizado / desligado
+- PCs ligados baixam do Central; desligados pegam no próximo heartbeat
+- Mantém `config.json` da estação
 
 ---
 
@@ -93,7 +94,7 @@ Ideias alinhadas ao grilling:
 3. [ ] Copiar `cloudflared-COPIAR-PARA-USERPROFILE` → `%USERPROFILE%\.cloudflared\`  
 4. [ ] GeekCentral → Online → túnel **Nomeado** + auto-start  
 5. [ ] Health: `https://api.geekloja.com.br/api/health`  
-6. [ ] Parear 1 estação com **código 6 dígitos**  
+6. [ ] Parear 1 estação (Lock acha o Central + nome)  
 7. [ ] Anotar no celular: o que ainda falhou (para voltar e implementar **B**)  
 8. [ ] Cronometrar boot do GeekLock após reinício — [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md)  
 9. [ ] Instalar pack Cursor (`Cursor-Agent\cursor-pack`) para o agent grilar igual — [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md)  

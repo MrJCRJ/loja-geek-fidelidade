@@ -78,6 +78,25 @@ export default function App() {
     staffUnlockMaxSeconds: DEFAULT_STAFF_UNLOCK_MAX_SEC,
     presenceMinFaceRatio: 0.12,
   });
+  const lockVersionRef = useRef("");
+  const applyingLockUpdateRef = useRef(false);
+
+  const applyLockUpdateIfNeeded = useCallback((needed?: boolean | null) => {
+    if (!needed || applyingLockUpdateRef.current) return;
+    applyingLockUpdateRef.current = true;
+    setStatus("Atualizando GeekLock…");
+    window.geeklock
+      .applyLockUpdate()
+      .then((r) => {
+        if (!r.ok) {
+          applyingLockUpdateRef.current = false;
+          setStatus(r.error || "Falha ao atualizar GeekLock");
+        }
+      })
+      .catch(() => {
+        applyingLockUpdateRef.current = false;
+      });
+  }, []);
 
   useEffect(() => {
     absentLeftRef.current = absentLeft;
@@ -463,6 +482,11 @@ export default function App() {
     (async () => {
       const cfg = await window.geeklock.getConfig();
       if (cancelled) return;
+      try {
+        lockVersionRef.current = await window.geeklock.getAppVersion();
+      } catch {
+        lockVersionRef.current = "";
+      }
       setConfig(cfg);
       const fail = await window.geeklock.getLastFailure();
       if (!cancelled) setLastFailure(fail);
@@ -505,8 +529,9 @@ export default function App() {
   useEffect(() => {
     if (!config?.stationToken) return;
     const tick = () => {
-      heartbeat(config)
+      heartbeat(config, lockVersionRef.current || undefined)
         .then((res) => {
+          applyLockUpdateIfNeeded(res.lockUpdate?.needed);
           if (res.sessionSafety) {
             sessionSafetyRef.current = {
               lowBalanceWarnSeconds: res.sessionSafety.lowBalanceWarnSeconds || 300,
@@ -533,7 +558,7 @@ export default function App() {
     tick();
     const t = setInterval(tick, 8000);
     return () => clearInterval(t);
-  }, [config, lockUi]);
+  }, [config, lockUi, applyLockUpdateIfNeeded]);
 
   // Soft lock removido — câmera ruim não trava mais por ausência falsa.
 
@@ -592,6 +617,10 @@ export default function App() {
         const unlockFn = (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> })
           .__geeklockUnlockAdmin;
         unlockFn?.(payload?.durationSec).catch(() => undefined);
+        return;
+      }
+      if (command === "apply_update") {
+        applyLockUpdateIfNeeded(true);
       }
     };
 
@@ -630,7 +659,7 @@ export default function App() {
       sock.disconnect();
       if (stationWsRef.current === sock) stationWsRef.current = null;
     };
-  }, [config?.serverUrl, config?.stationToken]);
+  }, [config?.serverUrl, config?.stationToken, applyLockUpdateIfNeeded]);
 
   // Contagem de ausência 1/s — bandeja, HUD e auto-trava
   useEffect(() => {
@@ -778,17 +807,15 @@ export default function App() {
 
     const unlockAsAdmin = async (durationSec?: number) => {
       if (durationSec && durationSec >= 60) {
-        sessionSafetyRef.current.staffUnlockMaxSeconds = Math.min(7200, Math.floor(durationSec));
+        sessionSafetyRef.current.staffUnlockMaxSeconds = Math.min(86340, Math.max(1800, Math.floor(durationSec)));
       }
-      const minutes = Math.max(
-        1,
-        Math.round((sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC) / 60),
-      );
       sessionStartedAtRef.current = Date.now();
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus(`Liberado pela equipe — trava em ${minutes} min`);
+      setStatus(
+        `Liberado pela equipe — ${formatBalanceShort(sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC)}`,
+      );
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
@@ -911,11 +938,7 @@ export default function App() {
         lockUi().catch(() => undefined);
         return;
       }
-      setStatus(
-        left <= STAFF_UNLOCK_WARN_SEC
-          ? `Equipe — trava em ${left}s`
-          : `Equipe — resta ${formatBalanceShort(left)}`,
-      );
+      setStatus(`Equipe — resta ${formatBalanceShort(left)}`);
     };
     tick();
     const t = window.setInterval(tick, 1000);
@@ -954,13 +977,9 @@ export default function App() {
       setElapsed(0);
       setSession(null);
       setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      {
-        const minutes = Math.max(
-          1,
-          Math.round((sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC) / 60),
-        );
-        setStatus(`Liberado pela equipe — trava em ${minutes} min`);
-      }
+      setStatus(
+        `Liberado pela equipe — ${formatBalanceShort(sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC)}`,
+      );
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;

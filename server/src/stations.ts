@@ -9,12 +9,15 @@ export type StationRow = {
   last_seen_at: string | null;
   last_ip: string | null;
   online: number;
+  lock_version: string | null;
   created_at: string;
 };
 
 export function listStations() {
   return getDb()
-    .prepare("SELECT id, name, last_seen_at, last_ip, online, created_at FROM stations ORDER BY name COLLATE NOCASE")
+    .prepare(
+      "SELECT id, name, last_seen_at, last_ip, online, lock_version, created_at FROM stations ORDER BY name COLLATE NOCASE",
+    )
     .all() as Omit<StationRow, "token">[];
 }
 
@@ -64,21 +67,28 @@ export function deleteStation(id: string) {
   return getDb().prepare("DELETE FROM stations WHERE id = ?").run(id).changes > 0;
 }
 
-export function heartbeatStationById(id: string, ip?: string) {
+export function heartbeatStationById(id: string, ip?: string, lockVersion?: string) {
   const station = getStation(id);
   if (!station) return null;
   const now = new Date().toISOString();
-  getDb()
-    .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1 WHERE id = ?")
-    .run(now, ip || station.last_ip, station.id);
+  const ver = String(lockVersion || "").trim();
+  if (ver) {
+    getDb()
+      .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1, lock_version = ? WHERE id = ?")
+      .run(now, ip || station.last_ip, ver, station.id);
+  } else {
+    getDb()
+      .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1 WHERE id = ?")
+      .run(now, ip || station.last_ip, station.id);
+  }
   return getStation(station.id);
 }
 
 /** `token` deve ser o valor em claro enviado pela estação (não o hash do banco). */
-export function heartbeatStation(token: string, ip?: string) {
+export function heartbeatStation(token: string, ip?: string, lockVersion?: string) {
   const station = getStationByToken(token);
   if (!station) return null;
-  return heartbeatStationById(station.id, ip);
+  return heartbeatStationById(station.id, ip, lockVersion);
 }
 
 export function markStationOffline(id: string) {
