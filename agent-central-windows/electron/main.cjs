@@ -6,6 +6,7 @@ const path = require("node:path");
 const { ServiceManager, isDev } = require("./services.cjs");
 const { ensureApiFirewallRule } = require("./firewall.cjs");
 const { createWindowsShortcuts, removeWindowsShortcuts } = require("./shortcuts.cjs");
+const { ensureKeepAlive } = require("./keepalive.cjs");
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
@@ -161,6 +162,19 @@ app.whenReady().then(async () => {
     }
     await services.start({ fromBoot: peek.setupComplete });
     watchPhoneUpdateRequest();
+    if (isWin) {
+      try {
+        const keep = await ensureKeepAlive({
+          dataDir: services.dataDir(),
+          exePath: process.execPath,
+          log: (m) => services.log(m),
+        });
+        if (keep.ok) services.log("[keepalive] tarefa Windows GeekCentral-ManterLigado ok");
+        else services.log(`[keepalive] ${keep.error || "falhou"}`);
+      } catch (err) {
+        services.log(`[keepalive] ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
   } catch (err) {
     services.status.phase = "error";
     services.status.error = err instanceof Error ? err.message : String(err);

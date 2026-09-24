@@ -127,6 +127,8 @@ class ServiceManager {
     this.watchdogTimer = null;
     this._restarting = false;
     this._restartAttempts = 0;
+    this._tunnelPublicFails = 0;
+    this._tunnelRestartAt = 0;
     this.beacon = null;
     this.status = {
       phase: "idle",
@@ -354,6 +356,30 @@ class ServiceManager {
     return { ...cfg };
   }
 
+  async ensureTunnelHealthy() {
+    if (!this.tunnel.isAlive()) {
+      this.tunnel.state.running = false;
+      this.log("[watchdog] túnel ausente — religando");
+      this._tunnelPublicFails = 0;
+      this._tunnelRestartAt = Date.now();
+      return this.applyTunnelFromConfig();
+    }
+    const publicOk = await this.tunnel.checkPublicHealth();
+    if (publicOk) {
+      this._tunnelPublicFails = 0;
+      return { ok: true };
+    }
+    this._tunnelPublicFails += 1;
+    this.log(`[watchdog] túnel público falhou (${this._tunnelPublicFails})`);
+    if (this._tunnelPublicFails < 2) return { ok: false };
+    const now = Date.now();
+    if (now - this._tunnelRestartAt < 60_000) return { ok: false };
+    this._tunnelRestartAt = now;
+    this._tunnelPublicFails = 0;
+    this.log("[watchdog] público down — reiniciando cloudflared");
+    return this.applyTunnelFromConfig();
+  }
+
   async applyTunnelFromConfig() {
     const cfg = loadConfig(this.dataDir());
     this.tunnel.apiPort = this.status.apiPort;
@@ -436,14 +462,9 @@ class ServiceManager {
         this.status.error = "";
         this.emit();
       }
-      // Túnel: se deveria estar ligado e morreu, tenta de novo; senão só health público
       const cfg = loadConfig(this.dataDir());
       if (cfg.tunnelMode === "quick" || cfg.tunnelMode === "named") {
-        if (!this.tunnel.state.running) {
-          this.applyTunnelFromConfig().catch(() => undefined);
-        } else {
-          this.tunnel.checkPublicHealth().catch(() => undefined);
-        }
+        this.ensureTunnelHealthy().catch(() => undefined);
       }
       return;
     }
@@ -718,6 +739,7 @@ class ServiceManager {
     this.emit();
     this.startWatchdog();
     this.startBeacon();
+    this._tunnelPublicFails = 0;
 
     try {
       await this.applyTunnelFromConfig();

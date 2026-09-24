@@ -165,6 +165,11 @@ class TunnelManager {
     return `${this.state.publicUrl}/api/portal/webhooks/mercadopago`;
   }
 
+  isAlive() {
+    const p = this.proc;
+    return Boolean(p && p.exitCode == null && !p.killed);
+  }
+
   stop() {
     if (!this.proc) {
       this.state.running = false;
@@ -226,7 +231,12 @@ class TunnelManager {
       }
       this.state.namedTunnel = name;
       this.state.publicUrl = String(opts.publicApiUrl || this.state.publicUrl || "").replace(/\/$/, "");
-      args = ["tunnel", "run", name];
+      const namedConfig = path.join(path.dirname(this.dataDir), "cloudflared-config", "config.yml");
+      if (fs.existsSync(namedConfig)) {
+        args = ["tunnel", "--config", namedConfig, "run", name];
+      } else {
+        args = ["tunnel", "run", name];
+      }
     } else {
       args = ["tunnel", "--url", local, "--no-autoupdate"];
     }
