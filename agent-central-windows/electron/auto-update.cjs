@@ -2,7 +2,7 @@
  * Auto-update via GitHub Releases (electron-updater).
  * Só roda em app empacotado. Build NSIS + publish github para funcionar de verdade.
  */
-const { app, dialog } = require("electron");
+const { app } = require("electron");
 
 function setupAutoUpdate(log = console) {
   if (!app.isPackaged) return;
@@ -18,37 +18,8 @@ function setupAutoUpdate(log = console) {
   autoUpdater.autoDownload = false;
   autoUpdater.autoInstallOnAppQuit = true;
 
-  autoUpdater.on("update-available", (info) => {
-    dialog
-      .showMessageBox({
-        type: "info",
-        title: "Atualização GeekCentral",
-        message: `Versão ${info.version} pronta para baixar.`,
-        buttons: ["Baixar agora", "Depois"],
-        defaultId: 0,
-        cancelId: 1,
-      })
-      .then((r) => {
-        if (r.response === 0) autoUpdater.downloadUpdate().catch(() => undefined);
-      })
-      .catch(() => undefined);
-  });
-
-  autoUpdater.on("update-downloaded", () => {
-    dialog
-      .showMessageBox({
-        type: "info",
-        title: "Atualização pronta",
-        message: "Reinicie o GeekCentral para instalar (serviços reiniciam juntos).",
-        buttons: ["Reiniciar agora", "Na próxima abertura"],
-        defaultId: 0,
-        cancelId: 1,
-      })
-      .then((r) => {
-        if (r.response === 0) autoUpdater.quitAndInstall();
-      })
-      .catch(() => undefined);
-  });
+  autoUpdater.on("update-available", () => undefined);
+  autoUpdater.on("update-downloaded", () => undefined);
 
   autoUpdater.on("error", (err) => {
     log.warn?.("[auto-update]", err?.message || err);

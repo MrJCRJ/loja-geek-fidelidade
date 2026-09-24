@@ -114,10 +114,6 @@ function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("GeekCentral");
   tray.setContextMenu(buildTrayMenu());
-  tray.on("double-click", () => openGeekAdmin());
-  tray.on("click", () => {
-    if (isWin) openGeekAdmin();
-  });
 }
 
 function ensureHeadlessSetup() {
@@ -141,7 +137,7 @@ function ensureHeadlessSetup() {
 }
 
 if (gotSingleInstanceLock) {
-  app.on("second-instance", () => openGeekAdmin());
+  app.on("second-instance", () => undefined);
 }
 
 app.whenReady().then(async () => {
@@ -156,13 +152,7 @@ app.whenReady().then(async () => {
   }
 
   createTray();
-
-  try {
-    const { setupAutoUpdate } = require("./auto-update.cjs");
-    setupAutoUpdate(console);
-  } catch {
-    /* ignore */
-  }
+  // Sem janela e sem diálogo de update — celular ou bandeja → Atualizar agora.
 
   try {
     if (!peek.firewallRuleDone && isWin && peek.setupComplete) {
