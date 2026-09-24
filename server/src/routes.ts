@@ -49,6 +49,11 @@ import {
 } from "./request-scope.js";
 import { isOnStoreNetwork } from "./store-network.js";
 import {
+  checkCentralUpdate,
+  requestCentralInstall,
+  setCentralGithubToken,
+} from "./central-update.js";
+import {
   createStaffUser,
   hasNamedOwner,
   listStaffUsers,
@@ -468,6 +473,31 @@ export async function registerRoutes(app: FastifyInstance) {
         binaryFound: tunnel.binaryFound,
       },
     };
+  });
+
+  app.get("/api/admin/central-update", async (req, reply) => {
+    if (!(await ownerGuard(req, reply))) return;
+    return checkCentralUpdate();
+  });
+
+  app.post("/api/admin/central-update/token", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    const body = z.object({ token: z.string().min(8) }).parse(req.body);
+    return setCentralGithubToken(body.token);
+  });
+
+  app.post("/api/admin/central-update/apply", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    const result = requestCentralInstall();
+    if (!result.ok) return reply.code(400).send(result);
+    logEvent({
+      level: "warn",
+      source: "admin",
+      kind: "central.update",
+      message: `${actorLabel(req)} pediu atualização do GeekCentral`,
+      meta: { actor: actorLabel(req) },
+    });
+    return result;
   });
 
   app.get("/api/admin/tunnel", async (req, reply) => {

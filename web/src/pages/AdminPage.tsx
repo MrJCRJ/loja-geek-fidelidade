@@ -476,6 +476,7 @@ export default function AdminPage() {
           setSettings={data.setSettings}
           onError={setError}
           onToast={toast.push}
+          askConfirm={askConfirm}
         />
       )}
     </div>

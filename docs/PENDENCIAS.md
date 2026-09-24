@@ -26,7 +26,7 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 | Área | Situação |
 |------|----------|
 | Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD + instalador + equipe só no Wi‑Fi da loja |
-| Release GeekCentral | `[ ]` **0 releases** — botão Atualizar na loja sem ZIP; de casa só dá para *publicar* |
+| Release GeekCentral | `[ ]` disparar `central-v1.1.1`; no celular (dono) Config → Atualizar Central |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |

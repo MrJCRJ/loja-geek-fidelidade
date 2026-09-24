@@ -290,7 +290,18 @@ class ServiceManager {
 
   getGithubUpdateToken() {
     const cfg = loadConfig(this.dataDir());
-    return String(cfg.githubUpdateToken || "");
+    const fromCfg = String(cfg.githubUpdateToken || "").trim();
+    if (fromCfg) return fromCfg;
+    const fromEnv = String(process.env.GITHUB_TOKEN || process.env.GH_TOKEN || "").trim();
+    if (fromEnv) return fromEnv;
+    try {
+      const { execFileSync } = require("node:child_process");
+      return String(
+        execFileSync("gh", ["auth", "token"], { encoding: "utf8", timeout: 4000, windowsHide: true }),
+      ).trim();
+    } catch {
+      return "";
+    }
   }
 
   setGithubUpdateToken(token) {
@@ -658,6 +669,9 @@ class ServiceManager {
       UNIT_NAME: String(cfg.unitName || "Unidade 1"),
       UNIT_ID: String(cfg.unitId || "unit-1"),
       PORTAL_ORIGIN: String(cfg.portalOrigin || DEFAULT_PORTAL),
+      GEEKCENTRAL_DATA_DIR: dataDir,
+      GEEKCENTRAL_APP_VERSION: String(require("../package.json").version || "0.0.0"),
+      GITHUB_TOKEN: this.getGithubUpdateToken() || "",
     };
     const api = spawn(apiCmd, [serverEntry], {
       cwd: path.join(nodeDir, "server"),

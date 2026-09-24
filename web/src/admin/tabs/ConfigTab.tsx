@@ -49,14 +49,30 @@ type TunnelStatus = {
   namedHint?: string;
 };
 
+type CentralUpdate = {
+  ok: boolean;
+  error?: string;
+  updateAvailable?: boolean;
+  currentVersion?: string;
+  latestVersion?: string;
+  hasGithub?: boolean;
+  source?: string;
+};
+
 type Props = {
   settings: AdminSettings;
   setSettings: (s: AdminSettings) => void;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: "ok" | "error" | "info") => void;
+  askConfirm?: (opts: {
+    title: string;
+    message: string;
+    danger?: boolean;
+    confirmLabel?: string;
+  }) => Promise<boolean>;
 };
 
-export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
+export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm }: Props) {
   const [backups, setBackups] = useState<BackupRow[]>([]);
   const [schedule, setSchedule] = useState<BackupSchedule | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
@@ -67,6 +83,8 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
   const [tunnelAutoStart, setTunnelAutoStart] = useState(false);
   const [tunnelBusy, setTunnelBusy] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [centralUpd, setCentralUpd] = useState<CentralUpdate | null>(null);
+  const [updBusy, setUpdBusy] = useState(false);
 
   const loadTunnel = async () => {
     try {
@@ -91,6 +109,11 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
       setSchedule(b.schedule || null);
       setReadiness(r);
       await loadTunnel();
+      try {
+        setCentralUpd(await api<CentralUpdate>("/api/admin/central-update"));
+      } catch {
+        /* dono-only; clerk não chega aqui */
+      }
     } catch {
       /* ignore */
     }
@@ -835,6 +858,75 @@ export function ConfigTab({ settings, setSettings, onError, onToast }: Props) {
             {tunnel.logTail.slice(-12).join("\n")}
           </pre>
         )}
+      </section>
+
+      <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
+        <h2>Atualizar Central</h2>
+        <p className="muted" style={{ marginTop: 0 }}>
+          Versão neste PC: <span className="mono">{centralUpd?.currentVersion || "—"}</span>
+          {centralUpd?.latestVersion ? (
+            <>
+              {" "}
+              · GitHub: <span className="mono">{centralUpd.latestVersion}</span>
+              {centralUpd.updateAvailable ? " (nova)" : ""}
+            </>
+          ) : null}
+        </p>
+        <p className="muted">
+          GitHub neste PC:{" "}
+          {centralUpd?.hasGithub
+            ? `ok (${centralUpd.source === "gh" ? "gh já logado" : centralUpd.source || "token"})`
+            : "não autenticado"}
+        </p>
+        {centralUpd?.error && <p className="muted">{centralUpd.error}</p>}
+        <div className="row">
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={updBusy}
+            onClick={async () => {
+              setUpdBusy(true);
+              try {
+                setCentralUpd(await api<CentralUpdate>("/api/admin/central-update"));
+                onToast("Verificado no GitHub", "ok");
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha ao verificar");
+              } finally {
+                setUpdBusy(false);
+              }
+            }}
+          >
+            Verificar
+          </button>
+          <button
+            className="btn"
+            type="button"
+            disabled={updBusy || !centralUpd?.updateAvailable}
+            onClick={async () => {
+              const ok = askConfirm
+                ? await askConfirm({
+                    title: "Atualizar o Central?",
+                    message:
+                      "A loja fica 1–2 minutos sem API. Os PCs mostram Central offline e voltam sozinhos. Só faça com a loja vazia.",
+                    danger: true,
+                    confirmLabel: "Atualizar agora",
+                  })
+                : true;
+              if (!ok) return;
+              setUpdBusy(true);
+              try {
+                await api("/api/admin/central-update/apply", { method: "POST", body: "{}" });
+                onToast("Central vai reiniciar. Abra de novo em 2 minutos.", "info");
+              } catch (e) {
+                onError(e instanceof Error ? e.message : "Falha ao pedir update");
+              } finally {
+                setUpdBusy(false);
+              }
+            }}
+          >
+            {updBusy ? "…" : "Baixar e instalar"}
+          </button>
+        </div>
       </section>
 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>

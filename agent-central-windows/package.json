@@ -1,7 +1,7 @@
 {
   "name": "geekcentral",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "GeekCentral — servidor + admin VIP no PC controle Windows",
   "main": "electron/main.cjs",
   "author": "Loja Geek",

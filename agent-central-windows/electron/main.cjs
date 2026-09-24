@@ -9,6 +9,7 @@ const {
   nativeImage,
   screen,
 } = require("electron");
+const fs = require("node:fs");
 const path = require("node:path");
 const { ServiceManager, isDev } = require("./services.cjs");
 const { ensureApiFirewallRule } = require("./firewall.cjs");
@@ -259,6 +260,7 @@ app.whenReady().then(async () => {
       services.markFirewallAttempt(fw);
     }
     await services.start({ fromBoot: startHidden });
+    watchPhoneUpdateRequest();
   } catch (err) {
     services.status.phase = "error";
     services.status.error = err instanceof Error ? err.message : String(err);
@@ -383,28 +385,53 @@ ipcMain.handle("central:check-update", async () => {
   }
 });
 
+async function runInstallUpdate() {
+  const { checkForUpdate, downloadAndInstall } = require("./github-update.cjs");
+  const token = services.getGithubUpdateToken();
+  const info = await checkForUpdate(token);
+  if (!info.ok) return info;
+  if (!info.updateAvailable) {
+    return { ok: false, error: "Já está na versão mais recente", ...info };
+  }
+  services.stopWatchdog();
+  services.stop();
+  const result = await downloadAndInstall(token, info, { log: console });
+  setTimeout(() => {
+    const { app } = require("electron");
+    app.quit();
+  }, 400);
+  return result;
+}
+
 ipcMain.handle("central:install-update", async () => {
   try {
-    const { checkForUpdate, downloadAndInstall } = require("./github-update.cjs");
-    const token = services.getGithubUpdateToken();
-    const info = await checkForUpdate(token);
-    if (!info.ok) return info;
-    if (!info.updateAvailable) {
-      return { ok: false, error: "Já está na versão mais recente", ...info };
-    }
-    services.stopWatchdog();
-    services.stop();
-    const result = await downloadAndInstall(token, info, { log: console });
-    // Sai para o .cmd aplicar
-    setTimeout(() => {
-      const { app } = require("electron");
-      app.quit();
-    }, 400);
-    return result;
+    return await runInstallUpdate();
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : String(err) };
   }
 });
+
+function watchPhoneUpdateRequest() {
+  const f = path.join(services.dataDir(), "update-request.json");
+  setInterval(() => {
+    if (!fs.existsSync(f)) return;
+    let req = {};
+    try {
+      req = JSON.parse(fs.readFileSync(f, "utf8"));
+    } catch {
+      return;
+    }
+    if (req.action !== "install") return;
+    try {
+      fs.unlinkSync(f);
+    } catch {
+      /* ignore */
+    }
+    runInstallUpdate().catch((err) => {
+      console.error("[update] pedido do celular falhou:", err);
+    });
+  }, 2000);
+}
 
 ipcMain.handle("central:ensure-firewall", async () => {
   const fw = await ensureApiFirewallRule(services.status.apiPort || 8787);
