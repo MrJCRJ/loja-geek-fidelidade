@@ -53,9 +53,7 @@ cd web && npm install && npm run dev
 
 | Tela | URL |
 |------|-----|
-| Home | http://localhost:5173/ |
 | Admin | http://localhost:5173/admin — senha do `.env` / setup |
-| Estação | http://localhost:5173/station?name=Balcao-1 |
 
 ## Docker no PC controle (Linux)
 
@@ -80,7 +78,7 @@ bash scripts/linux-loja.sh start
 | **GeekCentral** | PC controle — cadastro VIP, enroll, estações |
 | **GeekLock** | Estação — trava, reconhecimento, sessão |
 
-Não use Firefox/Chrome. Tudo abre em janela Electron.
+GeekCentral no PC da loja: só bandeja (sem janela). Controle no celular.
 
 ```bash
 bash scripts/linux-loja.sh admin      # só GeekCentral
@@ -88,17 +86,6 @@ bash scripts/linux-loja.sh geeklock   # só GeekLock
 bash scripts/linux-loja.sh droidcam IP_DO_CELULAR
 bash scripts/linux-loja.sh stop
 ```
-
-## Ligar uma estação na loja (browser)
-
-1. No admin, crie a estação **ou** na própria estação use o claim com o segredo (`STATION_SHARED_SECRET`).
-2. Abra em kiosk:
-
-```bash
-chromium --kiosk "https://IP-DO-PC-CONTROLE/station?name=PC-03"
-```
-
-> Webcam no **navegador** exige **HTTPS** (ou localhost). O **GeekLock.exe** não precisa de HTTPS.
 
 ## Portal do cliente (Vercel)
 

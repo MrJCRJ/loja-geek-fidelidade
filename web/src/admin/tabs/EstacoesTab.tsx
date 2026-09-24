@@ -263,7 +263,7 @@ export function EstacoesTab({
                 <td colSpan={6}>
                   <div className="empty-state">
                     <strong>Nenhuma estação</strong>
-                    <p>Crie uma acima ou faça claim pelo GeekLock / browser.</p>
+                    <p>Crie uma acima ou pareie pelo GeekLock na LAN (nome + Conectar).</p>
                   </div>
                 </td>
               </tr>

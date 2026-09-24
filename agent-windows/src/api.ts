@@ -50,32 +50,11 @@ export async function checkHealth(config: GeekLockConfig) {
   return apiFetch<{ ok: boolean; faceService: boolean }>(config, "/api/health");
 }
 
-export async function claimStation(config: GeekLockConfig) {
-  return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/claim", {
-    method: "POST",
-    body: JSON.stringify({
-      name: config.stationName,
-      sharedSecret: config.sharedSecret,
-    }),
-  });
-}
-
 /** Na LAN: só o nome. */
 export async function pairStationLan(config: GeekLockConfig) {
   return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/pair-lan", {
     method: "POST",
     body: JSON.stringify({ name: config.stationName }),
-  });
-}
-
-/** Pareamento por código de 6 dígitos (sem sharedSecret). */
-export async function pairStation(config: GeekLockConfig, pairCode: string) {
-  return apiFetch<{ id: string; name: string; token: string }>(config, "/api/stations/pair", {
-    method: "POST",
-    body: JSON.stringify({
-      name: config.stationName,
-      pairCode: pairCode.replace(/\D/g, ""),
-    }),
   });
 }
 

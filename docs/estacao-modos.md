@@ -11,10 +11,7 @@ Pasta: `agent-windows/` · Pack: `bash scripts/pack-pendrive.sh`
 
 ## Estação browser (`/station`)
 
-- Kiosk no Chromium (opcional)
-- Reconhece VIP → **pontos / resgate de recompensas**
-- Exige **HTTPS** para webcam (nginx com profile `https`)
-- Útil para balcão / cadastro sem travar o OS
+Removida. Estação = **GeekLock** na LAN.
 
 ## Qual usar?
 

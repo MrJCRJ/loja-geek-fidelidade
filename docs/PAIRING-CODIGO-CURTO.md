@@ -3,7 +3,7 @@
 Atualizado em **2026-09-23**.  
 **Status:** na LAN **não precisa de código**. Instala o Lock → ele acha o Central → nome do PC → Conectar.
 
-O GeekAdmin em `loja.geekloja.com.br` **não mostra código**. Lock na LAN: acha o Central → nome do PC → Conectar. A API antiga `/api/stations/pair` fica só para Lock velho.
+Lock na LAN: acha o Central → nome do PC → Conectar. Sem código. GeekAdmin e a API de 6 dígitos foram removidos.
 
 ---
 

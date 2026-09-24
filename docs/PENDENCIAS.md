@@ -10,7 +10,7 @@ Foco: **Mercado Pago**, **secrets**, **primeira release do Central**. URL fixa e
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
 **Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
-**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — de casa publica release; na loja o botão instala; **0 releases** ainda  
+**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — releases `central-v1.1.2` e `lock-v1.1.0` no GitHub; na loja o botão (ou bandeja) instala  
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
 **GeekLock boot lento no reinício:** [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md) — documentado; medir na loja  
 **Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`  
@@ -26,7 +26,7 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 | Área | Situação |
 |------|----------|
 | Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD + instalador + equipe só no Wi‑Fi da loja |
-| Release GeekCentral | `[ ]` disparar `central-v1.1.1`; no celular (dono) Config → Atualizar Central |
+| Release GeekCentral | `[x]` `central-v1.1.2` + `lock-v1.1.0` no GitHub; 1º pulo na loja ainda é bandeja/pendrive |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |

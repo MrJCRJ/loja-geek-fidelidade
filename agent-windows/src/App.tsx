@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import {
   attachCameraStream,
   checkHealth,
-  claimStation,
+  pairStationLan,
   endSession,
   heartbeat,
   openUserCamera,
@@ -499,7 +499,7 @@ export default function App() {
         await checkHealth(cfg);
         let next = cfg;
         if (!cfg.stationToken) {
-          const claimed = await claimStation(cfg);
+          const claimed = await pairStationLan(cfg);
           next = await window.geeklock.saveToken(claimed.token);
           setConfig(next);
         }

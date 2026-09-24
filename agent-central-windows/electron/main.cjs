@@ -1,28 +1,17 @@
 const { createElectronDebug } = require("./debug.cjs");
-const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  shell,
-  Tray,
-  Menu,
-  nativeImage,
-  screen,
-} = require("electron");
+const { app, ipcMain, shell, Tray, Menu, nativeImage } = require("electron");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { ServiceManager, isDev } = require("./services.cjs");
 const { ensureApiFirewallRule } = require("./firewall.cjs");
 const { createWindowsShortcuts, removeWindowsShortcuts } = require("./shortcuts.cjs");
-const QRCode = require("qrcode");
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
   app.quit();
 }
 
-/** @type {BrowserWindow | null} */
-let mainWindow = null;
 /** @type {Tray | null} */
 let tray = null;
 /** @type {ServiceManager} */
@@ -70,71 +59,9 @@ function wasOpenedAtLogin() {
   }
 }
 
-function focusMainWindow() {
-  if (!mainWindow || mainWindow.isDestroyed()) {
-    createWindow({ show: true });
-    return;
-  }
-  if (mainWindow.isMinimized()) mainWindow.restore();
-  mainWindow.show();
-  mainWindow.focus();
-}
-
-function createWindow(opts = {}) {
-  const show = opts.show !== false;
-  if (mainWindow && !mainWindow.isDestroyed()) {
-    if (show) focusMainWindow();
-    return mainWindow;
-  }
-
-  const work = screen.getPrimaryDisplay().workAreaSize;
-  const width = Math.min(920, Math.max(640, work.width - 24));
-  const height = Math.min(780, Math.max(480, work.height - 24));
-  try {
-    services.ensureUiCompactDefault(work.height < 700);
-  } catch {
-    /* ignore */
-  }
-
-  mainWindow = new BrowserWindow({
-    width,
-    height,
-    minWidth: 640,
-    minHeight: 480,
-    show,
-    autoHideMenuBar: true,
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
-  });
-
-  services.onChange = (status) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send("central:status", status);
-    }
-    updateTrayTooltip(status);
-  };
-
-  if (isDev() && process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    mainWindow.loadFile(path.join(__dirname, "..", "dist", "index.html"));
-  }
-
-  mainWindow.on("close", (e) => {
-    if (isQuitting) return;
-    e.preventDefault();
-    mainWindow.hide();
-  });
-
-  mainWindow.on("closed", () => {
-    mainWindow = null;
-  });
-
-  return mainWindow;
+function openGeekAdmin() {
+  const local = `http://127.0.0.1:${services.status.apiPort || 8787}/admin`;
+  shell.openExternal(shopAdminUrl()).catch(() => shell.openExternal(local));
 }
 
 function updateTrayTooltip(status) {
@@ -151,24 +78,19 @@ function shopAdminUrl() {
 
 function buildTrayMenu() {
   return Menu.buildFromTemplate([
+    { label: "Abrir GeekAdmin", click: () => openGeekAdmin() },
     {
-      label: "Abrir no celular / navegador",
+      label: "Atualizar agora",
       click: () => {
-        shell.openExternal(shopAdminUrl()).catch(() => {
-          shell.openExternal(`http://127.0.0.1:${services.status.apiPort || 8787}/admin`);
-        });
+        runInstallUpdate().catch((err) => debug.warn("update:", err));
       },
-    },
-    {
-      label: "Status do motor",
-      click: () => focusMainWindow(),
     },
     { type: "separator" },
     {
       label: "Reiniciar serviços",
       click: async () => {
         try {
-          await services.start();
+          await services.start({ skipBootDelay: true });
         } catch (err) {
           services.status.phase = "error";
           services.status.error = err instanceof Error ? err.message : String(err);
@@ -192,60 +114,48 @@ function createTray() {
   tray = new Tray(trayIcon());
   tray.setToolTip("GeekCentral");
   tray.setContextMenu(buildTrayMenu());
-  tray.on("double-click", () => {
-    shell.openExternal(shopAdminUrl()).catch(() => focusMainWindow());
-  });
+  tray.on("double-click", () => openGeekAdmin());
   tray.on("click", () => {
-    if (isWin) {
-      shell.openExternal(shopAdminUrl()).catch(() => undefined);
-    }
+    if (isWin) openGeekAdmin();
   });
 }
 
-async function openAdminWindow() {
-  const { session } = require("electron");
-  const url = `http://127.0.0.1:${services.status.apiPort}/admin`;
-  const adminWin = new BrowserWindow({
-    width: 1280,
-    height: 860,
-    title: "GeekCentral — Loja Geek",
-    autoHideMenuBar: true,
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false,
-    },
+function ensureHeadlessSetup() {
+  const peek = services.peekSetup();
+  if (!peek.needsSetup) return peek;
+  const pwd = crypto.randomBytes(12).toString("base64url");
+  const dataDir = services.dataDir();
+  fs.mkdirSync(dataDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(dataDir, "SENHA-INICIAL.txt"),
+    `Senha admin gerada (troque no GeekAdmin):\n${pwd}\n`,
+    "utf8",
+  );
+  services.completeSetup({
+    adminPassword: pwd,
+    jwtSecret: peek.suggestedJwt,
+    stationSharedSecret: peek.suggestedStation,
+    unitName: peek.unitName || "Unidade 1",
   });
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => {
-    if (permission === "media" || permission === "camera" || permission === "microphone") {
-      callback(true);
-      return;
-    }
-    callback(false);
-  });
-  adminWin.loadURL(url);
-  return { ok: true, url };
+  return services.peekSetup();
 }
 
 if (gotSingleInstanceLock) {
-  app.on("second-instance", () => {
-    focusMainWindow();
-  });
+  app.on("second-instance", () => openGeekAdmin());
 }
 
 app.whenReady().then(async () => {
   if (!gotSingleInstanceLock) return;
 
-  const peek = services.peekSetup();
-  const openAtLogin = peek.openAtLogin !== false; // default true após 1º setup
+  services.onChange = (status) => updateTrayTooltip(status);
+
+  let peek = ensureHeadlessSetup();
+  const openAtLogin = peek.openAtLogin !== false;
   if (!isLinux) {
     applyLoginItem(openAtLogin && peek.setupComplete);
   }
 
   createTray();
-
-  const startHidden = peek.setupComplete && !peek.needsSetup;
-  createWindow({ show: !startHidden });
 
   try {
     const { setupAutoUpdate } = require("./auto-update.cjs");
@@ -259,19 +169,13 @@ app.whenReady().then(async () => {
       const fw = await ensureApiFirewallRule(peek.apiPort || 8787);
       services.markFirewallAttempt(fw);
     }
-    await services.start({ fromBoot: startHidden });
+    await services.start({ fromBoot: peek.setupComplete });
     watchPhoneUpdateRequest();
   } catch (err) {
     services.status.phase = "error";
     services.status.error = err instanceof Error ? err.message : String(err);
     services.emit();
-    if (startHidden) focusMainWindow();
   }
-
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow({ show: true });
-    else focusMainWindow();
-  });
 });
 
 app.on("before-quit", () => {
@@ -326,7 +230,10 @@ ipcMain.handle("central:restart", async () => {
   }
 });
 
-ipcMain.handle("central:open-admin", async () => openAdminWindow());
+ipcMain.handle("central:open-admin", async () => {
+  openGeekAdmin();
+  return { ok: true, url: shopAdminUrl() };
+});
 
 ipcMain.handle("central:open-url", async (_e, url) => {
   await shell.openExternal(String(url));
@@ -456,17 +363,6 @@ ipcMain.handle("central:check-tunnel", async () => {
     publicHealthy: services.status.tunnelPublicHealthy,
     status: { ...services.status },
   };
-});
-
-ipcMain.handle("central:qr", async (_e, text) => {
-  const data = String(text || "").trim();
-  if (!data) return { ok: false, error: "vazio" };
-  try {
-    const dataUrl = await QRCode.toDataURL(data, { margin: 1, width: 220 });
-    return { ok: true, dataUrl };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : String(err) };
-  }
 });
 
 ipcMain.handle("central:create-shortcuts", async () => {

@@ -39,22 +39,17 @@ GeekCentral — PC CONTROLE Windows (pendrive)
 O que é
 - Sobe API (porta 8787), reconhecimento facial e o painel admin.
 - Não precisa Docker. Copie a PASTA inteira (não só o .exe).
-- Após o 1º setup, inicia com o Windows (bandeja). Fechar a janela NÃO para a API.
+- Após o 1º setup, inicia com o Windows (só bandeja). Não há janela.
 
 Como usar no PC da loja
 1) Copie a pasta GeekCentral do pendrive para o disco (ex.: C:\GeekCentral).
-2) Execute GeekCentral.exe.
-3) Complete o wizard (senha admin + segredos).
-4) Espere ficar "Online". Anote o IP da LAN.
-5) Clique em "Abrir admin". Opcional: "Liberar firewall (8787)".
-6) Deixe "Iniciar com o Windows" marcado.
-7) Em Portal/Túnel: modo Rápido (teste) ou Nomeado (produção). Copie a URL para VITE_API_URL na Vercel.
+2) Execute GeekCentral.exe — ícone na bandeja. Controle pelo celular: https://loja.geekloja.com.br/admin
+3) Bandeja: Abrir GeekAdmin · Atualizar agora · Reiniciar · Sair.
+4) Túnel Nomeado + auto-start na aba Config do celular (dono).
 
 Estações (outros PCs)
-1) Copie a pasta GeekLock do pendrive.
-2) Execute GeekLock.exe — o assistente lista o GeekCentral na LAN (ou digite o IP).
-3) Nome da estação único (PC-01…) + código de 6 dígitos da tela do Central.
-4) No Central: veja o código grande / checklist / “Criar atalhos” se quiser.
+1) Copie a pasta GeekLock (ou git pull + agent no PC da estação).
+2) GeekLock acha o Central na LAN. Só o nome (PC-01…) → Conectar.
 
 Firewall Windows
 - Use o botão "Liberar firewall" no GeekCentral, ou permita na 1ª execução (rede privada).
