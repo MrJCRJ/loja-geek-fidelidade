@@ -65,6 +65,23 @@ declare global {
       onRequestLock: (cb: () => void) => () => void;
       getAppVersion: () => Promise<string>;
       applyLockUpdate: () => Promise<{ ok: boolean; error?: string; willRelaunch?: boolean; already?: boolean }>;
+      collectHardware?: () => Promise<{
+        cpuName?: string | null;
+        cpuCores?: number | null;
+        cpuTdpW?: number | null;
+        gpus?: Array<{ vendor: string; model: string; vramMb?: number | null }>;
+        ramTotalMb?: number | null;
+        osBuild?: string | null;
+      }>;
+      collectLoadSample?: (opts?: { primaryGpuVendor?: string }) => Promise<{
+        appProcess?: string | null;
+        appTitle?: string | null;
+        cpuPct?: number | null;
+        gpuPct?: number | null;
+        ramPct?: number | null;
+        watts?: number | null;
+        wattsSource?: "sensor" | "estimate" | null;
+      }>;
       updateTray: (payload: {
         phase: string;
         name?: string;

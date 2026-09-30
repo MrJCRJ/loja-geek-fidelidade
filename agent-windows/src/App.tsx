@@ -20,6 +20,7 @@ import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
 import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, staffUnlockLeftSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, STAFF_UNLOCK_WARN_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep } from "./kiosk-helpers";
 import { useRecognizeLoop, type PendingLogin } from "./hooks/useRecognizeLoop";
 import { usePresenceLoop } from "./hooks/usePresenceLoop";
+import { startUsageLoop, type OccupantState } from "./usage-collector";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
 
 export default function App() {
@@ -80,6 +81,8 @@ export default function App() {
   });
   const lockVersionRef = useRef("");
   const applyingLockUpdateRef = useRef(false);
+  const usageFlagsRef = useRef({ detailedTitles: false });
+  const staffUnlockMetaRef = useRef<{ kind?: string; label?: string } | null>(null);
 
   const applyLockUpdateIfNeeded = useCallback((needed?: boolean | null) => {
     if (!needed || applyingLockUpdateRef.current) return;
@@ -178,6 +181,7 @@ export default function App() {
   const lockUi = useCallback(async () => {
     customerRef.current = null;
     sessionRef.current = null;
+    staffUnlockMetaRef.current = null;
     flushSync(() => {
       setPhase("locked");
       phaseRef.current = "locked";
@@ -540,6 +544,11 @@ export default function App() {
               presenceMinFaceRatio: res.sessionSafety.presenceMinFaceRatio || 0.12,
             };
           }
+          if (res.usage) {
+            usageFlagsRef.current = {
+              detailedTitles: Boolean(res.usage.usageDetailedTitles),
+            };
+          }
           if (res.portalPublicUrl) {
             setPortalBaseUrl(res.portalPublicUrl.replace(/\/$/, ""));
           }
@@ -559,6 +568,32 @@ export default function App() {
     const t = setInterval(tick, 8000);
     return () => clearInterval(t);
   }, [config, lockUi, applyLockUpdateIfNeeded]);
+
+  // Uso: inventário + samples 15s (só unlocked; sem keylog)
+  useEffect(() => {
+    if (!config?.stationToken) return;
+    return startUsageLoop({
+      getConfig: () => configRef.current,
+      getPhase: () => phaseRef.current,
+      getFlags: () => ({ detailedTitles: usageFlagsRef.current.detailedTitles }),
+      getOccupant: (): OccupantState | null => {
+        const c = customerRef.current;
+        if (!c) return null;
+        if (c.id === "staff" || c.id === "guest") {
+          const meta = staffUnlockMetaRef.current;
+          return {
+            kind: (meta?.kind as OccupantState["kind"]) || (c.id === "guest" ? "guest_named" : "staff_timed"),
+            customerId: c.id,
+            label: meta?.label || c.name,
+          };
+        }
+        if (sessionRef.current) {
+          return { kind: "vip", customerId: c.id, label: c.name };
+        }
+        return null;
+      },
+    });
+  }, [config?.stationToken]);
 
   // Soft lock removido — câmera ruim não trava mais por ausência falsa.
 
@@ -809,6 +844,7 @@ export default function App() {
       if (durationSec && durationSec >= 60) {
         sessionSafetyRef.current.staffUnlockMaxSeconds = Math.min(86340, Math.max(1800, Math.floor(durationSec)));
       }
+      staffUnlockMetaRef.current = { kind: "staff_timed", label: "Admin" };
       sessionStartedAtRef.current = Date.now();
       setElapsed(0);
       setSession(null);
@@ -934,6 +970,7 @@ export default function App() {
         sessionStartedAtRef.current = null;
         customerRef.current = null;
         setCustomer(null);
+        staffUnlockMetaRef.current = null;
         setStatus("Equipe — tempo esgotado");
         lockUi().catch(() => undefined);
         return;
@@ -973,6 +1010,7 @@ export default function App() {
       }
       setPinMode(null);
       setPin("");
+      staffUnlockMetaRef.current = { kind: "staff_timed", label: "Admin" };
       sessionStartedAtRef.current = Date.now();
       setElapsed(0);
       setSession(null);

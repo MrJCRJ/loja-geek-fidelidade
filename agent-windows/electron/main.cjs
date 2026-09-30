@@ -616,6 +616,10 @@ ipcMain.handle("lock:apply-update", async () => {
   return result;
 });
 
+const { collectHardware, collectLoadSample } = require("./hardware.cjs");
+ipcMain.handle("hw:inventory", async () => collectHardware());
+ipcMain.handle("hw:sample", async (_e, opts) => collectLoadSample(opts || {}));
+
 ipcMain.on("tray:update", (_e, payload) => {
   applyTrayUpdate(payload);
 });

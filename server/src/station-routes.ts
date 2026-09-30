@@ -32,6 +32,16 @@ import {
 } from "./session-safety.js";
 import { logEvent } from "./telemetry.js";
 import { isLanPairAllowed } from "./store-network.js";
+import {
+  buildUsageSummary,
+  ingestUsageSample,
+  listStationHardware,
+  updateStationEnergyCalibration,
+  upsertStationHardware,
+  usageSettingsPayload,
+} from "./station-usage.js";
+
+const occupantKindSchema = z.enum(["vip", "staff_timed", "staff_open", "guest_named"]);
 
 const stationCommandBody = z.object({
   command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
@@ -39,6 +49,8 @@ const stationCommandBody = z.object({
   title: z.string().max(80).optional(),
   level: z.enum(["info", "warn", "urgent"]).optional(),
   durationSec: z.number().int().min(3).max(23 * 3600 + 59 * 60).optional(),
+  occupantKind: occupantKindSchema.optional(),
+  guestLabel: z.string().min(2).max(40).optional(),
 });
 
 export async function registerStationRoutes(app: FastifyInstance) {
@@ -82,6 +94,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
       ok: true,
       station: { id: station.id, name: station.name },
       sessionSafety: sessionSafetySettingsPayload(station.id),
+      usage: usageSettingsPayload(),
       portalPublicUrl: config.portalPublicUrl,
       lockUpdate: lockUpdateHintForStation(body.lockVersion || station.lock_version),
     };
@@ -103,6 +116,8 @@ export async function registerStationRoutes(app: FastifyInstance) {
       title: body.title || "",
       level: body.level || "info",
       durationSec,
+      occupantKind: body.occupantKind,
+      guestLabel: body.guestLabel || "",
     });
     if (body.command === "unlock_screen") {
       attachStaffUnlockTimer(
@@ -175,6 +190,89 @@ export async function registerStationRoutes(app: FastifyInstance) {
       meta: { reason: body.reason || "pin" },
     });
     return { ok: true };
+  });
+
+  app.post("/api/stations/hardware", async (req, reply) => {
+    const station = stationFromHeader(req);
+    if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
+    const body = z
+      .object({
+        cpuName: z.string().max(120).optional().nullable(),
+        cpuCores: z.number().int().min(1).max(256).optional().nullable(),
+        cpuTdpW: z.number().min(5).max(500).optional().nullable(),
+        gpus: z
+          .array(
+            z.object({
+              vendor: z.enum(["nvidia", "amd", "intel", "other"]),
+              model: z.string().max(120),
+              vramMb: z.number().int().min(0).max(262144).optional().nullable(),
+            }),
+          )
+          .max(4)
+          .optional(),
+        ramTotalMb: z.number().int().min(256).max(1048576).optional().nullable(),
+        osBuild: z.string().max(80).optional().nullable(),
+      })
+      .parse(req.body || {});
+    const saved = upsertStationHardware(station.id, body);
+    return { ok: true, hardware: saved, usage: usageSettingsPayload() };
+  });
+
+  app.post("/api/stations/usage-sample", async (req, reply) => {
+    const station = stationFromHeader(req);
+    if (!station) return reply.code(401).send({ error: "Token de estação obrigatório" });
+    const body = z
+      .object({
+        occupantKind: occupantKindSchema,
+        occupantCustomerId: z.string().max(64).optional().nullable(),
+        occupantLabel: z.string().max(40).optional().nullable(),
+        appProcess: z.string().max(64).optional().nullable(),
+        appTitle: z.string().max(200).optional().nullable(),
+        cpuPct: z.number().min(0).max(100).optional().nullable(),
+        gpuPct: z.number().min(0).max(100).optional().nullable(),
+        ramPct: z.number().min(0).max(100).optional().nullable(),
+        watts: z.number().min(0).max(2000).optional().nullable(),
+        wattsSource: z.enum(["sensor", "estimate"]).optional().nullable(),
+      })
+      .parse(req.body || {});
+    return ingestUsageSample(station.id, {
+      occupantKind: body.occupantKind,
+      occupantCustomerId: body.occupantCustomerId,
+      occupantLabel: body.occupantLabel,
+      appProcess: body.appProcess,
+      appTitle: body.appTitle,
+      cpuPct: body.cpuPct,
+      gpuPct: body.gpuPct,
+      ramPct: body.ramPct,
+      watts: body.watts,
+      wattsSource: body.wattsSource,
+    });
+  });
+
+  app.get("/api/admin/usage", async (req, reply) => {
+    if (!(await ownerGuard(req, reply))) return;
+    const q = req.query as { hours?: string };
+    const hours = q.hours ? Number(q.hours) : 24;
+    return {
+      ...buildUsageSummary({ hours: Number.isFinite(hours) ? hours : 24 }),
+      hardware: listStationHardware(),
+      settings: usageSettingsPayload(),
+    };
+  });
+
+  app.patch("/api/admin/stations/:id/energy", async (req, reply) => {
+    if (!(await ownerWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z
+      .object({
+        tdpCpuW: z.number().min(15).max(500).optional(),
+        tdpGpuW: z.number().min(0).max(800).optional(),
+        idleW: z.number().min(10).max(200).optional(),
+      })
+      .parse(req.body || {});
+    const hardware = updateStationEnergyCalibration(id, body);
+    if (!hardware) return reply.code(404).send({ error: "Estação sem hardware ainda" });
+    return { ok: true, hardware };
   });
 
   // Bootstrap rápido de estação com segredo compartilhado (primeira config)

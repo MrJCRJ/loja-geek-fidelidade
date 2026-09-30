@@ -6,6 +6,7 @@ const ALL_TABS: Array<[Tab, string, string]> = [
   ["clientes", "Clientes", "VIPs"],
   ["caixa", "Caixa", "Caixa"],
   ["estacoes", "Estações", "PCs"],
+  ["uso", "Uso", "Uso"],
   ["sessoes", "Sessões / Horas", "Horas"],
   ["recompensas", "Recompensas", "Prêmios"],
   ["saude", "Saúde", "Saúde"],

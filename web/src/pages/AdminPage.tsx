@@ -18,6 +18,7 @@ import { FeedTab } from "../admin/tabs/FeedTab";
 import { RecompensasTab } from "../admin/tabs/RecompensasTab";
 import { SaudeTab } from "../admin/tabs/SaudeTab";
 import { SessoesTab } from "../admin/tabs/SessoesTab";
+import { UsoTab } from "../admin/tabs/UsoTab";
 import type { LiveFeedItem, Tab } from "../admin/types";
 
 type ConfirmState = {
@@ -440,6 +441,13 @@ export default function AdminPage() {
           askConfirm={askConfirm}
           remoteReadOnly={remoteReadOnly}
           compact={clerk}
+        />
+      )}
+      {tab === "uso" && !clerk && (
+        <UsoTab
+          stationNames={Object.fromEntries(data.stations.map((s) => [s.id, s.name]))}
+          onError={setError}
+          onToast={toast.push}
         />
       )}
       {tab === "sessoes" && !clerk && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}

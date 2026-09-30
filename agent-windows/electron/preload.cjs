@@ -42,4 +42,6 @@ contextBridge.exposeInMainWorld("geeklock", {
   updateTray: (payload) => ipcRenderer.send("tray:update", payload),
   getAppVersion: () => ipcRenderer.invoke("app:version"),
   applyLockUpdate: () => ipcRenderer.invoke("lock:apply-update"),
+  collectHardware: () => ipcRenderer.invoke("hw:inventory"),
+  collectLoadSample: (opts) => ipcRenderer.invoke("hw:sample", opts || {}),
 });

@@ -13,6 +13,7 @@ export type Tab =
   | "clientes"
   | "caixa"
   | "estacoes"
+  | "uso"
   | "sessoes"
   | "recompensas"
   | "saude"

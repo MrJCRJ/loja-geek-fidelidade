@@ -59,9 +59,14 @@ export async function pairStationLan(config: GeekLockConfig) {
 }
 
 export type SessionSafetyConfig = {
-  lowBalanceWarnSeconds: number;
-  staffUnlockMaxSeconds: number;
-  presenceMinFaceRatio: number;
+  lowBalanceWarnSeconds?: number;
+  staffUnlockMaxSeconds?: number;
+  presenceMinFaceRatio?: number;
+};
+
+export type UsageRemoteConfig = {
+  usageDetailedTitles?: boolean;
+  staffTimedMaxMinutes?: number;
 };
 
 export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
@@ -69,6 +74,7 @@ export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
     ok: boolean;
     station?: { id: string; name: string };
     sessionSafety?: SessionSafetyConfig;
+    usage?: UsageRemoteConfig;
     portalPublicUrl?: string;
     lockUpdate?: { needed: boolean; latestVersion?: string } | null;
   }>(config, "/api/stations/heartbeat", {
