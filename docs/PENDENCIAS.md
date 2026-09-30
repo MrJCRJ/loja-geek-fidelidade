@@ -9,7 +9,8 @@ Foco: **Mercado Pago**, **secrets**, estabilidade do túnel (DNS). URL fixa e t�
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
 **Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — dono controla de casa (`admin.geekloja.com.br` / `loja.geekloja.com.br`); funcionário só no Wi‑Fi da loja  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
-**Incidente loja 2026-09-30:** túnel caiu por DNS Windows; motor local ok — ver [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md)  
+**Incidente loja 2026-09-30 (manhã):** túnel caiu por DNS Windows; motor local ok — [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md)  
+**Incidente loja 2026-09-30 (tarde):** GeekLock “não responde” — Central DHCP foi para `.116`; Wi‑Fi refixada em `.70` — [`INCIDENTE-GEEKLOCK-IP-2026-09-30.md`](./INCIDENTE-GEEKLOCK-IP-2026-09-30.md)  
 **Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
 **Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — loja em `central-v1.1.3` (última do Central); Lock Latest `v1.1.5`  
@@ -36,7 +37,8 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 | Login Cloudflare (cloudflared) | `[x]` `cert.pem` ok |
 | URL fixa | `[x]` `https://api.geekloja.com.br` — health público OK (2026-09-30 pós-incidente DNS) |
 | Autostart / keepalive | `[x]` tarefa `GeekCentral-ManterLigado` + religa túnel; Central em `C:\GeekCentral` |
-| DNS Windows estável | `[ ]` sugerido fixar `1.1.1.1`/`8.8.8.8` (incidente 2026-09-30) |
+| IP LAN Central `192.168.3.70` | `[x]` Wi‑Fi manual + DNS `1.1.1.1` (2026-09-30) |
+| Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | `[ ]` reforço se alguém voltar o adaptador para DHCP |
 | Mercado Pago | `[~]` token `TEST-` (pode estar expirado); **sem app “Loja Geek”** no painel |
 | Checkout | `[~]` `.env` em modo live sandbox; produção (`APP_USR-`) pendente |
 | Portal Vercel | `[x]` `VITE_API_URL=https://api.geekloja.com.br` (redeploy 2026-09-21) |

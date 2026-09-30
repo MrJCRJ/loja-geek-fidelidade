@@ -73,6 +73,7 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 | Doc | Para quê |
 |-----|----------|
 | [ESTADO-SISTEMA-2026-09-30.md](./ESTADO-SISTEMA-2026-09-30.md) | Snapshot loja + incidente túnel/DNS 2026-09-30 |
+| [INCIDENTE-GEEKLOCK-IP-2026-09-30.md](./INCIDENTE-GEEKLOCK-IP-2026-09-30.md) | GeekLock offline: Central perdeu IP `.70` (DHCP → `.116`) |
 | [CORRECAO-LOJA-2026-09-22.md](./CORRECAO-LOJA-2026-09-22.md) | `lan-discovery` fora do asar |
 | [COMO-CORRIGIR-BUILD-LAN-DISCOVERY.md](./COMO-CORRIGIR-BUILD-LAN-DISCOVERY.md) | Como não repetir no build |
 | [CURSOR-PACK-LOJA.md](./CURSOR-PACK-LOJA.md) | Pack grill-me no pendrive |

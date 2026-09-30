@@ -129,9 +129,26 @@ Loja / portal / celular sem API pública.
 DNS voltou nas interfaces; cloudflared estabilizou (~12:28 local); health público `ok` de novo.  
 Código já tem religamento automático do túnel (commit `2489b25` no `main`).
 
-### Mitigação sugerida (ainda não aplicada)
-Fixar DNS estável na placa usada pelo PC (ex. `1.1.1.1` + `8.8.8.8`) para o cloudflared não depender de buraco DNS do provedor/roteador.  
+### Mitigação
+Parcialmente aplicada no incidente seguinte (IP fixo + DNS `1.1.1.1` na Wi‑Fi).  
 Não mudar hostname do túnel nem recriar `loja-geek-api`.
+
+---
+
+## Incidente 2026-09-30 (tarde) — GeekLock “não está respondendo”
+
+Doc completo: [`INCIDENTE-GEEKLOCK-IP-2026-09-30.md`](./INCIDENTE-GEEKLOCK-IP-2026-09-30.md).
+
+### Sintoma
+Estações GeekLock marcavam Central offline / sem resposta.
+
+### Causa
+Wi‑Fi do Central saiu de `192.168.3.70` (DHCP) para **`192.168.3.116`**.  
+Locks continuavam em `http://192.168.3.70:8787`. API local estava ok.
+
+### Correção
+IP **manual** na Wi‑Fi: `192.168.3.70` /24, gateway `192.168.3.1`, DNS `192.168.3.1` + `1.1.1.1`.  
+Health LAN e público ok de novo. Sem mudar `config.json` dos Locks.
 
 ---
 
@@ -163,6 +180,7 @@ Prompts Cursor na loja:
 - Pareamento Lock por LAN (sem código de 6 dígitos)  
 - Update Central/Lock via release GitHub (fluxo documentado)  
 - Controle celular (dono remoto / equipe só na LAN) no código  
+- Wi‑Fi do Central em IP manual `192.168.3.70` (+ DNS `1.1.1.1`) após incidente GeekLock  
 
 Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 
@@ -174,7 +192,8 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 |------|----------|
 | Mercado Pago | Ainda sandbox / token `TEST-`; app “Loja Geek” e `APP_USR-` live pendentes |
 | STRICT_SECRETS / senha admin default | Melhorar depois; cuidado com `loja:ready` |
-| DNS fixo no Windows | Sugerido após incidente 2026-09-30 — **não aplicado** neste snapshot |
+| IP LAN do Central | `[x]` Wi‑Fi manual `192.168.3.70` + DNS `192.168.3.1`/`1.1.1.1` (após GeekLock offline) |
+| Reserva DHCP no roteador | `[ ]` reforço para o MAC da Wi‑Fi não perder `.70` se resetar Windows |
 | CNAME `admin` + Cloudflare Access | Checklist em [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — validar se já está completo na conta CF |
 | Estabilidade WS Lock (feature B) | Spec em [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — **não implementar sem pedido** |
 | Setup avançado / boot rápido Lock / MP live | Bloqueados no prompt da loja até o dono confirmar |
@@ -198,11 +217,12 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 ## Checklist rápido se “cair de novo”
 
 1. `http://127.0.0.1:8787/api/health` — se ok, o motor está vivo.  
-2. `https://api.geekloja.com.br/api/health` — se falhar com local ok → túnel/DNS.  
-3. `Get-Process cloudflared` — ausente? Ver `manter-ligado.log` e `cloudflared-tunnel.err.log`.  
-4. `Get-DnsClientServerAddress -AddressFamily IPv4` — precisa ter servidores DNS.  
-5. Não recriar túnel/domínio; só religar cloudflared / corrigir DNS.  
-6. Versão Central: `C:\GeekCentral\VERSION.txt` vs release `central-v*` no GitHub.
+2. `http://192.168.3.70:8787/api/health` — se falhar com local ok → IP da Wi‑Fi mudou (Locks quebram).  
+3. `https://api.geekloja.com.br/api/health` — se falhar com local ok → túnel/DNS.  
+4. `Get-Process cloudflared` — ausente? Ver `manter-ligado.log` e `cloudflared-tunnel.err.log`.  
+5. `Get-DnsClientServerAddress -AddressFamily IPv4` — precisa ter servidores DNS.  
+6. Não recriar túnel/domínio; só religar cloudflared / corrigir DNS/IP.  
+7. Versão Central: `C:\GeekCentral\VERSION.txt` vs release `central-v*` no GitHub.
 
 ---
 
@@ -212,6 +232,7 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 - Fila ops: [`PENDENCIAS.md`](./PENDENCIAS.md)  
 - Setup Windows: [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
 - Incidente build 2026-09-22: [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md)  
+- Incidente IP/GeekLock 2026-09-30: [`INCIDENTE-GEEKLOCK-IP-2026-09-30.md`](./INCIDENTE-GEEKLOCK-IP-2026-09-30.md)  
 - Melhorias futuras Central↔Lock: [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md)  
 
 ---
@@ -225,3 +246,4 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 | 2026-09-24 | Loja atualizada para Central **1.1.3** (ZIP release, `data\` preservada) |
 | 2026-09-28 | Release Lock **1.1.5**; Central na loja segue 1.1.3 (mais recente do Central) |
 | 2026-09-30 | Queda do **túnel por DNS**; motor local intacto; snapshot deste doc |
+| 2026-09-30 | GeekLock offline: Central DHCP foi para `.116`; Wi‑Fi fixada de volta em `.70` + DNS `1.1.1.1` |
