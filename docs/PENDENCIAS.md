@@ -1,16 +1,18 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-09-23** (noite).  
-Foco: **Mercado Pago**, **secrets**, **primeira release do Central**. URL fixa e túnel **já escolhidos** — não reabrir.
+Atualizado em **2026-09-30**.  
+Foco: **Mercado Pago**, **secrets**, estabilidade do túnel (DNS). URL fixa e túnel **já escolhidos** — não reabrir.
 
+**Snapshot completo (analisar de casa):** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) — versões, processos, incidente túnel/DNS, pendências.  
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
 **Túnel:** Cloudflare nomeado `loja-geek-api` · GeekCentral Windows  
 **Handoff loja (Cursor no Windows):** [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md)  
 **Monitor no teu PC (depois da loja estável):** [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) + produto [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md) — dono controla de casa (`admin.geekloja.com.br` / `loja.geekloja.com.br`); funcionário só no Wi‑Fi da loja  
 **Incidente loja 2026-09-22:** [`CORRECAO-LOJA-2026-09-22.md`](./CORRECAO-LOJA-2026-09-22.md) — `lan-discovery.cjs` fora do asar (JavaScript error)  
+**Incidente loja 2026-09-30:** túnel caiu por DNS Windows; motor local ok — ver [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md)  
 **Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
-**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — releases `central-v1.1.2` e `lock-v1.1.0` no GitHub; na loja o botão (ou bandeja) instala  
+**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — loja em `central-v1.1.3` (última do Central); Lock Latest `v1.1.5`  
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
 **GeekLock boot lento no reinício:** [`GEEKLOCK-BOOT-RAPIDO.md`](./GEEKLOCK-BOOT-RAPIDO.md) — documentado; medir na loja  
 **Cursor na loja (grill-me):** [`CURSOR-PACK-LOJA.md`](./CURSOR-PACK-LOJA.md) — pack no pendrive `Cursor-Agent\cursor-pack\`  
@@ -25,14 +27,16 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 
 | Área | Situação |
 |------|----------|
-| Código (API, portal, GeekLock) | `[x]` no GitHub (`main`); HUD + instalador + equipe só no Wi‑Fi da loja |
-| Release GeekCentral | `[x]` `central-v1.1.2` + `lock-v1.1.0` no GitHub; 1º pulo na loja ainda é bandeja/pendrive |
+| Código (API, portal, GeekLock) | `[x]` no GitHub (`main` = `2489b25` na loja, 2026-09-30) |
+| Release GeekCentral | `[x]` loja em **1.1.3** (`central-v1.1.3`) — última release do Central |
+| Release GeekLock | `[~]` Latest GitHub **1.1.5**; conferir versão em cada estação |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |
 | Login Cloudflare (cloudflared) | `[x]` `cert.pem` ok |
-| URL fixa | `[x]` `https://api.geekloja.com.br` — health público OK (2026-09-22) |
-| Autostart Windows (GeekCentral) | `[ ]` copiar credenciais + modo Nomeado na loja |
+| URL fixa | `[x]` `https://api.geekloja.com.br` — health público OK (2026-09-30 pós-incidente DNS) |
+| Autostart / keepalive | `[x]` tarefa `GeekCentral-ManterLigado` + religa túnel; Central em `C:\GeekCentral` |
+| DNS Windows estável | `[ ]` sugerido fixar `1.1.1.1`/`8.8.8.8` (incidente 2026-09-30) |
 | Mercado Pago | `[~]` token `TEST-` (pode estar expirado); **sem app “Loja Geek”** no painel |
 | Checkout | `[~]` `.env` em modo live sandbox; produção (`APP_USR-`) pendente |
 | Portal Vercel | `[x]` `VITE_API_URL=https://api.geekloja.com.br` (redeploy 2026-09-21) |

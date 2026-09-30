@@ -1,12 +1,13 @@
 # Documentação — Loja Geek
 
-Atualizado em **2026-09-23**.  
+Atualizado em **2026-09-30**.  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade
 
 **Não commitar:** `.env`, token de estação, `cert.pem`, JSON do túnel, senhas.  
 **Não recriar:** domínio `geekloja.com.br`, túnel `loja-geek-api`, API `https://api.geekloja.com.br`.
 
-A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de agosto são histórico.
+A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de agosto são histórico.  
+**Snapshot para analisar de casa:** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md).
 
 ---
 
@@ -14,6 +15,7 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 
 | Tema | Onde está |
 |------|-----------|
+| Estado na loja (versões, processos, incidente DNS 30/09) | [ESTADO-SISTEMA-2026-09-30.md](./ESTADO-SISTEMA-2026-09-30.md) |
 | O que falta para a loja rodar | [PENDENCIAS.md](./PENDENCIAS.md) |
 | Quem controla de onde (dono / equipe / Wi‑Fi) | [GEEKADMIN-CELULAR.md](./GEEKADMIN-CELULAR.md) |
 | Atualizar o GeekCentral (release + botão; de casa = publicar) | [UPDATE-GEEKCENTRAL.md](./UPDATE-GEEKCENTRAL.md) |
@@ -70,6 +72,7 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 
 | Doc | Para quê |
 |-----|----------|
+| [ESTADO-SISTEMA-2026-09-30.md](./ESTADO-SISTEMA-2026-09-30.md) | Snapshot loja + incidente túnel/DNS 2026-09-30 |
 | [CORRECAO-LOJA-2026-09-22.md](./CORRECAO-LOJA-2026-09-22.md) | `lan-discovery` fora do asar |
 | [COMO-CORRIGIR-BUILD-LAN-DISCOVERY.md](./COMO-CORRIGIR-BUILD-LAN-DISCOVERY.md) | Como não repetir no build |
 | [CURSOR-PACK-LOJA.md](./CURSOR-PACK-LOJA.md) | Pack grill-me no pendrive |
