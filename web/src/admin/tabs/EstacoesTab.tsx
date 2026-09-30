@@ -160,7 +160,7 @@ export function EstacoesTab({
           />
           {recents.length > 0 && (
             <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
-              {recents.map((r) => (
+              {recents.map((r: string) => (
                 <button key={r} className="btn ghost" type="button" onClick={() => setGuestLabel(r)}>
                   {r}
                 </button>
