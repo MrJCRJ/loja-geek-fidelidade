@@ -212,7 +212,7 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 | Reserva DHCP no roteador | `[ ]` reforço para o MAC da Wi‑Fi não perder `.70` se resetar Windows |
 | CNAME `admin` + Cloudflare Access | Checklist em [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — validar se já está completo na conta CF |
 | Estabilidade WS Lock (feature B) | Código/banners ok; **validar na loja** — [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) |
-| Uso/energia estações (aba Uso) | Código local antigo / não entrou no `lock-v1.1.6` do workflow — só se pedir |
+| Uso/energia estações (aba Uso) | Em releases recentes do Lock/Central — validar na loja após atualizar Locks |
 | Setup avançado / boot rápido Lock / MP live | Bloqueados no prompt da loja até o dono confirmar |
 
 ## Melhorias priorizadas (casa · 2026-09-30)
