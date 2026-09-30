@@ -1,5 +1,5 @@
 # Fallback PowerShell (o fluxo principal e o INSTALAR-GEEKLOCK.bat).
-# Instala GeekLock 1.1.7 do pendrive em C:\GeekLock.
+# Instala GeekLock 1.1.8 do pendrive em C:\GeekLock.
 # APAGA a pasta antiga (pareamento incluso) e abre o assistente para ligar de novo no Central.
 $ErrorActionPreference = "Stop"
 
@@ -53,7 +53,7 @@ if (-not (Test-Path $vbsSrc)) {
   $vbsSrc = Join-Path $here "GeekLock-autostart.vbs"
 }
 
-Write-Host "Fonte: $src (GeekLock 1.1.7)"
+Write-Host "Fonte: $src (GeekLock 1.1.8)"
 Write-Host "Destino: $dest"
 Write-Host "Instalacao NOVA: apaga C:\GeekLock, config, token e dados do app. Vai para o cadastro."
 Write-Host ""
@@ -148,7 +148,7 @@ Write-Host ""
 
 Start-Process -FilePath (Join-Path $dest "GeekLock.exe") -WorkingDirectory $dest
 
-Write-Host "OK: GeekLock 1.1.7 em C:\GeekLock — vai abrir o CADASTRO, nao a camera VIP."
+Write-Host "OK: GeekLock 1.1.8 em C:\GeekLock — vai abrir o CADASTRO, nao a camera VIP."
 Write-Host "OK: no reinicio o Windows abre o Lock."
 Write-Host "No assistente: nome unico (PC-02, PC-03...) + Conectar a Central."
 Read-Host "Enter para fechar"

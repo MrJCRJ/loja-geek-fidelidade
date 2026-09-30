@@ -5,7 +5,7 @@ title GeekLock — instalador do pendrive
 color 0A
 cd /d "%~dp0"
 
-set "GL_VER=1.1.7"
+set "GL_VER=1.1.8"
 set "GL_SERVER=http://192.168.3.70:8787"
 set "GL_HOST=192.168.3.70"
 set "GL_DEST=C:\GeekLock"
