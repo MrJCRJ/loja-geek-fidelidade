@@ -52,12 +52,15 @@ jobs:
         with:
           tag_name: lock-v${{ inputs.version }}
           name: GeekLock ${{ inputs.version }}
+          make_latest: false
           body: |
             Pacote Windows das estações.
 
             No celular (dono): Config → **Atualizar GeekLock**.
             PCs desligados atualizam sozinhos ao ligar.
             Asset: `GeekLock-win-x64.zip`
+
+            Obs.: este release NÃO é o "latest" do GitHub (o latest fica com GeekCentral).
           files: dist-release/GeekLock-win-x64.zip
           fail_on_unmatched_files: true
         env:

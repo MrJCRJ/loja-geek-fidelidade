@@ -68,11 +68,14 @@ jobs:
         with:
           tag_name: central-v${{ inputs.version }}
           name: GeekCentral ${{ inputs.version }}
+          make_latest: true
           body: |
             Pacote Windows completo (exe + runtime).
 
             Na loja: GeekCentral → **Atualizar** (mantém a pasta `data\`).
             Asset: `GeekCentral-win-x64.zip`
+
+            Este release é o **latest** do repo (o updater do Central lê `/releases/latest`).
           files: dist-release/GeekCentral-win-x64.zip
           fail_on_unmatched_files: true
         env:
