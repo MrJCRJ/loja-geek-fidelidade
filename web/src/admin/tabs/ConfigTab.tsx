@@ -259,6 +259,40 @@ export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm 
           </p>
         </div>
         <div className="field">
+          <label>Tarifa energia (R$/kWh) — estimativa</label>
+          <input
+            type="number"
+            step="0.01"
+            min={0}
+            max={10}
+            value={settings.energyTariffReaisPerKwh}
+            onChange={(e) =>
+              setSettings({ ...settings, energyTariffReaisPerKwh: Number(e.target.value) || 0.95 })
+            }
+          />
+        </div>
+        <div className="field">
+          <label>Cortesia longa — teto staff_timed (minutos, 15–480)</label>
+          <input
+            type="number"
+            step="15"
+            min={15}
+            max={480}
+            value={settings.staffTimedMaxMinutes}
+            onChange={(e) =>
+              setSettings({ ...settings, staffTimedMaxMinutes: Number(e.target.value) || 240 })
+            }
+          />
+        </div>
+        <label className="row" style={{ gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
+          <input
+            type="checkbox"
+            checked={settings.usageDetailedTitles}
+            onChange={(e) => setSettings({ ...settings, usageDetailedTitles: e.target.checked })}
+          />
+          Títulos detalhados nas janelas (buscas no title bar; sem keylog)
+        </label>
+        <div className="field">
           <label>Pontos por R$ 1 (fidelidade)</label>
           <input
             type="number"

@@ -74,6 +74,12 @@ import {
   setPresenceMinFaceRatio,
   setStaffUnlockMaxSeconds,
 } from "./session-safety.js";
+import {
+  setEnergyTariffReaisPerKwh,
+  setStaffTimedMaxMinutes,
+  setUsageDetailedTitles,
+  usageSettingsPayload,
+} from "./station-usage.js";
 
 setStationOfflineHook((stationId, stationName) => {
   logEvent({
@@ -103,6 +109,7 @@ function settingsPayload() {
     publicApiUrl: getPublicApiUrl(),
     peerCentrals: listPeerCentrals(),
     ...sessionSafetySettingsPayload(),
+    ...usageSettingsPayload(),
   };
 }
 
@@ -359,6 +366,9 @@ export async function registerRoutes(app: FastifyInstance) {
         lowBalanceWarnSeconds: z.number().min(60).max(3600).optional(),
         staffUnlockMaxSeconds: z.number().min(60).max(7200).optional(),
         presenceMinFaceRatio: z.number().min(0.06).max(0.4).optional(),
+        energyTariffReaisPerKwh: z.number().min(0).max(10).optional(),
+        usageDetailedTitles: z.boolean().optional(),
+        staffTimedMaxMinutes: z.number().min(15).max(480).optional(),
         hourPacks: z
           .array(
             z.object({
@@ -414,6 +424,15 @@ export async function registerRoutes(app: FastifyInstance) {
     }
     if (body.presenceMinFaceRatio !== undefined) {
       setPresenceMinFaceRatio(body.presenceMinFaceRatio);
+    }
+    if (body.energyTariffReaisPerKwh !== undefined) {
+      setEnergyTariffReaisPerKwh(body.energyTariffReaisPerKwh);
+    }
+    if (body.usageDetailedTitles !== undefined) {
+      setUsageDetailedTitles(body.usageDetailedTitles);
+    }
+    if (body.staffTimedMaxMinutes !== undefined) {
+      setStaffTimedMaxMinutes(body.staffTimedMaxMinutes);
     }
     if (body.hourPacks !== undefined) {
       setHourPacks(body.hourPacks as HourPack[]);

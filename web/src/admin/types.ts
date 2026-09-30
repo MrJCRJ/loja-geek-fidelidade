@@ -31,6 +31,7 @@ export type LiveStationStatus = {
   balanceSeconds?: number | null;
   lowBalanceWarn?: boolean;
   billingPaused?: boolean;
+  occupantKind?: string | null;
   at?: string;
 };
 
@@ -53,6 +54,10 @@ export type AdminSettings = {
   lowBalanceWarnSeconds: number;
   staffUnlockMaxSeconds: number;
   presenceMinFaceRatio: number;
+  energyTariffReaisPerKwh: number;
+  usageDetailedTitles: boolean;
+  staffTimedMaxMinutes: number;
+  guestLabelRecents: string[];
 };
 
 export type TimeLedgerRow = {

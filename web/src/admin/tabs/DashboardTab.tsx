@@ -77,6 +77,11 @@ function dayLabel(isoDay: string) {
 
 export function DashboardTab({ onError }: Props) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [usage, setUsage] = useState<{
+    kwh: number;
+    costReais: number;
+    topApps: Array<{ process: string; minutes: number }>;
+  } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -84,6 +89,16 @@ export function DashboardTab({ onError }: Props) {
     try {
       const m = await api<Metrics>("/api/admin/metrics");
       setMetrics(m);
+      try {
+        const u = await api<{
+          kwh: number;
+          costReais: number;
+          topApps: Array<{ process: string; minutes: number }>;
+        }>("/api/admin/usage?hours=24");
+        setUsage({ kwh: u.kwh, costReais: u.costReais, topApps: u.topApps || [] });
+      } catch {
+        setUsage(null);
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : "Falha ao carregar métricas");
     } finally {
@@ -142,6 +157,20 @@ export function DashboardTab({ onError }: Props) {
               <p className="metric-label">Portal (pago) hoje</p>
               <p className="metric-value">{money(metrics.today.portalPaidReais)}</p>
               <p className="muted">{metrics.today.portalOrdersPaid} pedidos</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">Energia 24h (est.)</p>
+              <p className="metric-value">{usage ? `${usage.kwh.toFixed(2)} kWh` : "—"}</p>
+              <p className="muted">{usage ? money(usage.costReais) : "Aba Uso"}</p>
+            </article>
+            <article className="metric-card">
+              <p className="metric-label">Top app 24h</p>
+              <p className="metric-value" style={{ fontSize: "1.1rem" }}>
+                {usage?.topApps?.[0]?.process || "—"}
+              </p>
+              <p className="muted">
+                {usage?.topApps?.[0] ? `${usage.topApps[0].minutes} min` : "Sem amostras"}
+              </p>
             </article>
             <article className="metric-card">
               <p className="metric-label">Faturamento hoje</p>

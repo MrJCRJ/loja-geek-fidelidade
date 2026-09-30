@@ -21,6 +21,10 @@ const DEFAULTS: AdminSettings = {
   lowBalanceWarnSeconds: 300,
   staffUnlockMaxSeconds: 600,
   presenceMinFaceRatio: 0.12,
+  energyTariffReaisPerKwh: 0.95,
+  usageDetailedTitles: false,
+  staffTimedMaxMinutes: 240,
+  guestLabelRecents: [],
 };
 
 /** Normaliza resposta parcial da API / estado local. */
@@ -43,6 +47,10 @@ export function normalizeAdminSettings(s: Partial<AdminSettings> | null | undefi
     lowBalanceWarnSeconds: s?.lowBalanceWarnSeconds ?? DEFAULTS.lowBalanceWarnSeconds,
     staffUnlockMaxSeconds: s?.staffUnlockMaxSeconds ?? DEFAULTS.staffUnlockMaxSeconds,
     presenceMinFaceRatio: s?.presenceMinFaceRatio ?? DEFAULTS.presenceMinFaceRatio,
+    energyTariffReaisPerKwh: s?.energyTariffReaisPerKwh ?? DEFAULTS.energyTariffReaisPerKwh,
+    usageDetailedTitles: Boolean(s?.usageDetailedTitles),
+    staffTimedMaxMinutes: s?.staffTimedMaxMinutes ?? DEFAULTS.staffTimedMaxMinutes,
+    guestLabelRecents: Array.isArray(s?.guestLabelRecents) ? s.guestLabelRecents : DEFAULTS.guestLabelRecents,
   };
 }
 

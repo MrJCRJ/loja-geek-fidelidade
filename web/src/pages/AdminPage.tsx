@@ -435,6 +435,7 @@ export default function AdminPage() {
           stations={data.stations}
           connected={data.connected}
           liveStatus={data.liveStatus}
+          settings={data.settings}
           refresh={data.refreshNow}
           onError={setError}
           onToast={toast.push}
