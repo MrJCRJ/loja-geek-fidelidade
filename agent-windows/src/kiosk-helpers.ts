@@ -34,7 +34,7 @@ export const DEFAULT_STAFF_UNLOCK_MAX_SEC = 600;
 /** Aviso no HUD da equipe quando falta 1 minuto. */
 export const STAFF_UNLOCK_WARN_SEC = 60;
 
-/** Segundos restantes no destrava sem conta (PIN / Liberar da equipe). */
+/** Segundos restantes no destrava sem conta (Liberar da equipe pelo Central). */
 export function staffUnlockLeftSeconds(
   startedAtMs: number | null | undefined,
   maxSec: number | null | undefined,

@@ -34,8 +34,10 @@ import { logEvent } from "./telemetry.js";
 import { isLanPairAllowed } from "./store-network.js";
 import {
   buildUsageSummary,
+  getStaffTimedMaxMinutes,
   ingestUsageSample,
   listStationHardware,
+  pushGuestLabelRecent,
   updateStationEnergyCalibration,
   upsertStationHardware,
   usageSettingsPayload,
@@ -44,7 +46,7 @@ import {
 const occupantKindSchema = z.enum(["vip", "staff_timed", "staff_open", "guest_named"]);
 
 const stationCommandBody = z.object({
-  command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session"]),
+  command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session", "quit_app"]),
   text: z.string().optional(),
   title: z.string().max(80).optional(),
   level: z.enum(["info", "warn", "urgent"]).optional(),
@@ -104,22 +106,36 @@ export async function registerStationRoutes(app: FastifyInstance) {
     if (!(await staffWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     const body = stationCommandBody.parse(req.body);
-    const durationSec =
-      body.command === "unlock_screen"
-        ? startStaffUnlockWindow(id, body.durationSec ?? getStaffUnlockMaxSeconds())
-        : body.durationSec ?? 12;
+    let durationSec: number | undefined = body.durationSec ?? 12;
+    let occupantKind = body.occupantKind;
     if (body.command === "lock_screen" || body.command === "end_session") {
       clearStaffUnlockWindow(id);
+    }
+    if (body.command === "unlock_screen") {
+      occupantKind = occupantKind || "staff_timed";
+      if (occupantKind === "guest_named" && body.guestLabel) {
+        pushGuestLabelRecent(body.guestLabel);
+      }
+      const openEnded =
+        occupantKind === "staff_open" || (occupantKind === "guest_named" && body.durationSec == null);
+      if (openEnded) {
+        clearStaffUnlockWindow(id);
+        durationSec = undefined;
+      } else {
+        const maxTimed = getStaffTimedMaxMinutes() * 60;
+        const requested = body.durationSec ?? Math.min(getStaffUnlockMaxSeconds(), maxTimed);
+        durationSec = startStaffUnlockWindow(id, Math.min(maxTimed, requested));
+      }
     }
     sendCommandToStation(id, body.command, {
       text: body.text || "",
       title: body.title || "",
       level: body.level || "info",
       durationSec,
-      occupantKind: body.occupantKind,
+      occupantKind,
       guestLabel: body.guestLabel || "",
     });
-    if (body.command === "unlock_screen") {
+    if (body.command === "unlock_screen" && durationSec) {
       attachStaffUnlockTimer(
         id,
         setTimeout(() => {
@@ -134,7 +150,15 @@ export async function registerStationRoutes(app: FastifyInstance) {
       kind: `command.${body.command}`,
       message: `${actorLabel(req)}: comando ${body.command} → estação ${id}`,
       stationId: id,
-      meta: { text: body.text, title: body.title, level: body.level, actor: actorLabel(req) },
+      meta: {
+        text: body.text,
+        title: body.title,
+        level: body.level,
+        actor: actorLabel(req),
+        occupantKind,
+        durationSec,
+        guestLabel: body.guestLabel,
+      },
     });
     return { ok: true };
   });
@@ -143,21 +167,38 @@ export async function registerStationRoutes(app: FastifyInstance) {
     if (!(await staffWriteGuard(req, reply))) return;
     const body = stationCommandBody.parse(req.body);
     if (body.command === "unlock_screen") {
+      const occupantKind = body.occupantKind || "staff_timed";
+      if (occupantKind === "guest_named" && body.guestLabel) {
+        pushGuestLabelRecent(body.guestLabel);
+      }
+      const openEnded =
+        occupantKind === "staff_open" || (occupantKind === "guest_named" && body.durationSec == null);
       for (const s of listConnectedStations()) {
-        const durationSec = startStaffUnlockWindow(s.stationId, body.durationSec ?? getStaffUnlockMaxSeconds());
+        let durationSec: number | undefined;
+        if (openEnded) {
+          clearStaffUnlockWindow(s.stationId);
+        } else {
+          const maxTimed = getStaffTimedMaxMinutes() * 60;
+          const requested = body.durationSec ?? Math.min(getStaffUnlockMaxSeconds(), maxTimed);
+          durationSec = startStaffUnlockWindow(s.stationId, Math.min(maxTimed, requested));
+        }
         sendCommandToStation(s.stationId, body.command, {
           text: body.text || "",
           title: body.title || "",
           level: body.level || "info",
           durationSec,
+          occupantKind,
+          guestLabel: body.guestLabel || "",
         });
-        attachStaffUnlockTimer(
-          s.stationId,
-          setTimeout(() => {
-            clearStaffUnlockWindow(s.stationId);
-            sendCommandToStation(s.stationId, "lock_screen", { text: "", title: "", level: "info", durationSec: 12 });
-          }, durationSec * 1000),
-        );
+        if (durationSec) {
+          attachStaffUnlockTimer(
+            s.stationId,
+            setTimeout(() => {
+              clearStaffUnlockWindow(s.stationId);
+              sendCommandToStation(s.stationId, "lock_screen", { text: "", title: "", level: "info", durationSec: 12 });
+            }, durationSec * 1000),
+          );
+        }
       }
     } else {
       sendCommandToAllStations(body.command, {

@@ -6,7 +6,6 @@ const DEFAULTS = {
   serverUrl: "",
   stationName: "",
   sharedSecret: "",
-  staffPin: "2580",
   absentSecondsToLock: 60,
   stationToken: "",
   setupComplete: false,
@@ -38,6 +37,7 @@ function loadConfig() {
       if (fs.existsSync(file)) {
         const raw = JSON.parse(fs.readFileSync(file, "utf8"));
         const merged = { ...DEFAULTS, ...raw, _configPath: file };
+        delete merged.staffPin;
         // configs antigos com IP fixo e token já contam como setup feito
         if (merged.setupComplete !== true) {
           if (merged.stationToken && merged.serverUrl) merged.setupComplete = true;
@@ -56,6 +56,8 @@ function saveConfig(partial) {
   const target = writableConfigPath(cfg);
   const next = { ...cfg, ...partial };
   delete next._configPath;
+  // PIN local removido: quem descobria 2580 furava o quiosque. Destrave/sair = GeekCentral.
+  delete next.staffPin;
   fs.writeFileSync(target, JSON.stringify(next, null, 2), "utf8");
   return { ...next, _configPath: target };
 }

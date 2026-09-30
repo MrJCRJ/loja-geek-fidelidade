@@ -9,8 +9,7 @@ contextBridge.exposeInMainWorld("geeklock", {
   stopDiscovery: () => ipcRenderer.invoke("discovery:stop"),
   lock: () => ipcRenderer.invoke("lock:lock"),
   unlock: () => ipcRenderer.invoke("lock:unlock"),
-  quitWithPin: (pin) => ipcRenderer.invoke("app:quit", pin),
-  staffUnlock: (pin) => ipcRenderer.invoke("staff:unlock", pin),
+  quitFromCentral: () => ipcRenderer.invoke("app:quit-central"),
   getLastFailure: () => ipcRenderer.invoke("failure:get"),
   clearLastFailure: () => ipcRenderer.invoke("failure:clear"),
   writeLastFailure: (payload) => ipcRenderer.invoke("failure:write", payload),
@@ -23,16 +22,6 @@ contextBridge.exposeInMainWorld("geeklock", {
     const handler = () => cb();
     ipcRenderer.on("session:request-end-confirmed", handler);
     return () => ipcRenderer.removeListener("session:request-end-confirmed", handler);
-  },
-  onRequestQuit: (cb) => {
-    const handler = () => cb();
-    ipcRenderer.on("staff:request-quit", handler);
-    return () => ipcRenderer.removeListener("staff:request-quit", handler);
-  },
-  onRequestStaffPin: (cb) => {
-    const handler = () => cb();
-    ipcRenderer.on("staff:request-pin", handler);
-    return () => ipcRenderer.removeListener("staff:request-pin", handler);
   },
   onRequestLock: (cb) => {
     const handler = () => cb();

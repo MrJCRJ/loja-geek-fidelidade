@@ -305,7 +305,7 @@ function showLoadErrorPage(win) {
     <h1>GeekLock</h1>
     <p>Não foi possível carregar a interface.</p>
     <p>Use <kbd>Ctrl+Shift+R</kbd> para atualizar a página,<br/>
-    <kbd>Ctrl+Shift+S</kbd> para PIN Admin, ou reinicie com:<br/>
+    ou peça no GeekCentral: Encerrar app / Reload.<br/>
     <code>bash scripts/linux-loja.sh geeklock</code></p>
   </div>
 </body>
@@ -344,10 +344,9 @@ function focusMainWindow() {
   mainWindow.focus();
 }
 
-function requestStaffPin() {
-  focusMainWindow();
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  mainWindow.webContents.send("staff:request-pin");
+function quitAppFromCentral() {
+  app.isQuitting = true;
+  app.quit();
 }
 
 function reloadAppPage() {
@@ -430,11 +429,6 @@ function registerAppShortcuts() {
     ["Control+Shift+R", "CommandOrControl+Shift+R"],
     () => reloadAppPage(),
     "reload",
-  );
-  registerShortcut(
-    ["Control+Shift+S", "CommandOrControl+Shift+S"],
-    () => requestStaffPin(),
-    "PIN Admin",
   );
 }
 
@@ -564,23 +558,8 @@ ipcMain.handle("lock:unlock", () => {
   return { locked: false };
 });
 
-ipcMain.handle("app:quit", (_e, pin) => {
-  const cfg = loadConfig();
-  if (String(pin) !== String(cfg.staffPin)) {
-    return { ok: false, error: "PIN inválido" };
-  }
-  app.isQuitting = true;
-  app.quit();
-  return { ok: true };
-});
-
-ipcMain.handle("staff:unlock", (_e, pin) => {
-  const cfg = loadConfig();
-  if (String(pin) !== String(cfg.staffPin)) {
-    writeLastFailure("pin", "PIN Admin inválido");
-    return { ok: false, error: "PIN inválido" };
-  }
-  lock.unlock();
+ipcMain.handle("app:quit-central", () => {
+  quitAppFromCentral();
   return { ok: true };
 });
 

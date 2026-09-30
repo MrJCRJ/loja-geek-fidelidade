@@ -2,10 +2,7 @@ import type { ReactNode, RefObject } from "react";
 import type { Customer, GeekLockConfig } from "./vite-env";
 import type { PendingLogin } from "./hooks/useRecognizeLoop";
 import { scanStatusHint, statusIcon, formatBalanceShort } from "./kiosk-helpers";
-import { PinPad } from "./PinPad";
 import { PortalQr } from "./PortalQr";
-
-type PinMode = "unlock" | "quit" | null;
 
 type Props = {
   config: GeekLockConfig | null;
@@ -18,8 +15,6 @@ type Props = {
   error: string;
   camReady: boolean;
   welcomeCustomer: Customer | null;
-  pin: string;
-  pinMode: PinMode;
   portalQrUrl: string;
   loginPrompt: PendingLogin | null;
   videoRef: RefObject<HTMLVideoElement | null>;
@@ -29,10 +24,6 @@ type Props = {
   onRetryCam: () => void;
   onConfirmLogin: () => void;
   onCancelLogin: () => void;
-  onPinChange: (v: string) => void;
-  onOpenPin: (mode: "unlock" | "quit") => void;
-  onSubmitPin: () => void;
-  onClosePin: () => void;
 };
 
 export function LockedScreen({
@@ -46,8 +37,6 @@ export function LockedScreen({
   error,
   camReady,
   welcomeCustomer,
-  pin,
-  pinMode,
   portalQrUrl,
   loginPrompt,
   videoRef,
@@ -57,16 +46,21 @@ export function LockedScreen({
   onRetryCam,
   onConfirmLogin,
   onCancelLogin,
-  onPinChange,
-  onOpenPin,
-  onSubmitPin,
-  onClosePin,
 }: Props) {
   const hint = scanStatusHint(scanReason, scanning);
-  const pillTone = scanReason === "no_gallery" || ovalClass === "error" ? "bad" : "warn";
+  const pillTone =
+    scanReason === "no_credit"
+      ? "warn"
+      : scanReason === "service_down" || scanReason === "error"
+        ? "bad"
+        : scanning
+          ? "ok"
+          : "muted";
+  const noCreditSplash =
+    Boolean(welcomeCustomer) && (scanReason === "no_credit" || (welcomeCustomer?.timeBalanceSeconds ?? 1) <= 0);
 
   return (
-    <div className="screen screen-locked">
+    <div className="screen locked-screen">
       {banner}
 
       <div className="locked-stage">
@@ -74,7 +68,7 @@ export function LockedScreen({
         {!camReady && (
           <div className="video-placeholder locked-cam-placeholder">
             <p>Webcam indisponível</p>
-            <p className="muted">Confira o DroidCam no celular ou use PIN Admin</p>
+            <p className="muted">Confira o DroidCam no celular ou peça ajuda no balcão</p>
             <button className="btn" type="button" onClick={onRetryCam}>
               Tentar câmera de novo
             </button>
@@ -90,9 +84,6 @@ export function LockedScreen({
           <span className={`pill ${pillTone} kiosk-status-pill`}>
             {statusIcon(scanReason)} {status}
           </span>
-          <button className="btn ghost locked-chrome-pin" type="button" onClick={() => onOpenPin("unlock")}>
-            PIN
-          </button>
         </header>
 
         <PortalQr value={portalQrUrl} caption="Cadastre-se / compre horas" />
@@ -114,19 +105,15 @@ export function LockedScreen({
                 Reconectar webcam
               </button>
             ) : null}
-            <button className="btn ghost" type="button" onClick={() => onOpenPin("unlock")}>
-              PIN Admin
-            </button>
-            <button className="btn ghost" type="button" onClick={() => onOpenPin("quit")}>
-              Sair do app
-            </button>
           </div>
         </div>
       </div>
 
       {lastFailure ? (
-        <div className="banner warn locked-failure">
-          Última falha ({new Date(lastFailure.at).toLocaleString("pt-BR")}): {lastFailure.message}
+        <div className="failure-banner">
+          <p>
+            <strong>{lastFailure.kind}</strong>: {lastFailure.message}
+          </p>
           {onClearFailure ? (
             <button className="btn ghost" type="button" onClick={onClearFailure}>
               Ok
@@ -159,30 +146,22 @@ export function LockedScreen({
 
       {welcomeCustomer && !loginPrompt && (
         <div className="welcome-splash">
-          <p className="welcome-kicker">Bem-vindo</p>
+          <p className="welcome-kicker">{noCreditSplash ? "Sem crédito" : "Bem-vindo"}</p>
           <h2 className="welcome-name">{welcomeCustomer.name}</h2>
           <span className={`level-badge lg ${welcomeCustomer.level}`}>{welcomeCustomer.level}</span>
-          {welcomeCustomer.timeBalanceSeconds != null ? (
-            <p className="welcome-balance">
-              Saldo: {Math.floor(welcomeCustomer.timeBalanceSeconds / 60)}m{" "}
-              {String(welcomeCustomer.timeBalanceSeconds % 60).padStart(2, "0")}s
-            </p>
-          ) : null}
-          <p className="muted">Entrando…</p>
+          <p className="welcome-balance">
+            Saldo:{" "}
+            {welcomeCustomer.timeBalanceSeconds != null
+              ? `${Math.floor(Math.max(0, welcomeCustomer.timeBalanceSeconds) / 60)}m ${String(
+                  Math.max(0, welcomeCustomer.timeBalanceSeconds) % 60,
+                ).padStart(2, "0")}s`
+              : "0m 00s"}
+          </p>
+          <p className="welcome-hint">
+            {noCreditSplash ? "Passe no caixa para liberar o PC" : "Entrando…"}
+          </p>
         </div>
       )}
-
-      {pinMode ? (
-        <div className="pin-overlay">
-          <PinPad
-            value={pin}
-            label={pinMode === "quit" ? "PIN para sair do GeekLock" : "PIN Admin — desbloquear"}
-            onChange={onPinChange}
-            onSubmit={onSubmitPin}
-            onCancel={onClosePin}
-          />
-        </div>
-      ) : null}
     </div>
   );
 }

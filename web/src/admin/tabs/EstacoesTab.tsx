@@ -2,12 +2,15 @@ import { useMemo, useState } from "react";
 import { api, formatClock, formatDuration, type Station } from "../../api";
 import { QrCode } from "../components/QrCode";
 import { TimeDurationPicker, durationToSeconds } from "../components/TimeDurationPicker";
-import type { LiveStationStatus } from "../types";
+import type { AdminSettings, LiveStationStatus } from "../types";
+
+type UnlockKind = "staff_timed" | "staff_open" | "guest_named";
 
 type Props = {
   stations: Station[];
   connected: Array<{ stationId: string; stationName: string }>;
   liveStatus: Record<string, LiveStationStatus>;
+  settings: AdminSettings;
   refresh: () => Promise<void>;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: "ok" | "error" | "info") => void;
@@ -25,6 +28,7 @@ export function EstacoesTab({
   stations,
   connected,
   liveStatus,
+  settings,
   refresh,
   onError,
   onToast,
@@ -41,7 +45,12 @@ export function EstacoesTab({
   const [liberarId, setLiberarId] = useState<string | null>(null);
   const [unlockH, setUnlockH] = useState(0);
   const [unlockM, setUnlockM] = useState(30);
+  const [unlockKind, setUnlockKind] = useState<UnlockKind>("staff_timed");
+  const [guestLabel, setGuestLabel] = useState("");
+  const [guestOpen, setGuestOpen] = useState(false);
   const onlineMap = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
+  const recents = settings.guestLabelRecents || [];
+  const maxMin = settings.staffTimedMaxMinutes || 240;
 
   const messageBody = () => ({
     command: "message" as const,
@@ -51,16 +60,41 @@ export function EstacoesTab({
     durationSec: messageDuration,
   });
 
+  const unlockPayload = (durationSec?: number) => {
+    if (unlockKind === "staff_open") {
+      return { command: "unlock_screen" as const, occupantKind: "staff_open" as const };
+    }
+    if (unlockKind === "guest_named") {
+      return {
+        command: "unlock_screen" as const,
+        occupantKind: "guest_named" as const,
+        guestLabel: guestLabel.trim(),
+        durationSec: guestOpen ? undefined : durationSec,
+      };
+    }
+    return {
+      command: "unlock_screen" as const,
+      occupantKind: "staff_timed" as const,
+      durationSec,
+    };
+  };
+
   const sendCmd = (stationId: string, command: string, text?: string, durationSec?: number) =>
     api(`/api/stations/${stationId}/command`, {
       method: "POST",
       body: JSON.stringify(
         command === "message"
           ? { ...messageBody(), text: text || messageBody().text }
-          : { command, text, durationSec },
+          : command === "unlock_screen"
+            ? unlockPayload(durationSec)
+            : { command, text, durationSec },
       ),
     })
       .then(() => {
+        if (command === "unlock_screen" && unlockKind === "staff_open") {
+          onToast("Liberado aberto (só trava pelo Central)", "ok");
+          return;
+        }
         if (command === "unlock_screen" && durationSec) {
           const h = Math.floor(durationSec / 3600);
           const m = Math.round((durationSec % 3600) / 60);
@@ -71,10 +105,76 @@ export function EstacoesTab({
       })
       .catch((e) => onError(e instanceof Error ? e.message : "Falha no comando"));
 
-  const liberarPor = (stationId: string, sec: number) => {
+  const liberarPor = async (stationId: string, sec: number) => {
+    if (unlockKind === "staff_open") {
+      const ok = await askConfirm({
+        title: "Destrave aberto",
+        message: "O PC fica liberado até alguém travar pelo Central. Confirma?",
+        confirmLabel: "Destravar aberto",
+      });
+      if (!ok) return;
+      setLiberarId(null);
+      sendCmd(stationId, "unlock_screen");
+      return;
+    }
+    if (unlockKind === "guest_named" && guestLabel.trim().length < 2) {
+      onError("Digite um rótulo de convidado (mín. 2 caracteres)");
+      return;
+    }
+    const capped = Math.min(maxMin * 60, Math.max(sec, 60));
     setLiberarId(null);
-    sendCmd(stationId, "unlock_screen", undefined, sec);
+    sendCmd(stationId, "unlock_screen", undefined, guestOpen ? undefined : capped);
   };
+
+  const unlockKindControls = (
+    <div style={{ marginBottom: "0.75rem" }}>
+      <p className="muted" style={{ margin: "0 0 0.35rem" }}>
+        Tipo de liberação
+      </p>
+      <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
+        {(
+          [
+            ["staff_timed", "Staff (tempo)"],
+            ["staff_open", "Staff (aberto)"],
+            ["guest_named", "Convidado"],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            className={`btn ${unlockKind === id ? "" : "ghost"}`}
+            type="button"
+            onClick={() => setUnlockKind(id)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {unlockKind === "guest_named" && (
+        <div className="field" style={{ marginBottom: "0.5rem" }}>
+          <label>Rótulo do convidado</label>
+          <input
+            value={guestLabel}
+            onChange={(e) => setGuestLabel(e.target.value)}
+            placeholder="Ex.: João (amigo)"
+            maxLength={40}
+          />
+          {recents.length > 0 && (
+            <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
+              {recents.map((r) => (
+                <button key={r} className="btn ghost" type="button" onClick={() => setGuestLabel(r)}>
+                  {r}
+                </button>
+              ))}
+            </div>
+          )}
+          <label className="row" style={{ gap: "0.5rem", alignItems: "center", marginTop: "0.5rem" }}>
+            <input type="checkbox" checked={guestOpen} onChange={(e) => setGuestOpen(e.target.checked)} />
+            Sem tempo (até travar)
+          </label>
+        </div>
+      )}
+    </div>
+  );
 
   const pairBox = !remoteReadOnly ? (
     <p className="muted" style={{ margin: "0 0 0.75rem" }}>
@@ -122,24 +222,31 @@ export function EstacoesTab({
                 </p>
                 {!remoteReadOnly && liberarId === s.id ? (
                   <div>
-                    <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-                      Tempo (mín. 30 min, máx. 23h 59min)
-                    </p>
-                    <TimeDurationPicker
-                      hours={unlockH}
-                      minutes={unlockM}
-                      onChange={(h, m) => {
-                        setUnlockH(h);
-                        setUnlockM(m);
-                      }}
-                    />
+                    {unlockKindControls}
+                    {unlockKind !== "staff_open" && !guestOpen && (
+                      <>
+                        <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+                          Tempo (mín. 30 min, máx. {maxMin} min)
+                        </p>
+                        <TimeDurationPicker
+                          hours={unlockH}
+                          minutes={unlockM}
+                          onChange={(h, m) => {
+                            setUnlockH(h);
+                            setUnlockM(m);
+                          }}
+                        />
+                      </>
+                    )}
                     <button
                       className="btn"
                       type="button"
                       style={{ marginTop: "0.5rem", width: "100%" }}
-                      onClick={() => liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
+                      onClick={() => void liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
                     >
-                      Liberar {unlockH}h {String(unlockM).padStart(2, "0")}min
+                      {unlockKind === "staff_open" || guestOpen
+                        ? "Liberar aberto"
+                        : `Liberar ${unlockH}h ${String(unlockM).padStart(2, "0")}min`}
                     </button>
                     <button className="btn ghost" type="button" style={{ marginTop: "0.5rem", width: "100%" }} onClick={() => setLiberarId(null)}>
                       Cancelar
@@ -174,17 +281,22 @@ export function EstacoesTab({
         {remoteReadOnly && <p className="muted">De casa não dá para travar/destravar PC.</p>}
         {!remoteReadOnly && (
         <>
-        <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-          Tempo ao Liberar / Destravar (mín. 30 min, máx. 23h 59min)
-        </p>
-        <TimeDurationPicker
-          hours={unlockH}
-          minutes={unlockM}
-          onChange={(h, m) => {
-            setUnlockH(h);
-            setUnlockM(m);
-          }}
-        />
+        {unlockKindControls}
+        {unlockKind !== "staff_open" && !guestOpen && (
+          <>
+            <p className="muted" style={{ margin: "0 0 0.5rem" }}>
+              Tempo ao Liberar / Destravar (mín. 30 min, máx. {maxMin} min)
+            </p>
+            <TimeDurationPicker
+              hours={unlockH}
+              minutes={unlockM}
+              onChange={(h, m) => {
+                setUnlockH(h);
+                setUnlockM(m);
+              }}
+            />
+          </>
+        )}
         <form
           className="row"
           onSubmit={(e) => {
@@ -274,15 +386,17 @@ export function EstacoesTab({
               const modeLabel =
                 st?.mode === "admin"
                   ? `Admin · ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
-                  : st?.mode === "vip"
-                    ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
-                    : st?.phase === "locked" || st?.phase === "boot"
-                      ? "Travada"
-                      : st?.phase === "offline"
-                        ? "Offline (app)"
-                        : online
-                          ? "Conectada"
-                          : "—";
+                  : st?.mode === "guest"
+                    ? `Convidado ${st.customerName || ""}`
+                    : st?.mode === "vip"
+                      ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                      : st?.phase === "locked" || st?.phase === "boot"
+                        ? "Travada"
+                        : st?.phase === "offline"
+                          ? "Offline (app)"
+                          : online
+                            ? "Conectada"
+                            : "—";
 
               return (
                 <tr key={s.id}>
@@ -294,6 +408,7 @@ export function EstacoesTab({
                   </td>
                   <td>
                     <div>{modeLabel}</div>
+                    {st?.occupantKind && <small className="muted">{st.occupantKind}</small>}
                     {st?.mode === "vip" && st.present === false && (
                       <small className="muted">Ausente {st.absentLeft ?? "…"}s</small>
                     )}
@@ -311,12 +426,28 @@ export function EstacoesTab({
                     <button
                       className="btn ghost"
                       type="button"
-                      onClick={() => liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
+                      onClick={() => void liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
                     >
                       Destravar
                     </button>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
                       Encerrar
+                    </button>
+                    <button
+                      className="btn danger"
+                      type="button"
+                      onClick={async () => {
+                        const ok = await askConfirm({
+                          title: "Encerrar GeekLock",
+                          message: `Fechar o app na estação ${s.name}? Só volta abrindo de novo no PC.`,
+                          danger: true,
+                          confirmLabel: "Encerrar app",
+                        });
+                        if (!ok) return;
+                        sendCmd(s.id, "quit_app");
+                      }}
+                    >
+                      Encerrar app
                     </button>
                     <button
                       className="btn ghost"
@@ -435,6 +566,27 @@ export function EstacoesTab({
             }
           >
             Travar todos
+          </button>
+          <button
+            className="btn danger"
+            type="button"
+            onClick={async () => {
+              const ok = await askConfirm({
+                title: "Encerrar GeekLock em todos",
+                message: "Fecha o app em todas as estações online. Só voltam abrindo de novo em cada PC.",
+                danger: true,
+                confirmLabel: "Encerrar apps",
+              });
+              if (!ok) return;
+              api("/api/stations/command-all", {
+                method: "POST",
+                body: JSON.stringify({ command: "quit_app" }),
+              })
+                .then(() => onToast("Encerrar apps enviado", "ok"))
+                .catch((e) => onError(e.message));
+            }}
+          >
+            Encerrar apps
           </button>
           <button
             className="btn"

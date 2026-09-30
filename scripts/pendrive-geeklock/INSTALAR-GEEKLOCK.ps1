@@ -1,4 +1,5 @@
-# Instala GeekLock do pendrive em C:\GeekLock.
+# Fallback PowerShell (o fluxo principal e o INSTALAR-GEEKLOCK.bat).
+# Instala GeekLock 1.1.7 do pendrive em C:\GeekLock.
 # APAGA a pasta antiga (pareamento incluso) e abre o assistente para ligar de novo no Central.
 $ErrorActionPreference = "Stop"
 
@@ -10,9 +11,17 @@ function Test-Admin {
 
 if (-not (Test-Admin)) {
   $self = if ($PSCommandPath) { $PSCommandPath } else { $MyInvocation.MyCommand.Path }
-  Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList @(
-    "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $self
-  )
+  try {
+    Start-Process -FilePath "powershell.exe" -Verb RunAs -ArgumentList @(
+      "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $self
+    ) | Out-Null
+  } catch {
+    Write-Host "ERRO: nao abriu o UAC. Botao direito neste arquivo > Executar como administrador."
+    Read-Host "Enter para sair"
+    exit 1
+  }
+  Write-Host "Se nao apareceu o UAC, botao direito > Executar como administrador."
+  Read-Host "Enter para fechar"
   exit 0
 }
 
@@ -44,13 +53,28 @@ if (-not (Test-Path $vbsSrc)) {
   $vbsSrc = Join-Path $here "GeekLock-autostart.vbs"
 }
 
-Write-Host "Fonte: $src"
+Write-Host "Fonte: $src (GeekLock 1.1.7)"
 Write-Host "Destino: $dest"
-Write-Host "A pasta antiga sera APAGADA. Vai precisar do codigo de 6 digitos de novo."
+Write-Host "Instalacao NOVA: apaga C:\GeekLock, config, token e dados do app. Vai para o cadastro."
 Write-Host ""
 
 Get-Process -Name "GeekLock" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 2
+
+Write-Host "Apagando dados antigos do GeekLock (AppData)..."
+foreach ($p in @(
+  (Join-Path $env:APPDATA "GeekLock"),
+  (Join-Path $env:APPDATA "geeklock-agent"),
+  (Join-Path $env:LOCALAPPDATA "GeekLock"),
+  (Join-Path $env:LOCALAPPDATA "geeklock-agent")
+)) {
+  if (Test-Path $p) {
+    Remove-Item -LiteralPath $p -Recurse -Force -ErrorAction SilentlyContinue
+  }
+}
+Get-ChildItem $env:TEMP -Force -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -like "geeklock-*" } |
+  Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
 
 if (Test-Path $dest) {
   Write-Host "Apagando C:\GeekLock antigo..."
@@ -76,7 +100,7 @@ if (Test-Path $dest) {
 
 New-Item -ItemType Directory -Force -Path $dest | Out-Null
 
-$xf = @("config.json", "INSTALAR-GEEKLOCK.bat", "INSTALAR-GEEKLOCK.ps1")
+$xf = @("config.json", "INSTALAR-GEEKLOCK.bat", "INSTALAR-GEEKLOCK.ps1", "GeekLock-Setup-*.exe", "LEIA-ME.txt")
 $robolog = Join-Path $env:TEMP "geeklock-install-robocopy.log"
 & robocopy $src $dest /E /R:2 /W:1 /XF @xf /NFL /NDL /NP /TEE /LOG:"$robolog" | Out-Null
 if ($LASTEXITCODE -ge 8) {
@@ -90,14 +114,15 @@ $fresh = @{
   serverUrl           = "http://192.168.3.70:8787"
   stationName         = ""
   sharedSecret        = ""
-  staffPin            = "2580"
   absentSecondsToLock = 60
   stationToken        = ""
   setupComplete       = $false
   openAtLogin         = $true
 }
 $fresh | ConvertTo-Json | Set-Content -Path (Join-Path $dest "config.json") -Encoding ASCII
-Write-Host "config.json novo: sem token. Assistente vai pedir o codigo de 6 digitos."
+$resCfg = Join-Path $dest "resources\config.json"
+if (Test-Path $resCfg) { Remove-Item -Force $resCfg }
+Write-Host "Sistema novo: sem token, sem nome. Proximo passo: cadastro (Conectar a Central)."
 
 $lan = Join-Path $dest "resources\shared\lan-discovery.cjs"
 if (-not (Test-Path $lan)) {
@@ -123,9 +148,8 @@ Write-Host ""
 
 Start-Process -FilePath (Join-Path $dest "GeekLock.exe") -WorkingDirectory $dest
 
-Write-Host "OK: GeekLock reinstalado em C:\GeekLock"
+Write-Host "OK: GeekLock 1.1.7 em C:\GeekLock — vai abrir o CADASTRO, nao a camera VIP."
 Write-Host "OK: no reinicio o Windows abre o Lock."
-Write-Host "Agora no assistente: confirme a URL http://192.168.3.70:8787"
-Write-Host "nome da estacao (ex. PC-01) + codigo de 6 digitos do celular / Central."
+Write-Host "No assistente: nome unico (PC-02, PC-03...) + Conectar a Central."
 Read-Host "Enter para fechar"
 exit 0

@@ -1,23 +1,30 @@
-GeekLock — estacao (pendrive)
+GeekLock 1.1.7 — instalação pelo pendrive
+========================================
 
-Instalar (cada PC de jogo)
-1) Nao rode o .exe de dentro do pendrive.
+Pré-requisito
+- PC CONTROLE (192.168.3.70) com GeekCentral online em http://192.168.3.70:8787
+- Pendrive label GEEKLOCK (~15 G) — não misturar com outro USB
+
+Instalar em cada PC de jogo
+1) Abra a pasta do pendrive (raiz ou pasta GeekLock).
 2) Clique duas vezes em INSTALAR-GEEKLOCK.bat
-   (na raiz do pendrive ou nesta pasta). Aceite o UAC se pedir.
-3) O instalador:
-   - APAGA C:\GeekLock antigo (some o pareamento velho)
-   - copia o pack novo
-   - cria so GeekLock.vbs na Inicializacao
-   - abre o assistente para ligar de novo no Central
-4) Permita a webcam.
-5) URL ja vem: http://192.168.3.70:8787
-   Nome da estacao (ex. PC-01) + codigo de 6 digitos.
+3) Aceite o UAC (administrador).
+4) Espere copiar para C:\GeekLock e abrir o CADASTRO.
+5) Digite o nome da estação e Conectar à Central.
 
-URL do Central (loja)
-http://192.168.3.70:8787
-(com a porta 8787 — nao use https e nao use so o IP)
+O que o .bat faz
+- Copia o pack para TEMP antes do UAC (letra do USB não some)
+- Apaga C:\GeekLock e dados antigos do app (pareamento incluso)
+- Copia o pack novo (1.1.7)
+- Grava config com serverUrl da lan (sem PIN local)
+- Coloca autostart no login do Windows
+- Abre o GeekLock no assistente de cadastro
 
-Atualizar / reinstalar
-O mesmo .bat apaga o antigo e pede o codigo de novo.
+Se der erro
+- "GeekLock.exe nao encontrado": use o .bat que está na pasta GeekLock do pendrive
+- UAC não abre: botão direito no .bat → Executar como administrador
+- Não conecta: confira se o Central está ligado e se o IP 192.168.3.70 responde na lan
 
-Limitacao: Ctrl+Alt+Del ainda existe no Windows.
+Atualização depois
+- Com a máquina já instalada, o GeekLock baixa update do GitHub sozinho
+- Para forçar instalação limpa de novo, rode este .bat outra vez

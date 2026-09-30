@@ -4,7 +4,6 @@ export type GeekLockConfig = {
   serverUrl: string;
   stationName: string;
   sharedSecret: string;
-  staffPin: string;
   absentSecondsToLock: number;
   stationToken?: string;
   setupComplete?: boolean;
@@ -53,15 +52,12 @@ declare global {
       stopDiscovery: () => Promise<{ ok: boolean }>;
       lock: () => Promise<{ locked: boolean }>;
       unlock: () => Promise<{ locked: boolean }>;
-      quitWithPin: (pin: string) => Promise<{ ok: boolean; error?: string }>;
-      staffUnlock: (pin: string) => Promise<{ ok: boolean; error?: string }>;
+      quitFromCentral: () => Promise<{ ok: boolean }>;
       getLastFailure: () => Promise<{ kind: string; message: string; at: string } | null>;
       clearLastFailure: () => Promise<{ ok: boolean }>;
       writeLastFailure: (payload: { kind?: string; message?: string }) => Promise<{ ok: boolean }>;
       onLockState: (cb: (data: { locked: boolean; paint?: boolean; prepare?: boolean }) => void) => () => void;
       onRequestEndSessionConfirmed: (cb: () => void) => () => void;
-      onRequestQuit: (cb: () => void) => () => void;
-      onRequestStaffPin: (cb: () => void) => () => void;
       onRequestLock: (cb: () => void) => () => void;
       getAppVersion: () => Promise<string>;
       applyLockUpdate: () => Promise<{ ok: boolean; error?: string; willRelaunch?: boolean; already?: boolean }>;

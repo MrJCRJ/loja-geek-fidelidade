@@ -38,8 +38,6 @@ export default function App() {
   const [balanceSeconds, setBalanceSeconds] = useState<number | null>(null);
   const [lowBalanceWarn, setLowBalanceWarn] = useState(false);
   const [billingPaused, setBillingPaused] = useState(false);
-  const [pin, setPin] = useState("");
-  const [pinMode, setPinMode] = useState<"unlock" | "quit" | null>(null);
   const [error, setError] = useState("");
   const [camReady, setCamReady] = useState(false);
   const [remoteBanner, setRemoteBanner] = useState<RemoteBanner | null>(null);
@@ -81,8 +79,12 @@ export default function App() {
   });
   const lockVersionRef = useRef("");
   const applyingLockUpdateRef = useRef(false);
-  const usageFlagsRef = useRef({ detailedTitles: false });
-  const staffUnlockMetaRef = useRef<{ kind?: string; label?: string } | null>(null);
+  const usageFlagsRef = useRef({ detailedTitles: false, staffTimedMaxMinutes: 240 });
+  const staffUnlockMetaRef = useRef<{
+    kind?: OccupantState["kind"];
+    label?: string | null;
+    durationSec?: number | null;
+  } | null>(null);
 
   const applyLockUpdateIfNeeded = useCallback((needed?: boolean | null) => {
     if (!needed || applyingLockUpdateRef.current) return;
@@ -404,6 +406,12 @@ export default function App() {
       const mapped = sessionStartErrorMessage(err);
       setScanReason(mapped.reason);
       setStatus(mapped.status);
+      if (mapped.reason === "no_credit") {
+        setWelcomeCustomer({
+          ...pending.customer,
+          timeBalanceSeconds: 0,
+        });
+      }
     }
   }, [loginPrompt, config, unlockUi, syncBalance]);
 
@@ -547,6 +555,7 @@ export default function App() {
           if (res.usage) {
             usageFlagsRef.current = {
               detailedTitles: Boolean(res.usage.usageDetailedTitles),
+              staffTimedMaxMinutes: res.usage.staffTimedMaxMinutes || 240,
             };
           }
           if (res.portalPublicUrl) {
@@ -603,7 +612,14 @@ export default function App() {
 
     const handleCommand = (
       command: StationCommand,
-      payload?: { text?: string; title?: string; level?: string; durationSec?: number },
+      payload?: {
+        text?: string;
+        title?: string;
+        level?: string;
+        durationSec?: number;
+        occupantKind?: string;
+        guestLabel?: string;
+      },
     ) => {
       if (command === "reload") {
         reportTelemetry(config.serverUrl, config.stationToken, {
@@ -647,15 +663,39 @@ export default function App() {
       }
       if (command === "unlock_screen") {
         const unlocked = phaseRef.current === "unlocked";
-        const isAdmin = customerRef.current?.id === "staff";
+        const isAdmin =
+          customerRef.current?.id === "staff" || customerRef.current?.id === "guest";
         if (unlocked && !isAdmin) return;
-        const unlockFn = (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> })
-          .__geeklockUnlockAdmin;
-        unlockFn?.(payload?.durationSec).catch(() => undefined);
+        const unlockFn = (
+          window as unknown as {
+            __geeklockUnlockAdmin?: (payload?: {
+              occupantKind?: string;
+              durationSec?: number;
+              guestLabel?: string;
+            }) => Promise<void>;
+          }
+        ).__geeklockUnlockAdmin;
+        unlockFn?.({
+          occupantKind: payload?.occupantKind,
+          durationSec: payload?.durationSec,
+          guestLabel: payload?.guestLabel,
+        }).catch(() => undefined);
         return;
       }
       if (command === "apply_update") {
         applyLockUpdateIfNeeded(true);
+        return;
+      }
+      if (command === "quit_app") {
+        setRemoteBanner({
+          title: "Encerrando GeekLock",
+          text: "A loja pediu para fechar o app nesta estação.",
+          level: "warn",
+          until: Date.now() + 4_000,
+        });
+        window.setTimeout(() => {
+          window.geeklock.quitFromCentral().catch(() => undefined);
+        }, 600);
       }
     };
 
@@ -734,13 +774,16 @@ export default function App() {
     const push = () => {
       const sock = stationWsRef.current;
       if (!sock) return;
-      const isAdmin = customerRef.current?.id === "staff";
+      const custId = customerRef.current?.id;
+      const isStaffOrGuest = custId === "staff" || custId === "guest";
+      const meta = staffUnlockMetaRef.current;
       const phaseNow = phaseRef.current;
       const liveBal = liveBalanceSeconds(balanceSeconds, balanceSyncedAtRef.current, false);
-      const staffLeft = staffUnlockLeftSeconds(
-        sessionStartedAtRef.current,
-        sessionSafetyRef.current.staffUnlockMaxSeconds,
-      );
+      const maxSec =
+        meta?.durationSec && meta.durationSec > 0
+          ? meta.durationSec
+          : sessionSafetyRef.current.staffUnlockMaxSeconds;
+      const staffLeft = staffUnlockLeftSeconds(sessionStartedAtRef.current, maxSec);
       const since = absentSinceRef.current;
       const absentSec = configRef.current?.absentSecondsToLock ?? DEFAULT_ABSENT_SEC;
       const absentLeftNow =
@@ -749,19 +792,22 @@ export default function App() {
       sock.sendStatus({
         phase: phaseNow,
         customerName: customerRef.current?.name || null,
-        mode: isAdmin
-          ? "admin"
-          : phaseNow === "unlocked"
-            ? "vip"
-            : phaseNow === "offline"
-              ? "offline"
-              : "locked",
-        elapsed: isAdmin ? staffLeft : liveBal ?? elapsed,
+        mode: custId === "guest"
+          ? "guest"
+          : custId === "staff"
+            ? "admin"
+            : phaseNow === "unlocked"
+              ? "vip"
+              : phaseNow === "offline"
+                ? "offline"
+                : "locked",
+        elapsed: isStaffOrGuest ? staffLeft : liveBal ?? elapsed,
         present,
-        absentLeft: isAdmin ? null : absentLeftNow,
-        balanceSeconds: isAdmin ? staffLeft : liveBal,
-        lowBalanceWarn: isAdmin ? staffLeft <= STAFF_UNLOCK_WARN_SEC : lowBalanceWarn,
+        absentLeft: isStaffOrGuest ? null : absentLeftNow,
+        balanceSeconds: isStaffOrGuest ? staffLeft : liveBal,
+        lowBalanceWarn: isStaffOrGuest ? staffLeft <= STAFF_UNLOCK_WARN_SEC : lowBalanceWarn,
         billingPaused: false,
+        occupantKind: meta?.kind || (custId === "staff" ? "staff_timed" : null),
       });
     };
     push();
@@ -840,21 +886,59 @@ export default function App() {
       }
     };
 
-    const unlockAsAdmin = async (durationSec?: number) => {
-      if (durationSec && durationSec >= 60) {
-        sessionSafetyRef.current.staffUnlockMaxSeconds = Math.min(86340, Math.max(1800, Math.floor(durationSec)));
+    const unlockAsAdmin = async (payload?: {
+      occupantKind?: string;
+      durationSec?: number;
+      guestLabel?: string;
+    }) => {
+      const rawKind = payload?.occupantKind || "staff_timed";
+      const kind: OccupantState["kind"] =
+        rawKind === "staff_open" || rawKind === "guest_named" || rawKind === "staff_timed"
+          ? rawKind
+          : "staff_timed";
+      const maxTimed = (usageFlagsRef.current.staffTimedMaxMinutes || 240) * 60;
+      let durationSec: number | null = null;
+      if (kind === "staff_timed") {
+        durationSec = Math.min(maxTimed, Math.max(60, payload?.durationSec || 3600));
+      } else if (kind === "guest_named") {
+        durationSec =
+          payload?.durationSec != null
+            ? Math.min(maxTimed, Math.max(60, payload.durationSec))
+            : null;
       }
-      staffUnlockMetaRef.current = { kind: "staff_timed", label: "Admin" };
+      if (durationSec && durationSec >= 60) {
+        sessionSafetyRef.current.staffUnlockMaxSeconds = durationSec;
+      }
       sessionStartedAtRef.current = Date.now();
       setElapsed(0);
       setSession(null);
-      setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus(
-        `Liberado pela equipe — ${formatBalanceShort(sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC)}`,
-      );
+      if (kind === "guest_named") {
+        const label = (payload?.guestLabel || "Convidado").slice(0, 40);
+        staffUnlockMetaRef.current = { kind, durationSec, label };
+        setCustomer({ id: "guest", name: label, level: "bronze", points: 0 });
+        setStatus(
+          durationSec
+            ? `Convidado · ${label} · ${Math.round(durationSec / 60)} min`
+            : `Convidado · ${label} · até travar`,
+        );
+      } else {
+        staffUnlockMetaRef.current = { kind, durationSec, label: null };
+        setCustomer({
+          id: "staff",
+          name: kind === "staff_open" ? "Admin (aberto)" : "Admin",
+          level: "ouro",
+          points: 0,
+        });
+        setStatus(
+          kind === "staff_open"
+            ? "Modo Admin aberto — trava só pelo Central"
+            : `Modo Admin — auto-trava em ${Math.round((durationSec || 0) / 60)} min`,
+        );
+      }
       setAbsentLeft(null);
       absentSinceRef.current = null;
       presenceMissStreakRef.current = 0;
+      if (configRef.current) reportStaffUnlock(configRef.current, kind).catch(() => undefined);
       await unlockUi();
     };
 
@@ -866,14 +950,6 @@ export default function App() {
           lockUi().catch(() => undefined);
         }
       }
-    });
-    const offQuit = window.geeklock.onRequestQuit(() => {
-      setPinMode("quit");
-      setPin("");
-    });
-    const offStaffPin = window.geeklock.onRequestStaffPin(() => {
-      setPinMode("unlock");
-      setPin("");
     });
     const offLockReq = window.geeklock.onRequestLock(() => {
       requestLockStation();
@@ -896,16 +972,20 @@ export default function App() {
     });
 
     (window as unknown as { __geeklockRequestLock?: () => void }).__geeklockRequestLock = requestLockStation;
-    (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> }).__geeklockUnlockAdmin = unlockAsAdmin;
+    (window as unknown as {
+      __geeklockUnlockAdmin?: (payload?: {
+        occupantKind?: string;
+        durationSec?: number;
+        guestLabel?: string;
+      }) => Promise<void>;
+    }).__geeklockUnlockAdmin = unlockAsAdmin;
 
     return () => {
       offEnd();
-      offQuit();
-      offStaffPin();
       offLockReq();
       offLockState();
       delete (window as unknown as { __geeklockRequestLock?: () => void }).__geeklockRequestLock;
-      delete (window as unknown as { __geeklockUnlockAdmin?: (sec?: number) => Promise<void> }).__geeklockUnlockAdmin;
+      delete (window as unknown as { __geeklockUnlockAdmin?: unknown }).__geeklockUnlockAdmin;
     };
   }, [doEndSession, lockUi, unlockUi]);
 
@@ -955,77 +1035,39 @@ export default function App() {
     onLowBalanceWarn: showLowBalanceBanner,
   });
 
-  // T6 — modo staff não fica aberto para sempre
+  // T6 — staff_timed / guest timed auto-trava; staff_open não
   useEffect(() => {
-    if (phase !== "unlocked" || customer?.id !== "staff") return;
+    if (phase !== "unlocked") return;
+    const id = customer?.id;
+    if (id !== "staff" && id !== "guest") return;
+    const meta = staffUnlockMetaRef.current;
+    if (meta?.kind === "staff_open") return;
+    if (meta?.kind === "guest_named" && (meta.durationSec == null || meta.durationSec <= 0)) return;
+    const maxSec =
+      meta?.durationSec && meta.durationSec > 0
+        ? meta.durationSec
+        : sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC;
     if (sessionStartedAtRef.current == null) {
       sessionStartedAtRef.current = Date.now();
     }
     const tick = () => {
-      const left = staffUnlockLeftSeconds(
-        sessionStartedAtRef.current,
-        sessionSafetyRef.current.staffUnlockMaxSeconds,
-      );
+      const left = staffUnlockLeftSeconds(sessionStartedAtRef.current, maxSec);
       if (left <= 0) {
         sessionStartedAtRef.current = null;
         customerRef.current = null;
         setCustomer(null);
         staffUnlockMetaRef.current = null;
-        setStatus("Equipe — tempo esgotado");
+        setStatus(id === "guest" ? "Convidado — tempo esgotado" : "Equipe — tempo esgotado");
         lockUi().catch(() => undefined);
         return;
       }
-      setStatus(`Equipe — resta ${formatBalanceShort(left)}`);
+      const label = meta?.label || (id === "guest" ? "Convidado" : "Equipe");
+      setStatus(`${label} — resta ${formatBalanceShort(left)}`);
     };
     tick();
     const t = window.setInterval(tick, 1000);
     return () => window.clearInterval(t);
   }, [phase, customer?.id, lockUi]);
-
-  const submitPin = async () => {
-    setError("");
-    if (pinMode === "quit") {
-      const res = await window.geeklock.quitWithPin(pin);
-      if (!res.ok) setError(res.error || "PIN inválido");
-      return;
-    }
-    if (pinMode === "unlock") {
-      const res = await window.geeklock.staffUnlock(pin);
-      if (!res.ok) {
-        setError(res.error || "PIN inválido");
-        return;
-      }
-      if (config) {
-        try {
-          const h = await checkHealth(config);
-          if (!h.ok || !h.faceService) {
-            setError("GeekCentral offline — impossível liberar");
-            return;
-          }
-        } catch {
-          setError("GeekCentral offline — impossível liberar");
-          setPhase("offline");
-          return;
-        }
-      }
-      setPinMode(null);
-      setPin("");
-      staffUnlockMetaRef.current = { kind: "staff_timed", label: "Admin" };
-      sessionStartedAtRef.current = Date.now();
-      setElapsed(0);
-      setSession(null);
-      setCustomer({ id: "staff", name: "Admin", level: "ouro", points: 0 });
-      setStatus(
-        `Liberado pela equipe — ${formatBalanceShort(sessionSafetyRef.current.staffUnlockMaxSeconds || DEFAULT_STAFF_UNLOCK_MAX_SEC)}`,
-      );
-      setAbsentLeft(null);
-      absentSinceRef.current = null;
-      presenceMissStreakRef.current = 0;
-      if (config) reportStaffUnlock(config).catch(() => undefined);
-      await unlockUi();
-      return;
-    }
-  };
 
   const retryOnline = async () => {
     if (!config) return;
@@ -1101,20 +1143,8 @@ export default function App() {
       <OfflineScreen
         status={status}
         error={error}
-        pin={pin}
-        pinMode={pinMode}
         banner={remoteBannerEl}
         onRetry={retryOnline}
-        onPinChange={setPin}
-        onOpenPin={() => {
-          setPinMode("unlock");
-          setPin("");
-        }}
-        onSubmitPin={submitPin}
-        onClosePin={() => {
-          setPinMode(null);
-          setPin("");
-        }}
       />
     );
   }
@@ -1143,8 +1173,6 @@ export default function App() {
       error={error}
       camReady={camReady}
       welcomeCustomer={welcomeCustomer}
-      pin={pin}
-      pinMode={pinMode}
       portalQrUrl={portalRegisterUrl(portalBaseUrl)}
       loginPrompt={loginPrompt}
       videoRef={videoRef}
@@ -1163,16 +1191,6 @@ export default function App() {
         confirmLogin().catch(() => undefined);
       }}
       onCancelLogin={cancelLogin}
-      onPinChange={setPin}
-      onOpenPin={(mode) => {
-        setPinMode(mode);
-        setPin("");
-      }}
-      onSubmitPin={submitPin}
-      onClosePin={() => {
-        setPinMode(null);
-        setPin("");
-      }}
     />
   );
 }

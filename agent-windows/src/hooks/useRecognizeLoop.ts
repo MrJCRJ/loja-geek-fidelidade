@@ -139,9 +139,14 @@ export function useRecognizeLoop({
           const bal = typeof res.timeBalanceSeconds === "number" ? res.timeBalanceSeconds : null;
           if (bal != null && bal <= 0) {
             matchStreakRef.current = null;
-            setWelcomeCustomer(null);
             setScanReason("no_credit");
             setStatus("Sem crédito — passe no caixa para liberar o PC");
+            setWelcomeCustomer({
+              ...res.customer,
+              timeBalanceSeconds: 0,
+            });
+            setCustomer(res.customer);
+            setScore(scoreVal);
             return;
           }
 
@@ -176,6 +181,7 @@ export function useRecognizeLoop({
             if (reason === "no_face") {
               noFaceStreakRef.current += 1;
               if (!inGrace) matchStreakRef.current = null;
+              setWelcomeCustomer(null);
             } else if (reason === "unknown" || reason === "ambiguous") {
               noFaceStreakRef.current = 0;
               if (!(matchStreakRef.current && best >= KEEP_STREAK_MIN_SCORE)) {

@@ -2,7 +2,6 @@
   "serverUrl": "",
   "stationName": "",
   "sharedSecret": "",
-  "staffPin": "2580",
   "absentSecondsToLock": 90,
   "setupComplete": false,
   "openAtLogin": true

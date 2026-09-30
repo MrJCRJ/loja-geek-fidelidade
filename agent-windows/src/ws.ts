@@ -9,25 +9,33 @@ export type StationCommand =
   | "end_session"
   | "message"
   | "reload"
-  | "apply_update";
+  | "apply_update"
+  | "quit_app";
 
 export type StationStatusPayload = {
   phase: string;
   customerName?: string | null;
-  mode?: "locked" | "vip" | "admin" | "offline";
+  mode?: "locked" | "vip" | "admin" | "guest" | "offline";
   elapsed?: number;
   present?: boolean;
   absentLeft?: number | null;
   balanceSeconds?: number | null;
   lowBalanceWarn?: boolean;
   billingPaused?: boolean;
+  occupantKind?: string | null;
+};
+
+export type StationCommandPayload = {
+  text?: string;
+  title?: string;
+  level?: string;
+  durationSec?: number;
+  occupantKind?: string;
+  guestLabel?: string;
 };
 
 type Handlers = {
-  onCommand?: (
-    command: StationCommand,
-    payload?: { text?: string; title?: string; level?: string; durationSec?: number },
-  ) => void;
+  onCommand?: (command: StationCommand, payload?: StationCommandPayload) => void;
   onOpen?: () => void;
   onClose?: () => void;
 };
@@ -71,6 +79,7 @@ export class StationSocket {
       payload.phase,
       payload.mode,
       payload.customerName || "",
+      payload.occupantKind || "",
       payload.present === false ? "0" : "1",
       Math.floor(payload.balanceSeconds ?? payload.elapsed ?? 0),
     ].join("|");
@@ -114,6 +123,8 @@ export class StationSocket {
           title?: string;
           level?: string;
           durationSec?: number;
+          occupantKind?: string;
+          guestLabel?: string;
         };
         if (msg.type === "command" && msg.command) {
           this.handlers.onCommand?.(msg.command, {
@@ -121,6 +132,8 @@ export class StationSocket {
             title: msg.title,
             level: msg.level,
             durationSec: msg.durationSec,
+            occupantKind: msg.occupantKind,
+            guestLabel: msg.guestLabel,
           });
         }
       } catch {
