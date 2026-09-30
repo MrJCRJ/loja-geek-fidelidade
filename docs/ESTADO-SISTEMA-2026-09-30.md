@@ -4,8 +4,9 @@ Documento para análise remota (casa / Cursor / GitHub).
 **Não contém** `.env`, tokens, senhas, `cert.pem` nem JSON de credencial do túnel.
 
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade  
-Snapshot loja: **2026-09-30 ~12:35 (UTC−3)**.  
-Revisão casa/GitHub: **2026-09-30 ~15:40 (UTC−3)** — releases + pendrive 1.1.6.
+Snapshot loja (manhã): **2026-09-30 ~12:35 (UTC−3)**.  
+Revisão casa/GitHub: **2026-09-30 ~15:40** — releases + pendrive.  
+Atualizado na loja: **2026-09-30 ~19:35 (UTC−3)** — Central **1.1.7** instalado.
 
 ---
 
@@ -50,30 +51,30 @@ PC principal Windows — C:\GeekCentral\
 
 ## Versões (GitHub agora vs loja no snapshot)
 
-| Componente | Loja (~12:35) | GitHub agora (~15:40) | Situação |
-|------------|---------------|------------------------|----------|
-| GeekCentral | **1.1.3** em `C:\GeekCentral\` | **`central-v1.1.4` = Latest** | Loja **atrás** — atualizar via botão Central / ZIP |
-| GeekLock (estações) | misto / pendrive antigo | **`lock-v1.1.6`** (`GeekLock-win-x64.zip`) | Atualizar estações (celular dono **ou** pendrive 1.1.6) |
-| Código `main` | `2489b25` na loja | `6b57c44` (+ ci latest=Central) | Loja pode `git pull` no clone; motor = release, não a pasta git |
-| Pendrive USB GEEKLOCK | tinha `.exe` de **24/09** + bat 1.1.5 | pack **1.1.6** gravado em casa (~15:15) | Reinstalar pelo `.bat` na loja com este USB |
+| Componente | Loja (~19:35) | GitHub agora | Situação |
+|------------|---------------|--------------|----------|
+| GeekCentral | **1.1.7** (`C:\GeekCentral\VERSION.txt`) | **`central-v1.1.7` = Latest** | **Atualizado** (ZIP release, `data\` preservada) |
+| GeekLock (estações) | (verificar em cada PC) | **`lock-v1.1.8`** | Atualizar estações (celular dono **ou** pendrive) |
+| Código `main` | clone `loja-geek-fidelidade` | `origin/main` | Motor = release, não a pasta git |
+| Pendrive USB GEEKLOCK | (regravar se necessário) | pack **1.1.8** no GitHub | `.bat` / zip `GeekLock-win-x64.zip` |
 
 ### Releases GitHub (lista atual)
 
-- GeekCentral **1.1.4** (`central-v1.1.4`) — **Latest** (updater do Central lê `/releases/latest`)  
-- GeekLock **1.1.6** (`lock-v1.1.6`) — zip `GeekLock-win-x64.zip` (não é o Latest do repo)  
-- GeekLock 1.1.5 (`v1.1.5`) — NSIS legado  
-- GeekCentral 1.1.3 / Lock 1.1.4 …  
+- GeekCentral **1.1.7** (`central-v1.1.7`) — **Latest** (updater do Central lê `/releases/latest`)  
+- GeekLock **1.1.8** (`lock-v1.1.8`) — zip `GeekLock-win-x64.zip`  
+- GeekCentral 1.1.6 … 1.1.4 / GeekLock 1.1.7 … 1.1.5 (`lock-v*` / `v1.1.5`)  
+- GeekCentral 1.1.3 e anteriores
 
 Atualizar Central: [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md).  
 Atualizar Lock: Config no celular (dono) ou [`GEEKLOCK-INSTALAR-ESTACOES.md`](./GEEKLOCK-INSTALAR-ESTACOES.md) / pendrive.
 
-### Checklist validar na loja (pós 1.1.4 / 1.1.6)
+### Checklist validar na loja (pós Central 1.1.7)
 
-- [ ] Central: `C:\GeekCentral\VERSION.txt` = **1.1.4** (Atualizar mantendo `data\`)
-- [ ] Health: `http://192.168.3.70:8787/api/health` e `https://api.geekloja.com.br/api/health`
+- [x] Central: `C:\GeekCentral\VERSION.txt` = **1.1.7** (ZIP `central-v1.1.7`, `data\` preservada) — 2026-09-30 ~19:33
+- [x] Health: `http://127.0.0.1:8787/api/health` e `https://api.geekloja.com.br/api/health` → ok
 - [ ] IP Wi‑Fi ainda **manual** `.70` (não voltou para DHCP)
 - [ ] Aba **Saúde**: LAN esperado `.70` = atual (alerta vermelho se DHCP mudou de novo)
-- [ ] Em cada estação: Lock **1.1.6** (`VERSION.txt` / Config → Atualizar GeekLock / USB)
+- [ ] Em cada estação: Lock **1.1.8** (`VERSION.txt` / Config → Atualizar GeekLock / USB)
 - [ ] 1 VIP + 1 destravar equipe; WS reconecta se derrubar API (feature B)
 - [ ] (Opcional) Reserva DHCP no roteador MAC Wi‑Fi → `.70`
 
@@ -184,7 +185,7 @@ Prompts Cursor na loja:
 
 - Domínio + zona Cloudflare Active  
 - Túnel nomeado `loja-geek-api` → `api.geekloja.com.br`  
-- GeekCentral **1.1.3** instalado em `C:\GeekCentral` com `data\` preservada  
+- GeekCentral **1.1.7** instalado em `C:\GeekCentral` com `data\` preservada (atualizado 2026-09-30 ~19:33)  
 - Motor só na bandeja (sem janela de controle)  
 - Keepalive Windows `GeekCentral-ManterLigado`  
 - Religa túnel se cloudflared sumir ou health público der 530  
@@ -202,8 +203,8 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 
 | Área | Situação |
 |------|----------|
-| Atualizar Central **1.1.4** na loja | `[ ]` (GitHub já tem; loja ainda em 1.1.3 no snapshot) |
-| Atualizar Locks **1.1.6** | `[ ]` celular dono e/ou USB GEEKLOCK (pack 1.1.6 em casa) |
+| Atualizar Central **1.1.7** na loja | `[x]` ZIP `central-v1.1.7` em 2026-09-30 ~19:33; health OK |
+| Atualizar Locks **1.1.8** | `[ ]` celular dono e/ou USB GEEKLOCK |
 | Mercado Pago | Ainda sandbox / token `TEST-`; app “Loja Geek” e `APP_USR-` live pendentes |
 | STRICT_SECRETS / senha admin default | Melhorar depois; cuidado com `loja:ready` |
 | IP LAN do Central | `[x]` Wi‑Fi manual `192.168.3.70` + DNS `192.168.3.1`/`1.1.1.1` (após GeekLock offline) |
@@ -220,9 +221,9 @@ Ordem sugerida a partir dos incidentes de hoje (sem reabrir domínio/túnel):
 
 | Pri | Melhoria | Tipo | Por quê |
 |-----|----------|------|---------|
-| 1 | Atualizar Central 1.1.4 + Locks 1.1.6 na loja | ops | Releases já no GitHub; pendrive 1.1.6 pronto |
+| 1 | Atualizar Central 1.1.7 + Locks 1.1.8 na loja | ops | Central **feito**; Lock pendente nas estações |
 | 2 | Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | ops | Evita repetir incidente `.116` se Windows voltar a DHCP |
-| 3 | Alerta no painel se IP LAN do Central ≠ `.70` | código | **feito** em `main` → release Central **1.1.5** |
+| 3 | Alerta no painel se IP LAN do Central ≠ `.70` | código | **feito** — incluso no Central **1.1.7** da loja |
 | 4 | Validar feature B (WS offline/voltou) na loja | ops/QA | Já no código; falta prova multi-PC |
 | 5 | DNS estável (já tem `1.1.1.1`; documentar no roteador) | ops | Evita queda do `cloudflared` |
 | 6 | Ethernet no PC principal (além/em vez de só Wi‑Fi) | ops | Menos APIPA/`169.254` e DHCP surpresa |
@@ -283,3 +284,4 @@ Detalhe da fila ops: [`PENDENCIAS.md`](./PENDENCIAS.md).
 | 2026-09-30 | GeekLock offline: Central DHCP foi para `.116`; Wi‑Fi fixada de volta em `.70` + DNS `1.1.1.1` |
 | 2026-09-30 ~14h | Releases **Central 1.1.4** (Latest) + **Lock 1.1.6** (`lock-v*`); CI: Latest = Central |
 | 2026-09-30 ~15h | USB GEEKLOCK regravado com zip oficial 1.1.6 (antes tinha exe antigo + bat 1.1.5) |
+| 2026-09-30 ~19:33 | Loja atualizada Central **1.1.3 → 1.1.7** (ZIP `central-v1.1.7`, download limitado; health local + público OK) |
