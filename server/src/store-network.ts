@@ -147,3 +147,87 @@ export function startStorePublicIpProbe(intervalMs = 10 * 60_000): { stop: () =>
     },
   };
 }
+
+/** IP que os GeekLocks devem usar (default loja). Env ou setting sobrescreve. */
+export function expectedCentralLanIp(override?: string | null): string {
+  const fromArg = String(override || "").trim();
+  if (fromArg && isPrivateIpv4(fromArg)) return fromArg.split("%")[0];
+  const fromEnv = (process.env.EXPECTED_CENTRAL_LAN_IP || "").trim();
+  if (fromEnv && isPrivateIpv4(fromEnv)) return fromEnv.split("%")[0];
+  return "192.168.3.70";
+}
+
+export type LanIpCheck = {
+  expected: string;
+  current: string[];
+  ok: boolean;
+  severity: "warn" | "error" | null;
+  code: string | null;
+  message: string | null;
+};
+
+/**
+ * Detecta Central fora do IP fixo da loja (causa clássica: DHCP → Locks offline).
+ * - Sem IPv4 privado: error (só loopback / APIPA?)
+ * - Tem IPs mas nenhum é o esperado: error
+ * - Tem o esperado + outros na mesma /24: ok (multi-NIC normal)
+ * - Tem o esperado + outro /24: warn
+ */
+export function checkCentralLanIp(opts?: {
+  expected?: string | null;
+  current?: string[] | null;
+}): LanIpCheck {
+  const expected = expectedCentralLanIp(opts?.expected);
+  const current = (opts?.current ?? centralLanIpv4s())
+    .map((ip) => String(ip || "").split("%")[0])
+    .filter((ip) => isPrivateIpv4(ip) && ip !== "127.0.0.1" && !ip.startsWith("127."));
+
+  if (current.length === 0) {
+    return {
+      expected,
+      current,
+      ok: false,
+      severity: "error",
+      code: "lan_ip_missing",
+      message:
+        `Central sem IPv4 na LAN — GeekLocks em http://${expected}:8787 não acham o motor. ` +
+        "Confira Wi‑Fi/cabo (evite 169.254.x.x) e IP manual 192.168.3.70.",
+    };
+  }
+
+  if (current.includes(expected)) {
+    const foreign = current.filter((ip) => ip !== expected && !sameIpv4Slash24(ip, expected));
+    if (foreign.length) {
+      return {
+        expected,
+        current,
+        ok: true,
+        severity: "warn",
+        code: "lan_ip_extra_subnet",
+        message:
+          `IP esperado ${expected} ok, mas também há ${foreign.join(", ")} ` +
+          `(outra rede). Locks devem usar http://${expected}:8787.`,
+      };
+    }
+    return {
+      expected,
+      current,
+      ok: true,
+      severity: null,
+      code: null,
+      message: null,
+    };
+  }
+
+  return {
+    expected,
+    current,
+    ok: false,
+    severity: "error",
+    code: "lan_ip_mismatch",
+    message:
+      `IP da LAN é ${current.join(", ")} — esperado ${expected}. ` +
+      `GeekLocks com serverUrl http://${expected}:8787 ficam offline. ` +
+      "Refixe o Wi‑Fi em IP manual ou reserve DHCP no roteador.",
+  };
+}

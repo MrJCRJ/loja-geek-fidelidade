@@ -41,7 +41,7 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 | Autostart / keepalive | `[x]` tarefa `GeekCentral-ManterLigado` + religa túnel; Central em `C:\GeekCentral` |
 | IP LAN Central `192.168.3.70` | `[x]` Wi‑Fi manual + DNS `1.1.1.1` (2026-09-30) |
 | Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | `[ ]` reforço se alguém voltar o adaptador para DHCP |
-| Alerta painel se IP ≠ `.70` | `[ ]` melhoria código (incidente Lock) |
+| Alerta painel se IP ≠ `.70` | `[x]` em `main` (aba Saúde) — sobe com próximo Central |
 | Feature B (WS offline/voltou) | `[~]` no código; validar na loja |
 | Mercado Pago | `[~]` token `TEST-` (pode estar expirado); **sem app “Loja Geek”** no painel |
 | Checkout | `[~]` `.env` em modo live sandbox; produção (`APP_USR-`) pendente |

@@ -22,6 +22,7 @@ type Diagnostics = {
     disk: { freePct: number | null; freeBytes: number; totalBytes: number } | null;
     uptimeSec: number;
     loadAvg: number[];
+    lan?: { expected: string; current: string[]; ok: boolean };
   };
   stations: { total: number; connected: number; online: number };
   eventCounts24h: Record<string, number>;
@@ -121,6 +122,20 @@ export function SaudeTab({ onError }: Props) {
               <li>
                 Host {diag.host.hostname} · uptime {Math.round(diag.host.uptimeSec / 3600)}h · load{" "}
                 {diag.host.loadAvg.map((n) => n.toFixed(2)).join(" / ")}
+              </li>
+              <li>
+                LAN (Locks): esperado{" "}
+                <strong>{diag.host.lan?.expected || "192.168.3.70"}</strong>
+                {" · "}
+                atual{" "}
+                <strong className={diag.host.lan && !diag.host.lan.ok ? "error-text" : ""}>
+                  {diag.host.lan?.current?.length
+                    ? diag.host.lan.current.join(", ")
+                    : "nenhum IPv4 privado"}
+                </strong>
+                {diag.host.lan && !diag.host.lan.ok ? (
+                  <span className="error-text"> — GeekLocks podem marcar Central offline</span>
+                ) : null}
               </li>
               <li>
                 Eventos 24h:{" "}

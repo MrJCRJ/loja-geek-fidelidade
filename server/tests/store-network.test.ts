@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  checkCentralLanIp,
+  expectedCentralLanIp,
   isLanPairAllowed,
   isOnStoreNetwork,
   sameIpv4Slash24,
@@ -72,5 +74,42 @@ describe("Pareamento LAN", () => {
     expect(isLanPairAllowed(req({ host: HOME_HOST }))).toBe(false);
     expect(isLanPairAllowed(req({ host: SHOP_PUBLIC_HOST }))).toBe(false);
     expect(isLanPairAllowed(req({ host: PUBLIC_API_HOST }))).toBe(false);
+  });
+});
+
+describe("IP fixo do Central (Locks)", () => {
+  it("default esperado é 192.168.3.70", () => {
+    expect(expectedCentralLanIp()).toBe("192.168.3.70");
+  });
+
+  it("ok quando o IP atual é o esperado", () => {
+    const r = checkCentralLanIp({ expected: "192.168.3.70", current: ["192.168.3.70"] });
+    expect(r.ok).toBe(true);
+    expect(r.severity).toBeNull();
+  });
+
+  it("error quando DHCP mudou o IP", () => {
+    const r = checkCentralLanIp({ expected: "192.168.3.70", current: ["192.168.3.116"] });
+    expect(r.ok).toBe(false);
+    expect(r.severity).toBe("error");
+    expect(r.code).toBe("lan_ip_mismatch");
+    expect(r.message).toMatch(/192\.168\.3\.116/);
+    expect(r.message).toMatch(/192\.168\.3\.70/);
+  });
+
+  it("error sem IPv4 privado", () => {
+    const r = checkCentralLanIp({ expected: "192.168.3.70", current: [] });
+    expect(r.ok).toBe(false);
+    expect(r.code).toBe("lan_ip_missing");
+  });
+
+  it("warn se tem o esperado e outra subnet", () => {
+    const r = checkCentralLanIp({
+      expected: "192.168.3.70",
+      current: ["192.168.3.70", "10.0.0.5"],
+    });
+    expect(r.ok).toBe(true);
+    expect(r.severity).toBe("warn");
+    expect(r.code).toBe("lan_ip_extra_subnet");
   });
 });

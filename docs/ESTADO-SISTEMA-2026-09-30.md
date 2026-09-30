@@ -69,11 +69,13 @@ Atualizar Lock: Config no celular (dono) ou [`GEEKLOCK-INSTALAR-ESTACOES.md`](./
 
 ### Checklist validar na loja (pós 1.1.4 / 1.1.6)
 
-- [ ] Central: `C:\GeekCentral\VERSION.txt` = **1.1.4** (Atualizar mantendo `data\`)  
-- [ ] Health: `http://192.168.3.70:8787/api/health` e `https://api.geekloja.com.br/api/health`  
-- [ ] IP Wi‑Fi ainda **manual** `.70` (não voltou para DHCP)  
-- [ ] Em cada estação: Lock **1.1.6** (`VERSION.txt` / Config → Atualizar GeekLock)  
+- [ ] Central: `C:\GeekCentral\VERSION.txt` = **1.1.4** (Atualizar mantendo `data\`)
+- [ ] Health: `http://192.168.3.70:8787/api/health` e `https://api.geekloja.com.br/api/health`
+- [ ] IP Wi‑Fi ainda **manual** `.70` (não voltou para DHCP)
+- [ ] Aba **Saúde**: LAN esperado `.70` = atual (alerta vermelho se DHCP mudou de novo)
+- [ ] Em cada estação: Lock **1.1.6** (`VERSION.txt` / Config → Atualizar GeekLock / USB)
 - [ ] 1 VIP + 1 destravar equipe; WS reconecta se derrubar API (feature B)
+- [ ] (Opcional) Reserva DHCP no roteador MAC Wi‑Fi → `.70`
 
 ---
 
@@ -205,8 +207,8 @@ Detalhe dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md).
 | Mercado Pago | Ainda sandbox / token `TEST-`; app “Loja Geek” e `APP_USR-` live pendentes |
 | STRICT_SECRETS / senha admin default | Melhorar depois; cuidado com `loja:ready` |
 | IP LAN do Central | `[x]` Wi‑Fi manual `192.168.3.70` + DNS `192.168.3.1`/`1.1.1.1` (após GeekLock offline) |
+| Alerta painel se IP LAN do Central ≠ `.70` | `[x]` código em `main` (Saúde / diagnostics) — entra no próximo release Central |
 | Reserva DHCP no roteador | `[ ]` reforço para o MAC da Wi‑Fi não perder `.70` se resetar Windows |
-| Alerta painel se IP LAN ≠ `.70` | `[ ]` melhoria sugerida (incidente IP) |
 | CNAME `admin` + Cloudflare Access | Checklist em [`REMOTE-MONITOR.md`](./REMOTE-MONITOR.md) — validar se já está completo na conta CF |
 | Estabilidade WS Lock (feature B) | Código/banners ok; **validar na loja** — [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) |
 | Uso/energia estações (aba Uso) | Código local antigo / não entrou no `lock-v1.1.6` do workflow — só se pedir |

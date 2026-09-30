@@ -8,6 +8,8 @@ import { faceHealth } from "./face-client.js";
 import { listConnectedStations } from "./hub.js";
 import { listStations } from "./stations.js";
 import { getReadiness } from "./admin-ops.js";
+import { checkCentralLanIp, expectedCentralLanIp } from "./store-network.js";
+import { getSetting } from "./customers.js";
 
 export type TelemetryLevel = "debug" | "info" | "warn" | "error";
 
@@ -254,6 +256,18 @@ export async function buildDiagnostics() {
     });
   }
 
+  const expectedLan =
+    String(getSetting("expected_central_lan_ip", "") || "").trim() ||
+    expectedCentralLanIp();
+  const lanCheck = checkCentralLanIp({ expected: expectedLan });
+  if (lanCheck.severity && lanCheck.code && lanCheck.message) {
+    alerts.push({
+      severity: lanCheck.severity,
+      code: lanCheck.code,
+      message: lanCheck.message,
+    });
+  }
+
   const counts = getDb()
     .prepare(
       `SELECT level, COUNT(*) AS c FROM system_events
@@ -266,7 +280,14 @@ export async function buildDiagnostics() {
     ok: alerts.every((a) => a.severity !== "error"),
     time: new Date().toISOString(),
     faceService: face,
-    host,
+    host: {
+      ...host,
+      lan: {
+        expected: lanCheck.expected,
+        current: lanCheck.current,
+        ok: lanCheck.ok,
+      },
+    },
     readiness,
     stations: {
       total: stations.length,
