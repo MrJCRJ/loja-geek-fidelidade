@@ -222,7 +222,7 @@ Ordem sugerida a partir dos incidentes de hoje (sem reabrir domínio/túnel):
 |-----|----------|------|---------|
 | 1 | Atualizar Central 1.1.4 + Locks 1.1.6 na loja | ops | Releases já no GitHub; pendrive 1.1.6 pronto |
 | 2 | Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | ops | Evita repetir incidente `.116` se Windows voltar a DHCP |
-| 3 | Alerta no painel se IP LAN do Central ≠ `.70` | código | Diagnóstico imediato quando Locks “não respondem” |
+| 3 | Alerta no painel se IP LAN do Central ≠ `.70` | código | **feito** em `main` → release Central **1.1.5** |
 | 4 | Validar feature B (WS offline/voltou) na loja | ops/QA | Já no código; falta prova multi-PC |
 | 5 | DNS estável (já tem `1.1.1.1`; documentar no roteador) | ops | Evita queda do `cloudflared` |
 | 6 | Ethernet no PC principal (além/em vez de só Wi‑Fi) | ops | Menos APIPA/`169.254` e DHCP surpresa |
