@@ -27,6 +27,10 @@ Sem essas variáveis = **desligado** (zero efeito).
 
 Continue com botões WhatsApp no portal (comprovante, lan). Evolution é opcional.
 
+## Próximo (P3) — receber e responder
+
+Hoje isto é só **envio**. Atendente automático no WhatsApp Business (FAQ + handoff humano, sem venda/liberação no v1): [issue #1](https://github.com/MrJCRJ/loja-geek-fidelidade/issues/1). Prioridade **depois** de RPi + Mercado Pago.
+
 ## Relacionados
 
 - [`ECOSSISTEMA.md`](./ECOSSISTEMA.md)

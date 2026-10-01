@@ -1,6 +1,6 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-09-30 ~19:35** (loja: Central **1.1.7** instalado; Lock Latest GitHub **1.1.8**).  
+Atualizado em **2026-10-01** (issue #1 IA WhatsApp; loja: Central **1.1.7**; Lock Latest **1.1.8**).  
 Foco: **atualizar Locks nas estações**, **IP/DNS estável**, depois Mercado Pago / secrets. URL fixa e túnel **já escolhidos** — não reabrir.
 
 **Snapshot completo (analisar de casa):** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) — versões, processos, incidente túnel/DNS, pendências.  
@@ -137,8 +137,9 @@ Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 | O3 | Regenerar pendrives: `pack:central` / `pack:lock` | Alta (após URL + MP) |
 | O4 | `npm run loja:ready` com checklist completo | Alta |
 | O5 | Backup automático `data/` testado | Média |
-| O6 | WhatsApp Evolution (instância real) | Baixa |
+| O6 | WhatsApp Evolution (instância real — envio) | Baixa |
 | O7 | Túnel nomeado no GeekCentral Windows (validar na loja) | Média |
+| O8 | **IA WhatsApp Business** — FAQ + handoff humano ([#1](https://github.com/MrJCRJ/loja-geek-fidelidade/issues/1)) | Baixa / P3 |
 
 ---
 
@@ -156,6 +157,7 @@ Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 9. [ ] Teste compra + assinatura (sandbox)
 10. [ ] STRICT_SECRETS + loja:ready
 11. [ ] Token APP_USR- produção
+12. [ ] (P3) IA WhatsApp Business FAQ — issue #1 (depois de RPi + MP)
 ```
 
 ---
