@@ -221,15 +221,16 @@ Ordem sugerida a partir dos incidentes de hoje (sem reabrir domínio/túnel):
 
 | Pri | Melhoria | Tipo | Por quê |
 |-----|----------|------|---------|
-| 1 | Atualizar Central 1.1.7 + Locks 1.1.8 na loja | ops | Central **feito**; Lock pendente nas estações |
+| 1 | Atualizar Central 1.1.7 + Locks 1.1.8 na loja | ops | **feito** — Central 1.1.7; Locks 1.1.8 nas 5 estações (2026-10-01) |
 | 2 | Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | ops | Evita repetir incidente `.116` se Windows voltar a DHCP |
 | 3 | Alerta no painel se IP LAN do Central ≠ `.70` | código | **feito** — incluso no Central **1.1.7** da loja |
 | 4 | Validar feature B (WS offline/voltou) na loja | ops/QA | Já no código; falta prova multi-PC |
 | 5 | DNS estável (já tem `1.1.1.1`; documentar no roteador) | ops | Evita queda do `cloudflared` |
 | 6 | Ethernet no PC principal (além/em vez de só Wi‑Fi) | ops | Menos APIPA/`169.254` e DHCP surpresa |
-| 7 | Mercado Pago app + sandbox → live | negócio | Checkout real |
-| 8 | `STRICT_SECRETS` + senha admin | segurança | Antes de expor mais o admin remoto |
-| 9 | Uso/energia (aba Uso) em release futuro | produto | Só após ops estável |
+| 7 | Mercado Pago live + webhook + compra teste | negócio | readiness já `mpConfigured`/live; falta prova ponta a ponta |
+| 8 | `STRICT_SECRETS` + senha admin | segurança | **feito** (readiness 2026-10-01) |
+| 9 | Túnel UI do Central alinhada ao keepalive | ops/código | API pública ok, painel ainda `mode: off` |
+| 10 | Uso/energia (aba Uso) | produto | Já coletando em 1.1.8 (PC-01/PC-03 com hardware) |
 
 Detalhe da fila ops: [`PENDENCIAS.md`](./PENDENCIAS.md).
 

@@ -1,7 +1,7 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-10-01** (issue #1 IA WhatsApp; loja: Central **1.1.7**; Lock Latest **1.1.8**).  
-Foco: **atualizar Locks nas estações**, **IP/DNS estável**, depois Mercado Pago / secrets. URL fixa e túnel **já escolhidos** — não reabrir.
+Atualizado em **2026-10-01** (admin remoto: Locks **1.1.8** nas 5 estações; Central **1.1.7**; secrets/STRICT ok).  
+Foco: **reserva DHCP `.70`**, **alinhar túnel na UI do Central**, validar WS (feature B), depois webhook/teste Pix live. URL fixa **já escolhida** — não reabrir.
 
 **Snapshot completo (analisar de casa):** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) — versões, processos, incidente túnel/DNS, pendências.  
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
@@ -14,7 +14,7 @@ Foco: **atualizar Locks nas estações**, **IP/DNS estável**, depois Mercado Pa
 **Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
 **Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — loja em **`central-v1.1.7`** (Latest); feito 2026-09-30 ~19:33  
-**Atualizar Lock:** GitHub **`lock-v1.1.8`** (`GeekLock-win-x64.zip`) — celular dono ou pendrive; **conferir cada estação**  
+**Atualizar Lock:** GitHub **`lock-v1.1.8`** — **feito nas 5 estações** (PC-01…05, conferido no admin 2026-10-01)  
 **Melhorias priorizadas:** ver tabela em [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) § Melhorias  
 
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
@@ -33,19 +33,20 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 |------|----------|
 | Código (API, portal, GeekLock) | `[x]` GitHub `main` puxado na loja; motor = release (não a pasta git) |
 | Release GeekCentral | `[x]` loja em **1.1.7** (`central-v1.1.7` = Latest) — instalado 2026-09-30 ~19:33 |
-| Release GeekLock | `[~]` GitHub **1.1.8** (`lock-v1.1.8`); **conferir / atualizar cada estação** |
+| Release GeekLock | `[x]` **1.1.8** nas 5 estações (PC-01…05) — conferido admin 2026-10-01 |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
-| Túnel | `[x]` nomeado `loja-geek-api` → `api.geekloja.com.br` (credenciais em `~/.cloudflared/`) |
-| Login Cloudflare (cloudflared) | `[x]` `cert.pem` ok |
-| URL fixa | `[x]` `https://api.geekloja.com.br` — health público OK (2026-09-30) |
+| Túnel (público) | `[x]` `https://api.geekloja.com.br/api/health` OK (keepalive / processo fora da UI) |
+| Túnel (UI GeekCentral) | `[~]` painel ainda `mode: off` / `autoStart: false` — checklist marca túnel falho |
+| Login Cloudflare (cloudflared) | `[x]` `cert.pem` ok · `originCertOk` / `namedConfigOk` true |
+| URL fixa | `[x]` `https://api.geekloja.com.br` |
 | Autostart / keepalive | `[x]` tarefa `GeekCentral-ManterLigado` + religa túnel; Central em `C:\GeekCentral` |
-| IP LAN Central `192.168.3.70` | `[x]` Wi‑Fi manual + DNS `1.1.1.1` (2026-09-30) |
+| IP LAN Central `192.168.3.70` | `[x]` Wi‑Fi manual + DNS `1.1.1.1` (2026-09-30); diagnóstico ok |
 | Reserva DHCP no roteador (MAC Wi‑Fi → `.70`) | `[ ]` reforço se alguém voltar o adaptador para DHCP |
 | Alerta painel se IP ≠ `.70` | `[x]` em `main` (aba Saúde) — incluso no Central **1.1.7** da loja |
 | Feature B (WS offline/voltou) | `[~]` no código; validar na loja |
-| Mercado Pago | `[~]` token `TEST-` (pode estar expirado); **sem app “Loja Geek”** no painel |
-| Checkout | `[~]` `.env` em modo live sandbox; produção (`APP_USR-`) pendente |
+| Secrets / STRICT | `[x]` `strictSecrets` + `secretsOk` (readiness 2026-10-01) |
+| Mercado Pago / Pix | `[~]` readiness: `mpConfigured` + checkout **live**; falta confirmar webhook + compra real |
 | Portal Vercel | `[x]` `VITE_API_URL=https://api.geekloja.com.br` (redeploy 2026-09-21) |
 
 ---
@@ -65,10 +66,10 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 - [x] Health público: `https://api.geekloja.com.br/api/health` → `{"ok":true,...}` (2026-09-22)
 - [x] `.env` da loja com `PUBLIC_API_URL` / `CLOUDFLARED_*`
 - [x] Túnel rodando neste PC: `CLOUDFLARED_TUNNEL_NAME=loja-geek-api bash scripts/portal-tunnel.sh`
-- [ ] **Autostart na loja (Windows):** copiar `~/.cloudflared/` + GeekCentral → Config → Portal/Túnel → **Nomeado** + auto-start
+- [~] **Autostart na loja (Windows):** keepalive já mantém API pública; UI do Central ainda `mode: off` — ligar **Nomeado** + auto-start na aba Config para o checklist ficar verde
 - [x] Vercel (portal): `VITE_API_URL=https://api.geekloja.com.br` + redeploy
-- [ ] GeekCentral: copiar URL pública / webhook MP na aba Config
-- [ ] Validar: `PUBLIC_API_URL=https://api.geekloja.com.br bash scripts/loja-ready.sh` (ainda falha STRICT_SECRETS / admin123)
+- [ ] GeekCentral: copiar URL pública / webhook MP na aba Config (se ainda vazio)
+- [~] Validar: `PUBLIC_API_URL=https://api.geekloja.com.br bash scripts/loja-ready.sh` (STRICT/secrets ok; túnel na UI ainda falha)
 
 **Docs:** [`portal-api-tunnel.md`](./portal-api-tunnel.md) · [`loja-ready.md`](./loja-ready.md)
 
@@ -84,7 +85,7 @@ Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 ## 3. Mercado Pago
 
 **Custo:** sem mensalidade; taxa por transação Pix/cartão.  
-**Situação:** testes rodaram em **sandbox** na conta pessoal; não há app nomeada “Loja Geek”.
+**Situação:** readiness da loja marca `mpConfigured` + checkout **live** (2026-10-01). Ainda falta confirmar app/webhook no painel MP e uma compra real de ponta a ponta.
 
 ### Checklist — conta e aplicação
 
@@ -132,14 +133,15 @@ Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 
 | # | Item | Prioridade |
 |---|------|------------|
-| O1 | `STRICT_SECRETS=1` + trocar `ADMIN_PASSWORD` / `JWT_SECRET` default | Alta |
-| O2 | Primeira GitHub Release do Central (`GeekCentral-win-x64.zip`) | Alta |
-| O3 | Regenerar pendrives: `pack:central` / `pack:lock` | Alta (após URL + MP) |
-| O4 | `npm run loja:ready` com checklist completo | Alta |
-| O5 | Backup automático `data/` testado | Média |
+| O1 | `STRICT_SECRETS=1` + trocar `ADMIN_PASSWORD` / `JWT_SECRET` default | **Feito** (readiness 2026-10-01) |
+| O2 | Primeira GitHub Release do Central (`GeekCentral-win-x64.zip`) | **Feito** (loja em 1.1.7 / várias releases) |
+| O3 | Regenerar pendrives: `pack:central` / `pack:lock` | Média (já há Lock 1.1.8 no USB; refrescar se precisar) |
+| O4 | `npm run loja:ready` com checklist completo | Média (falta túnel UI verde) |
+| O5 | Backup automático `data/` testado | `[~]` telemetria `backup.scheduled` ok; conferir restore |
 | O6 | WhatsApp Evolution (instância real — envio) | Baixa |
-| O7 | Túnel nomeado no GeekCentral Windows (validar na loja) | Média |
+| O7 | Túnel nomeado no GeekCentral Windows (UI `mode: off` vs API pública ok) | Alta |
 | O8 | **IA WhatsApp Business** — FAQ + handoff humano ([#1](https://github.com/MrJCRJ/loja-geek-fidelidade/issues/1)) | Baixa / P3 |
+| O9 | Alerta `stations_offline` à noite/loja fechada (ruído no painel) | Baixa / produto |
 
 ---
 
@@ -149,15 +151,14 @@ Histórico da comparação: [`portal-api-tunnel.md`](./portal-api-tunnel.md).
 1. [x] Domínio + Cloudflare Tunnel nomeado
 2. [x] Vercel VITE_API_URL + redeploy
 3. [x] Atualizar Central **1.1.7** na loja (Latest GitHub) — 2026-09-30
-4. [ ] Atualizar Locks **1.1.8** (celular ou USB)
-5. [ ] Reserva DHCP no roteador → .70 (+ opcional alerta IP no painel)
-6. [ ] Validar WS offline/voltou (feature B) em 1–2 PCs
-7. [ ] App “Loja Geek” no MP + token novo
-8. [ ] Webhook MP na URL fixa
-9. [ ] Teste compra + assinatura (sandbox)
-10. [ ] STRICT_SECRETS + loja:ready
-11. [ ] Token APP_USR- produção
-12. [ ] (P3) IA WhatsApp Business FAQ — issue #1 (depois de RPi + MP)
+4. [x] Atualizar Locks **1.1.8** nas 5 estações — conferido admin 2026-10-01
+5. [x] STRICT_SECRETS + secrets não-default — readiness ok 2026-10-01
+6. [ ] Reserva DHCP no roteador → .70
+7. [ ] Alinhar túnel na UI do Central (Nomeado + auto-start) — API pública já ok
+8. [ ] Validar WS offline/voltou (feature B) em 1–2 PCs
+9. [ ] Confirmar webhook MP + teste compra/assinatura live
+10. [ ] `loja:ready` checklist 100% verde
+11. [ ] (P3) IA WhatsApp Business FAQ — issue #1
 ```
 
 ---
