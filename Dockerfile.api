@@ -1,6 +1,8 @@
 FROM node:22-bookworm-slim AS web-build
-WORKDIR /web
-COPY web/package.json ./
+WORKDIR /src
+COPY shared/ ./shared/
+COPY web/package.json ./web/
+WORKDIR /src/web
 RUN npm install
 COPY web/ ./
 RUN npm run build
@@ -22,7 +24,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libstdc++6 \
 COPY --from=server-build /app/node_modules ./node_modules
 COPY --from=server-build /app/package.json ./
 COPY --from=server-build /app/dist ./dist
-COPY --from=web-build /web/dist ./public
+COPY --from=web-build /src/web/dist ./public
 ENV STATIC_DIR=/app/public
 EXPOSE 8787
 CMD ["node", "dist/index.js"]
