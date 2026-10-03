@@ -1,8 +1,10 @@
+import { GOOGLE_REVIEW_LOJA_URL } from "../../../shared/google-review";
+
 const REVIEW_LINKS = [
   {
     id: "loja",
     label: "Loja GEEKS",
-    href: "https://www.google.com/maps/place/Loja+GEEKS/@-9.4013458,-38.2184848,17z",
+    href: GOOGLE_REVIEW_LOJA_URL,
   },
   {
     id: "gamebox",
@@ -21,8 +23,10 @@ type Props = {
   title?: string;
 };
 
-/** CTA pós-compra/enroll — abre a ficha Maps da unidade para avaliação. */
+/** CTA pós-compra/enroll — Loja GEEKS em destaque no topo. */
 export default function GoogleReviewCta({ onDismiss, title }: Props) {
+  const loja = REVIEW_LINKS[0];
+  const others = REVIEW_LINKS.slice(1);
   return (
     <div className="card card--highlight reveal">
       <p className="section-label">Google</p>
@@ -30,8 +34,17 @@ export default function GoogleReviewCta({ onDismiss, title }: Props) {
       <p className="muted" style={{ marginTop: 0 }}>
         Sua nota ajuda quem busca lan house e loja de games em Paulo Afonso.
       </p>
+      <a
+        className="btn prox"
+        href={loja.href}
+        target="_blank"
+        rel="noreferrer"
+        style={{ display: "flex", width: "100%", justifyContent: "center", marginBottom: "0.65rem" }}
+      >
+        ★ {loja.label}
+      </a>
       <div className="row" style={{ flexWrap: "wrap" }}>
-        {REVIEW_LINKS.map((u) => (
+        {others.map((u) => (
           <a key={u.id} className="btn ghost prox" href={u.href} target="_blank" rel="noreferrer">
             {u.label}
           </a>

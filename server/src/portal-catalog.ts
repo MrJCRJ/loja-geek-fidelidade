@@ -33,7 +33,7 @@ export function buildPortalCatalog() {
         id: "loja-geeks",
         name: "Loja GEEKS",
         kind: "shop",
-        note: "Celular, games e colecionáveis",
+        note: "Celular, games, colecionáveis, conserto e impressão",
         whatsapp: "5575991869502",
       },
       {
@@ -67,6 +67,20 @@ export function buildPortalCatalog() {
         blurb: "Capas, fones, carregadores e mais",
         whatsapp: "5575991869502",
         prefill: "Oi! Quero ver opções de celular/acessórios.",
+      },
+      {
+        id: "repair",
+        title: "Conserto",
+        blurb: "Celular e eletrônicos — fale com a loja",
+        whatsapp: "5575991869502",
+        prefill: "Oi! Quero orçamento de conserto na Loja GEEKS.",
+      },
+      {
+        id: "print",
+        title: "Impressão",
+        blurb: "Documentos e arquivos — Loja GEEKS",
+        whatsapp: "5575991869502",
+        prefill: "Oi! Preciso imprimir na Loja GEEKS.",
       },
       {
         id: "inss",

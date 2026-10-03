@@ -17,6 +17,8 @@ export type Customer = {
   subscription_status?: string;
   subscription_expires_at?: string | null;
   subscriber_since?: string | null;
+  review_ask_opt_out?: number | null;
+  review_asked_at?: string | null;
   created_at?: string;
   updated_at?: string;
 };

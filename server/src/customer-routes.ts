@@ -86,6 +86,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
         level: z.enum(["bronze", "prata", "ouro"]).optional(),
         notes: z.string().optional(),
         consent: z.boolean().optional(),
+        reviewAskOptOut: z.boolean().optional(),
       })
       .parse(req.body);
     const updated = updateCustomer(id, body);
@@ -99,6 +100,21 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
     try {
       const { adminIssuePasswordReset } = await import("./customer-auth.js");
       return adminIssuePasswordReset(id);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  /** Pedir avaliação Google via WhatsApp (Evolution ou devolve wa.me). */
+  app.post("/api/customers/:id/ask-google-review", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z.object({ force: z.boolean().optional() }).parse(req.body || {});
+    const customer = getCustomer(id);
+    if (!customer) return reply.code(404).send({ error: "Não encontrado" });
+    try {
+      const wa = await import("./whatsapp.js");
+      return wa.askGoogleReviewWhatsApp({ customerId: id, force: body.force !== false });
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
     }

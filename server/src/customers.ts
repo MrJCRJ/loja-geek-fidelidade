@@ -1,13 +1,26 @@
 import { nanoid } from "nanoid";
 import { getDb, type CustomerLevel } from "./db.js";
+import { GOOGLE_REVIEW_ASK_COOLDOWN_MS } from "./google-review.js";
+
+const CUSTOMER_COLS = `c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
+              c.created_at, c.updated_at, c.email,
+              c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
+              c.review_ask_opt_out, c.review_asked_at,
+              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples`;
+
+export type CustomerRow = {
+  id: string;
+  name: string;
+  phone?: string | null;
+  review_ask_opt_out?: number | null;
+  review_asked_at?: string | null;
+  [key: string]: unknown;
+};
 
 export function listCustomers() {
   return getDb()
     .prepare(
-      `SELECT c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
-              c.created_at, c.updated_at, c.email,
-              c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
-              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
+      `SELECT ${CUSTOMER_COLS}
        FROM customers c
        ORDER BY c.name COLLATE NOCASE`,
     )
@@ -16,13 +29,7 @@ export function listCustomers() {
 
 export function getCustomer(id: string) {
   return getDb()
-    .prepare(
-      `SELECT c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
-              c.created_at, c.updated_at, c.email,
-              c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
-              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
-       FROM customers c WHERE c.id = ?`,
-    )
+    .prepare(`SELECT ${CUSTOMER_COLS} FROM customers c WHERE c.id = ?`)
     .get(id);
 }
 
@@ -55,11 +62,24 @@ export function createCustomer(input: {
 
 export function updateCustomer(
   id: string,
-  input: Partial<{ name: string; phone: string; level: CustomerLevel; notes: string; consent: boolean }>,
+  input: Partial<{
+    name: string;
+    phone: string;
+    level: CustomerLevel;
+    notes: string;
+    consent: boolean;
+    reviewAskOptOut: boolean;
+  }>,
 ) {
   const current = getCustomer(id) as Record<string, unknown> | undefined;
   if (!current) return null;
   const now = new Date().toISOString();
+  const optOut =
+    input.reviewAskOptOut === undefined
+      ? Number(current.review_ask_opt_out) || 0
+      : input.reviewAskOptOut
+        ? 1
+        : 0;
   getDb()
     .prepare(
       `UPDATE customers SET
@@ -68,6 +88,7 @@ export function updateCustomer(
         level = ?,
         notes = ?,
         consent_at = ?,
+        review_ask_opt_out = ?,
         updated_at = ?
        WHERE id = ?`,
     )
@@ -77,10 +98,38 @@ export function updateCustomer(
       input.level ?? current.level,
       input.notes !== undefined ? input.notes.trim() || null : current.notes,
       input.consent === true ? (current.consent_at || now) : input.consent === false ? null : current.consent_at,
+      optOut,
       now,
       id,
     );
   return getCustomer(id);
+}
+
+export function isReviewAskOptOut(customer: CustomerRow | null | undefined) {
+  return Boolean(customer && Number(customer.review_ask_opt_out) === 1);
+}
+
+/** Automático: telefone + sem opt-out + cooldown 60d. */
+export function canAutoAskGoogleReview(customer: CustomerRow | null | undefined) {
+  if (!customer?.phone || String(customer.phone).replace(/\D/g, "").length < 10) return false;
+  if (isReviewAskOptOut(customer)) return false;
+  if (!customer.review_asked_at) return true;
+  const asked = Date.parse(String(customer.review_asked_at));
+  if (!Number.isFinite(asked)) return true;
+  return Date.now() - asked >= GOOGLE_REVIEW_ASK_COOLDOWN_MS;
+}
+
+/** Manual: telefone + sem opt-out (ignora cooldown). */
+export function canManualAskGoogleReview(customer: CustomerRow | null | undefined) {
+  if (!customer?.phone || String(customer.phone).replace(/\D/g, "").length < 10) return false;
+  return !isReviewAskOptOut(customer);
+}
+
+export function markGoogleReviewAsked(customerId: string) {
+  const now = new Date().toISOString();
+  getDb()
+    .prepare("UPDATE customers SET review_asked_at = ?, updated_at = ? WHERE id = ?")
+    .run(now, now, customerId);
 }
 
 export function deleteCustomer(id: string) {

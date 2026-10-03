@@ -174,29 +174,82 @@ export function ClienteManagePanel({
             onChange={(e) => onEditFormChange({ ...editForm, notes: e.target.value })}
           />
         </div>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => {
-            api<Customer>(`/api/customers/${selected.id}`, {
-              method: "PATCH",
-              body: JSON.stringify({
-                name: editForm.name,
-                phone: editForm.phone || undefined,
-                level: editForm.level,
-                notes: editForm.notes || undefined,
-              }),
-            })
-              .then((c) => {
-                setSelected(c);
-                onToast("Cliente atualizado", "ok");
-                return refresh();
+        <div className="field">
+          <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <input
+              type="checkbox"
+              checked={Number(selected.review_ask_opt_out) === 1}
+              onChange={(e) => {
+                api<Customer>(`/api/customers/${selected.id}`, {
+                  method: "PATCH",
+                  body: JSON.stringify({ reviewAskOptOut: e.target.checked }),
+                })
+                  .then((c) => {
+                    setSelected(c);
+                    onToast(
+                      e.target.checked ? "Não pediremos avaliação" : "Pedidos de avaliação reativados",
+                      "ok",
+                    );
+                    return refresh();
+                  })
+                  .catch((err) => onError(err.message));
+              }}
+            />
+            Não pedir avaliação no WhatsApp
+          </label>
+          {selected.review_asked_at ? (
+            <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+              Último pedido: {new Date(selected.review_asked_at).toLocaleString("pt-BR")}
+            </p>
+          ) : null}
+        </div>
+        <div className="row" style={{ flexWrap: "wrap", gap: "0.5rem" }}>
+          <button
+            className="btn"
+            type="button"
+            onClick={() => {
+              api<Customer>(`/api/customers/${selected.id}`, {
+                method: "PATCH",
+                body: JSON.stringify({
+                  name: editForm.name,
+                  phone: editForm.phone || undefined,
+                  level: editForm.level,
+                  notes: editForm.notes || undefined,
+                }),
               })
-              .catch((e) => onError(e.message));
-          }}
-        >
-          Salvar alterações
-        </button>
+                .then((c) => {
+                  setSelected(c);
+                  onToast("Cliente atualizado", "ok");
+                  return refresh();
+                })
+                .catch((e) => onError(e.message));
+            }}
+          >
+            Salvar alterações
+          </button>
+          <button
+            className="btn ghost"
+            type="button"
+            disabled={!editForm.phone && !selected.phone}
+            onClick={() => {
+              api<{ sent?: boolean; waMeUrl?: string | null; skipped?: string }>(
+                `/api/customers/${selected.id}/ask-google-review`,
+                { method: "POST", body: JSON.stringify({ force: true }) },
+              )
+                .then((r) => {
+                  if (r.sent) onToast("Pedido de avaliação enviado no WhatsApp", "ok");
+                  else if (r.waMeUrl) {
+                    window.open(r.waMeUrl, "_blank", "noopener,noreferrer");
+                    onToast("Abra o WhatsApp e envie a mensagem", "info");
+                  } else onToast(r.skipped === "opt_out" ? "Cliente optou por não receber" : "Sem telefone", "info");
+                  return refresh();
+                })
+                .catch((e) => onError(e.message));
+            }}
+          >
+            Pedir avaliação no WhatsApp
+          </button>
+        </div>
       </div>
 
       {pointsLedger.length > 0 ? (

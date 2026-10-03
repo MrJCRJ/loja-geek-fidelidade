@@ -27,6 +27,20 @@ const DEFAULT_SHOP = [
     prefill: "Oi! Quero ver opções de celular/acessórios.",
   },
   {
+    id: "repair",
+    title: "Conserto",
+    blurb: "Celular e eletrônicos — fale com a loja",
+    whatsapp: "5575991869502",
+    prefill: "Oi! Quero orçamento de conserto na Loja GEEKS.",
+  },
+  {
+    id: "print",
+    title: "Impressão",
+    blurb: "Documentos e arquivos — Loja GEEKS",
+    whatsapp: "5575991869502",
+    prefill: "Oi! Preciso imprimir na Loja GEEKS.",
+  },
+  {
     id: "inss",
     title: "Serviços digitais / INSS",
     blurb: "Agendamento e auxílio na lan house",
@@ -47,7 +61,7 @@ const UNITS = [
     name: "Loja GEEKS",
     address: "R. Santo Antônio, 6 — Centro",
     maps: "https://www.google.com/maps/place/Loja+GEEKS/@-9.4013458,-38.2184848,17z",
-    note: "Celular, games e colecionáveis",
+    note: "Celular, games, colecionáveis, conserto e impressão",
   },
   {
     name: "Game Box",
