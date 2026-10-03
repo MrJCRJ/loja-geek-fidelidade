@@ -188,4 +188,4 @@ Câmera ainda “vê” o VIP no fundo; invasor joga estável até o VIP sumir d
 
 Config no GeekCentral → **Config**: aviso de saldo, auto-trava admin, ratio mínimo de presença.
 
-Relacionados: [`loja-ready.md`](./loja-ready.md) · [`telemetria.md`](./telemetria.md) · [`REFINO.md`](./REFINO.md).
+Relacionados: [`loja-ready.md`](./loja-ready.md) · [`telemetria.md`](./telemetria.md) · [`arquivo/REFINO.md`](./arquivo/REFINO.md).

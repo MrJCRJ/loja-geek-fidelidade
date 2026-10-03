@@ -1,0 +1,51 @@
+PENDENTE — cadastro VIP só no portal
+Salvo em 2026-09-28. Retomar quando for implementar. Não aplicar até responder Q2–Q4.
+
+ONDE
+- Painel da loja (equipe): https://loja.geekloja.com.br  (GeekAdmin / GeekCentral)
+- Site do cliente: https://loja-geek-portal.vercel.app  (projeto portal, Vercel)
+- Código local: /home/treegunn/loja-geek-fidelidade
+
+O QUE O USUÁRIO PEDIU
+Remover o cadastro de VIP no painel da equipe. VIP só se cadastra pelo portal de clientes.
+
+FATOS (já conferidos)
+- Não existe tela chamada “equipes” no git local. No site no ar há aba Equipe.
+- Aba Equipe (produção): cria FUNCIONÁRIO (usuário + senha, papel dono/balcão). Não cria VIP.
+- Aba Clientes: formulário “Novo VIP” (nome, WhatsApp, nível, LGPD, Cadastrar). É o cadastro a remover.
+- Form no código local: web/src/admin/tabs/ClientesListPanel.tsx + createCustomer em ClientesTab.tsx
+- API admin: POST /api/customers em server/src/customer-routes.ts
+- Portal já cadastra: POST /api/portal/register (portal/src/pages/RegisterPage.tsx)
+- Produção está à frente do git local: login usuário+senha, aba Equipe, “Acesso só da equipe”.
+  Bundle no ar (quando conferido): /assets/index-D71fPHTd.js
+- E2E local espera o heading “Novo VIP”: web/e2e/admin.spec.ts
+
+DECISÕES JÁ FECHADAS
+- Q1 = A — alvo é o GeekAdmin em loja.geekloja.com.br (painel da loja). O form a tirar é Novo VIP na aba Clientes, não a aba Equipe de funcionários.
+
+QUESTIONÁRIO AINDA ABERTO (responder antes de implementar)
+
+Q2 — Só esconder o form ou também bloquear a API?
+  A) Form some E POST /api/customers recusa (cadastro só no portal). Testes passam a criar VIP pelo portal.
+  B) Só some o form; API admin ainda cria.
+  C) Form some; só o dono ainda cria via API.
+  Recomendado: A
+
+Q3 — O que a aba Clientes ainda faz?
+  A) Lista, busca, enroll facial, editar, caixa, apagar — some só o Novo VIP.
+  B) Some cadastro e enroll no balcão.
+  C) Só leitura.
+  Recomendado: A
+
+Q4 — No lugar do formulário?
+  A) Texto curto + link para https://loja-geek-portal.vercel.app
+  B) Some sem aviso.
+  C) QR + URL no balcão.
+  Recomendado: A
+
+QUANDO IMPLEMENTAR
+1. Fechar Q2–Q4 (ou “ok em todas” = A,A,A).
+2. Tirar o form em ClientesListPanel; manter lista.
+3. Ajustar POST /api/customers conforme Q2.
+4. Atualizar testes (customers.test.ts, helpers, e2e).
+5. Deploy no loja.geekloja.com.br para valer na loja.

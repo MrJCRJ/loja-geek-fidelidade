@@ -20,8 +20,12 @@ Sem essas variáveis = **desligado** (zero efeito).
 
 | Evento | Mensagem |
 |--------|----------|
-| Pix/pedido **pago** e creditado | “pagamento confirmado + horas” |
+| Pix/pedido **pago** e creditado | “pagamento confirmado + horas” + pedido educado de avaliação Google (se elegível) |
+| Venda/liberação no balcão | mesmo fluxo; Central oferece `wa.me` se Evolution estiver off |
+| Botão “Pedir avaliação” (ficha VIP) | só o pedido de avaliação |
 | Saldo baixo na sessão | junto com web-push (se o VIP tem telefone no cadastro) |
+
+**Avaliação Google:** link Maps da Loja GEEKS (aba reviews). Cooldown **60 dias** após o pedido; flag `review_ask_opt_out` na ficha VIP bloqueia. Não dá para saber se a pessoa publicou a nota.
 
 ## Sem Evolution
 

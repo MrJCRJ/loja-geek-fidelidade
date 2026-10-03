@@ -149,4 +149,4 @@ DNS CNAME `admin` → o mesmo túnel. Access self-hosted nesse hostname.
 - [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — próxima implementação = estabilidade WS
 - [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — compacto no Electron; o controle passa a ser o celular
 - [`SETUP-WINDOWS-LOJA.md`](./SETUP-WINDOWS-LOJA.md) — túnel e domínio já prontos (não refazer)
-- [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md) — G7 (auditoria quem fez o quê) entra nesta feature
+- [`arquivo/LISTA-COMPLETA.md`](./arquivo/LISTA-COMPLETA.md) — G7 (auditoria quem fez o quê) entra nesta feature

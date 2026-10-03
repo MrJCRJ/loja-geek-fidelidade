@@ -1,7 +1,11 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-10-01** (admin remoto: Locks **1.1.8** nas 5 estações; Central **1.1.7**; secrets/STRICT ok).  
-Foco: **reserva DHCP `.70`**, **alinhar túnel na UI do Central**, validar WS (feature B), depois webhook/teste Pix live. URL fixa **já escolhida** — não reabrir.
+Atualizado em **2026-10-03** (negócio alinhado em [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md)).  
+Locks na loja: ver [`geeklock-handoff.md`](./geeklock-handoff.md) (alvo **1.1.14** / pacote VPS). Central release **1.1.7**.  
+
+**Foco 30 dias (produto):** (1) Pix portal ponta a ponta · (2) avaliações Google/WhatsApp · (3) estabilidade Central/Lock (IP `.70`, WS, updates).  
+**Ops imediatas:** reserva DHCP `.70`, alinhar túnel na UI do Central, validar WS, webhook/teste Pix live. URL fixa **já escolhida** — não reabrir.  
+**Backlog 6 meses:** site financeiro Geek (app separado, multi-unidade) — só no mapa por enquanto.
 
 **Snapshot completo (analisar de casa):** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) — versões, processos, incidente túnel/DNS, pendências.  
 **Domínio escolhido:** `geekloja.com.br` → API `https://api.geekloja.com.br`  
@@ -190,4 +194,4 @@ PUBLIC_API_URL=https://api.seudominio.com.br bash scripts/loja-ready.sh
 | MP integrações | https://www.mercadopago.com.br/developers/panel/app |
 | Cloudflare Zero Trust | https://one.dash.cloudflare.com/ |
 
-Lista histórica mais ampla: [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md) · [`MELHORIAS.md`](./MELHORIAS.md)
+Lista histórica mais ampla: [`arquivo/LISTA-COMPLETA.md`](./arquivo/LISTA-COMPLETA.md) · [`arquivo/MELHORIAS.md`](./arquivo/MELHORIAS.md)

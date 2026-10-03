@@ -33,4 +33,4 @@ Ver `docs/portal-api-tunnel.md` na raiz do monorepo.
 
 ## Backlog restante
 
-Ver [`docs/portal-backlog.md`](../docs/portal-backlog.md) (túnel nomeado, Pix MP, reset senha, etc.).
+Ver [`docs/arquivo/portal-backlog.md`](../docs/arquivo/portal-backlog.md) (histórico) e [`docs/NEGOCIO-GEEK.md`](../docs/NEGOCIO-GEEK.md) / [`docs/PENDENCIAS.md`](../docs/PENDENCIAS.md).

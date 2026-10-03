@@ -93,7 +93,7 @@ Não precisa instalar tudo. Use a ordem de prioridade no final.
 |------|----------------|--------|
 | **Avisos no celular (web-push)** | “Seu saldo está acabando” com o site fechado. VAPID; no **iPhone** só funciona se o PWA estiver na Tela de Início. | `[~]` VAPID + SW + dashboard |
 | **Workbox / PWA** | Portal mais estável offline (precache + network-first HTML). | `[~]` `portal/public/sw.js` (estratégias estilo Workbox) |
-| **Evolution API** ou **Baileys** | Robô de **WhatsApp** (saldo, Pix pago). | `[~]` código + [`whatsapp-evolution.md`](./whatsapp-evolution.md); falta instância |
+| **Evolution API** + bot | WhatsApp na VPS (`loja-geek-whatsapp`): Pix/saldo + supervisão IA. | `[x]` instância `loja-geek` · ver [`whatsapp-evolution.md`](./whatsapp-evolution.md) + [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md) |
 | **QR Code** | Cliente escaneia no balcão. | `[x]` estações no Central |
 
 **Resumo:** WhatsApp automático e aviso de saldo no celular são os que mais melhoram a experiência do cliente.
@@ -171,4 +171,4 @@ Faça nesta ordem — do que destrava a loja para o que é “nice to have”:
 - Litestream: [`litestream.md`](./litestream.md) · Syncthing: [`syncthing.md`](./syncthing.md) · Uptime: [`uptime-kuma.md`](./uptime-kuma.md)  
 - WhatsApp: [`whatsapp-evolution.md`](./whatsapp-evolution.md) · Quiosque: [`quiosque-windows.md`](./quiosque-windows.md)  
 - Problemas de sessão: [`teorias-producao.md`](./teorias-producao.md)  
-- Melhorias: [`MELHORIAS.md`](./MELHORIAS.md) · Lista: [`LISTA-COMPLETA.md`](./LISTA-COMPLETA.md)
+- Melhorias (arquivo): [`arquivo/MELHORIAS.md`](./arquivo/MELHORIAS.md) · Lista: [`arquivo/LISTA-COMPLETA.md`](./arquivo/LISTA-COMPLETA.md) · Negócio: [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md)

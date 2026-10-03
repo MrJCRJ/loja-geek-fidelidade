@@ -1,13 +1,15 @@
 # Documentação — Loja Geek
 
-Atualizado em **2026-09-30**.  
+Atualizado em **2026-10-03**.  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade
 
 **Não commitar:** `.env`, token de estação, `cert.pem`, JSON do túnel, senhas.  
 **Não recriar:** domínio `geekloja.com.br`, túnel `loja-geek-api`, API `https://api.geekloja.com.br`.
 
-A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de agosto são histórico.  
-**Snapshot para analisar de casa:** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md).
+**Mapa do negócio (canônico):** [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md) — unidades, dinheiro, sistemas, 30 dias + backlog.  
+**Ops do dia a dia:** [`PENDENCIAS.md`](./PENDENCIAS.md).  
+**Vivo vs arquivo no monorepo:** [`VIVO-VS-ARQUIVO.md`](./VIVO-VS-ARQUIVO.md).  
+**Snapshot loja (set/2026):** [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md).
 
 ---
 
@@ -15,10 +17,12 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 
 | Tema | Onde está |
 |------|-----------|
-| Estado na loja (versões, processos, incidente DNS 30/09) | [ESTADO-SISTEMA-2026-09-30.md](./ESTADO-SISTEMA-2026-09-30.md) |
-| O que falta para a loja rodar | [PENDENCIAS.md](./PENDENCIAS.md) |
+| Negócio Geek (unidades, WA, roadmap 30d/6m) | [NEGOCIO-GEEK.md](./NEGOCIO-GEEK.md) |
+| O que falta / foco ops | [PENDENCIAS.md](./PENDENCIAS.md) |
+| Handoff Lock / versões | [geeklock-handoff.md](./geeklock-handoff.md) |
 | Quem controla de onde (dono / equipe / Wi‑Fi) | [GEEKADMIN-CELULAR.md](./GEEKADMIN-CELULAR.md) |
-| Atualizar o GeekCentral (release + botão; de casa = publicar) | [UPDATE-GEEKCENTRAL.md](./UPDATE-GEEKCENTRAL.md) |
+| Atualizar o GeekCentral | [UPDATE-GEEKCENTRAL.md](./UPDATE-GEEKCENTRAL.md) |
+| Avaliação Google / textos | [atracao/TEXTOS-AVALIAR.txt](./atracao/TEXTOS-AVALIAR.txt) |
 
 ---
 
@@ -82,14 +86,12 @@ A verdade do dia a dia está em [`PENDENCIAS.md`](./PENDENCIAS.md). Listas de ag
 
 ## Histórico / ideias (não é a fila de hoje)
 
+Ver também [`VIVO-VS-ARQUIVO.md`](./VIVO-VS-ARQUIVO.md). Prioridade de produto = [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md) + topo de [`roadmap.md`](./roadmap.md).
+
 | Doc | Para quê |
 |-----|----------|
-| [LISTA-COMPLETA.md](./LISTA-COMPLETA.md) | Lista larga do sistema (agosto; ops = PENDENCIAS) |
-| [MELHORIAS.md](./MELHORIAS.md) | Melhorias |
-| [REFINO.md](./REFINO.md) | Refino |
-| [roadmap.md](./roadmap.md) | Roadmap |
-| [portal-backlog.md](./portal-backlog.md) | Backlog do portal |
-| [UX-LISTAS-E-COMPRA.md](./UX-LISTAS-E-COMPRA.md) | Listas / compra hora↔R$ |
+| [arquivo/](./arquivo/) | Docs históricos (LISTA-COMPLETA, MELHORIAS, REFINO, etc.) |
+| [roadmap.md](./roadmap.md) | Roadmap (topo alinhado 2026-10-03) |
 | [ECOSSISTEMA.md](./ECOSSISTEMA.md) | Ferramentas externas |
 | [quiosque-windows.md](./quiosque-windows.md) | Assigned Access |
 | [telemetria.md](./telemetria.md) | Telemetria |

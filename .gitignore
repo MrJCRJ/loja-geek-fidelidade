@@ -28,13 +28,15 @@ agent-central-windows/dist/
 agent-central-windows/release/
 agent-central-windows/node_modules/
 agent-central-windows/runtime/
-pendrive/
+pendrive/*
+!pendrive/README.md
 deploy/certs/*.pem
 deploy/certs/*.key
 .DS_Store
 *.log
 *.zip
 .cache/
+/index-*.js
 agent-central-windows/data-dev/
 
 # runtime local

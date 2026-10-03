@@ -2,6 +2,11 @@
 
 Sistema **local na LAN**: 1 PC controle + N estações com webcam.
 
+**Negócio (unidades, WhatsApp, dinheiro, 30 dias / 6 meses):** [`docs/NEGOCIO-GEEK.md`](docs/NEGOCIO-GEEK.md)  
+**Ops / pendências:** [`docs/PENDENCIAS.md`](docs/PENDENCIAS.md) · **índice docs:** [`docs/README.md`](docs/README.md) · **vivo vs arquivo:** [`docs/VIVO-VS-ARQUIVO.md`](docs/VIVO-VS-ARQUIVO.md)
+
+Três frentes: **Loja GEEKS** + **Game Box** (produto, conserto, impressão) e **Lan House Geeks** (PCs/GeekLock, horas, serviços digitais). Portal + Pix + WhatsApp (Evolution na VPS) + avaliação Google.
+
 ## O que tem no MVP
 
 - Cadastro VIP com consentimento LGPD e níveis (bronze/prata/ouro)
@@ -151,4 +156,4 @@ GitHub (privado): https://github.com/MrJCRJ/loja-geek-fidelidade
 - **Continuar:** [`docs/PENDENCIAS.md`](./docs/PENDENCIAS.md) · índice [`docs/README.md`](./docs/README.md)
 - Modos GeekLock vs browser: [`docs/estacao-modos.md`](./docs/estacao-modos.md)
 - Roadmap: [`docs/roadmap.md`](./docs/roadmap.md)
-- Auditoria histórica: [`AUDITORIA.md`](./AUDITORIA.md)
+- Auditoria histórica: [`docs/arquivo/AUDITORIA.md`](docs/arquivo/AUDITORIA.md)
