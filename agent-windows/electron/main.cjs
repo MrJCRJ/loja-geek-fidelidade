@@ -1,5 +1,5 @@
 const { createElectronDebug } = require("./debug.cjs");
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, session, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage, globalShortcut, session, dialog, screen } = require("electron");
 const path = require("node:path");
 const { OverlayLockController } = require("./lock-controller.cjs");
 const { SessionHud } = require("./session-hud.cjs");
@@ -116,10 +116,9 @@ function tooltipFromPayload(payload) {
   if (phase === "locked" || phase === "boot") return "GeekLock — Aguardando VIP";
   if (phase === "unlocked") {
     if (isAdmin) {
-      const leftTxt = balTxt || elapsed;
-      return leftTxt
-        ? `GeekLock — Equipe · resta ${leftTxt}`
-        : "GeekLock — Equipe · liberado sem conta";
+      if (balTxt != null) return `GeekLock — Equipe · resta ${balTxt}`;
+      if (elapsed) return `GeekLock — Equipe · tempo ${elapsed}`;
+      return "GeekLock — Equipe · liberado sem conta";
     }
     const balPart = balTxt ? ` · resta ${balTxt}` : "";
     if (payload?.lowBalanceWarn) return `GeekLock — ${name}${balPart} · SALDO BAIXO`;
@@ -191,10 +190,10 @@ function buildTrayMenu(payload) {
     const absentLeft = payload?.absentLeft;
     const present = payload?.present !== false;
     const balTxt = bal != null ? formatTrayTime(bal) : null;
-    const restaPart = balTxt != null ? `resta ${balTxt}` : elapsed;
+    const restaPart = balTxt != null ? `resta ${balTxt}` : elapsed ? `tempo ${elapsed}` : elapsed;
     let statusLine;
     if (isAdmin) {
-      statusLine = `${restaPart} · sem conta`;
+      statusLine = balTxt != null ? `${restaPart} · sem conta` : `${restaPart || "aberto"} · sem conta`;
     } else if (!present) {
       statusLine =
         absentLeft != null && absentLeft > 0
@@ -373,13 +372,42 @@ function reloadAppPage() {
   mainWindow.webContents.reloadIgnoringCache();
 }
 
+/** Cobrir o monitor principal por completo (evita janela “em pedaço” da tela). */
+function coverPrimaryDisplay(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    const display = screen.getDisplayNearestPoint(screen.getCursorScreenPoint()) || screen.getPrimaryDisplay();
+    const b = display.bounds;
+    win.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
+  } catch {
+    /* ignore */
+  }
+  try {
+    if (process.platform === "win32" && typeof win.setKiosk === "function") {
+      win.setKiosk(true);
+    } else {
+      win.setFullScreen(true);
+    }
+  } catch {
+    try {
+      win.setFullScreen(true);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 function createWindow() {
+  const primary = screen.getPrimaryDisplay().bounds;
   mainWindow = new BrowserWindow({
-    width: 1100,
-    height: 720,
+    x: primary.x,
+    y: primary.y,
+    width: primary.width,
+    height: primary.height,
     show: false,
     autoHideMenuBar: true,
-    fullscreen: false,
+    fullscreen: true,
+    frame: false,
     alwaysOnTop: false,
     skipTaskbar: true,
     backgroundColor: "#060f1f",
@@ -393,11 +421,14 @@ function createWindow() {
 
   mainWindow.setMenuBarVisibility(false);
   mainWindow.setSkipTaskbar(true);
+  coverPrimaryDisplay(mainWindow);
   setupLoadFallback(mainWindow);
   loadApp(mainWindow);
 
   mainWindow.once("ready-to-show", () => {
-    lock.lock();
+    coverPrimaryDisplay(mainWindow);
+    // Cadastro e kiosk: sempre tela cheia na estação.
+    void lock.lock();
   });
 
   mainWindow.on("close", (e) => {

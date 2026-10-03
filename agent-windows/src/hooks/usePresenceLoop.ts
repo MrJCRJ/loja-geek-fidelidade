@@ -27,6 +27,8 @@ type Args = {
   faceGraceUntilRef: RefObject<number>;
   absentSinceRef: RefObject<number | null>;
   presenceMissStreakRef: RefObject<number>;
+  /** Liberação do balcão sem face cadastrada — não trava por ausência. */
+  deskLiberarRef?: RefObject<boolean>;
   startCam: () => Promise<void>;
   doEndSession: (reason: string) => Promise<void>;
   onIntruder: (kind: IntruderKind) => Promise<void>;
@@ -55,6 +57,7 @@ export function usePresenceLoop({
   faceGraceUntilRef,
   absentSinceRef,
   presenceMissStreakRef,
+  deskLiberarRef,
   startCam,
   doEndSession,
   onIntruder,
@@ -132,8 +135,9 @@ export function usePresenceLoop({
       const now = Date.now();
       const grace = inFaceGrace(faceGraceUntilRef);
       const vipId = sess.customer_id || customerId;
+      const deskLiberar = Boolean(deskLiberarRef?.current);
 
-      if (grace) {
+      if (deskLiberar || grace) {
         notePresent();
         intruderSinceRef.current = null;
       } else if (!videoRef.current || videoRef.current.readyState < 2) {

@@ -1,13 +1,15 @@
 import { useMemo, useState } from "react";
-import { api, formatClock, formatDuration, type Station } from "../../api";
+import { api, formatClock, formatDuration, type Customer, type Station } from "../../api";
 import { QrCode } from "../components/QrCode";
 import { TimeDurationPicker, durationToSeconds } from "../components/TimeDurationPicker";
+import { formatHours } from "../format";
 import type { AdminSettings, LiveStationStatus } from "../types";
 
-type UnlockKind = "staff_timed" | "staff_open" | "guest_named";
+type LiberarMode = "sale" | "open";
 
 type Props = {
   stations: Station[];
+  customers: Customer[];
   connected: Array<{ stationId: string; stationName: string }>;
   liveStatus: Record<string, LiveStationStatus>;
   settings: AdminSettings;
@@ -26,6 +28,7 @@ type Props = {
 
 export function EstacoesTab({
   stations,
+  customers,
   connected,
   liveStatus,
   settings,
@@ -43,14 +46,36 @@ export function EstacoesTab({
   const [messageDuration, setMessageDuration] = useState(15);
   const [createdToken, setCreatedToken] = useState<{ name: string; token: string } | null>(null);
   const [liberarId, setLiberarId] = useState<string | null>(null);
+  const [liberarMode, setLiberarMode] = useState<LiberarMode>("sale");
+  const [vipQuery, setVipQuery] = useState("");
+  const [selectedVip, setSelectedVip] = useState<Customer | null>(null);
+  const [saleReais, setSaleReais] = useState("20");
   const [unlockH, setUnlockH] = useState(0);
   const [unlockM, setUnlockM] = useState(30);
-  const [unlockKind, setUnlockKind] = useState<UnlockKind>("staff_timed");
-  const [guestLabel, setGuestLabel] = useState("");
-  const [guestOpen, setGuestOpen] = useState(false);
+  const [saleBy, setSaleBy] = useState<"hours" | "reais">("hours");
+  const [liberarBusy, setLiberarBusy] = useState(false);
   const onlineMap = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
-  const recents = settings.guestLabelRecents || [];
-  const maxMin = settings.staffTimedMaxMinutes || 240;
+  const packs = settings.hourPacks || [];
+  const baseHourPrice = settings.hourPriceReais || 10;
+  const subscriberPct = settings.subscriberHourDiscountPct || 0;
+  const vipIsSubscriber =
+    selectedVip?.subscription_status === "active" &&
+    (!selectedVip.subscription_expires_at ||
+      Date.parse(selectedVip.subscription_expires_at) > Date.now());
+  const hourPrice =
+    vipIsSubscriber && subscriberPct > 0
+      ? Math.max(0.01, baseHourPrice * (1 - Math.min(90, subscriberPct) / 100))
+      : baseHourPrice;
+  const durationSec = durationToSeconds(unlockH, unlockM);
+  const estimatedReais = Math.round((durationSec / 3600) * hourPrice * 100) / 100;
+
+  const vipMatches = useMemo(() => {
+    const q = vipQuery.trim().toLowerCase();
+    if (!q) return customers.slice(0, 8);
+    return customers
+      .filter((c) => `${c.name} ${c.phone || ""}`.toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [customers, vipQuery]);
 
   const messageBody = () => ({
     command: "message" as const,
@@ -60,118 +85,246 @@ export function EstacoesTab({
     durationSec: messageDuration,
   });
 
-  const unlockPayload = (durationSec?: number) => {
-    if (unlockKind === "staff_open") {
-      return { command: "unlock_screen" as const, occupantKind: "staff_open" as const };
-    }
-    if (unlockKind === "guest_named") {
-      return {
-        command: "unlock_screen" as const,
-        occupantKind: "guest_named" as const,
-        guestLabel: guestLabel.trim(),
-        durationSec: guestOpen ? undefined : durationSec,
-      };
-    }
-    return {
-      command: "unlock_screen" as const,
-      occupantKind: "staff_timed" as const,
-      durationSec,
-    };
-  };
-
   const sendCmd = (stationId: string, command: string, text?: string, durationSec?: number) =>
     api(`/api/stations/${stationId}/command`, {
       method: "POST",
       body: JSON.stringify(
         command === "message"
           ? { ...messageBody(), text: text || messageBody().text }
-          : command === "unlock_screen"
-            ? unlockPayload(durationSec)
-            : { command, text, durationSec },
+          : { command, text, durationSec },
       ),
     })
-      .then(() => {
-        if (command === "unlock_screen" && unlockKind === "staff_open") {
-          onToast("Liberado aberto (só trava pelo Central)", "ok");
-          return;
-        }
-        if (command === "unlock_screen" && durationSec) {
-          const h = Math.floor(durationSec / 3600);
-          const m = Math.round((durationSec % 3600) / 60);
-          onToast(h ? `Liberado por ${h}h ${String(m).padStart(2, "0")}m` : `Liberado por ${m} min`, "ok");
-          return;
-        }
-        onToast(`Comando ${command} enviado`, "ok");
-      })
+      .then(() => onToast(`Comando ${command} enviado`, "ok"))
       .catch((e) => onError(e instanceof Error ? e.message : "Falha no comando"));
 
-  const liberarPor = async (stationId: string, sec: number) => {
-    if (unlockKind === "staff_open") {
-      const ok = await askConfirm({
-        title: "Destrave aberto",
-        message: "O PC fica liberado até alguém travar pelo Central. Confirma?",
-        confirmLabel: "Destravar aberto",
-      });
-      if (!ok) return;
-      setLiberarId(null);
-      sendCmd(stationId, "unlock_screen");
-      return;
-    }
-    if (unlockKind === "guest_named" && guestLabel.trim().length < 2) {
-      onError("Digite um rótulo de convidado (mín. 2 caracteres)");
-      return;
-    }
-    const capped = Math.min(maxMin * 60, Math.max(sec, 60));
+  const resetLiberarForm = () => {
     setLiberarId(null);
-    sendCmd(stationId, "unlock_screen", undefined, guestOpen ? undefined : capped);
+    setVipQuery("");
+    setSelectedVip(null);
+    setLiberarBusy(false);
   };
 
-  const unlockKindControls = (
+  const deskLiberar = async (stationId: string) => {
+    const name = (selectedVip?.name || vipQuery).trim();
+    if (name.length < 2) {
+      onError("Informe o nome do cliente VIP");
+      return;
+    }
+    if (liberarMode === "open") {
+      const ok = await askConfirm({
+        title: "Liberar aberto",
+        message: `${name} fica na máquina até travar pelo Central. Sem cobrança de horas.`,
+        confirmLabel: "Liberar aberto",
+      });
+      if (!ok) return;
+    } else {
+      const amountReais = saleBy === "reais" ? Number(saleReais) : undefined;
+      const durationSec = durationToSeconds(unlockH, unlockM);
+      if (saleBy === "reais" && (!amountReais || amountReais <= 0)) {
+        onError("Informe o valor em R$");
+        return;
+      }
+      if (saleBy === "hours" && durationSec < 5 * 60) {
+        onError("Tempo mínimo: 5 minutos");
+        return;
+      }
+      const ok = await askConfirm({
+        title: "Vender e liberar",
+        message:
+          saleBy === "reais"
+            ? `Creditar R$ ${amountReais!.toFixed(2)} para ${name} e liberar este PC?`
+            : `Creditar ${unlockH}h ${String(unlockM).padStart(2, "0")}min (R$ ${estimatedReais.toFixed(2)}) para ${name} e liberar este PC?`,
+        confirmLabel: "Vender e liberar",
+      });
+      if (!ok) return;
+    }
+
+    setLiberarBusy(true);
+    try {
+      const body: Record<string, unknown> = {
+        mode: liberarMode,
+        customerName: name,
+      };
+      if (selectedVip?.id) body.customerId = selectedVip.id;
+      if (liberarMode === "sale") {
+        if (saleBy === "reais") body.amountReais = Number(saleReais);
+        else body.hours = durationToSeconds(unlockH, unlockM) / 3600;
+      }
+      const res = await api<{
+        customer?: Customer;
+        creditedSeconds?: number;
+        amountReais?: number;
+        mode?: string;
+        reviewAsk?: {
+          attempted?: boolean;
+          sent?: boolean;
+          waMeUrl?: string | null;
+          skipped?: string;
+        };
+      }>(`/api/stations/${stationId}/desk-liberar`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (liberarMode === "sale") {
+        onToast(
+          `Liberado · ${res.customer?.name || name} · +${formatHours(res.creditedSeconds || 0)}`,
+          "ok",
+        );
+        const ask = res.reviewAsk;
+        if (ask?.sent) {
+          onToast("Avaliação pedida no WhatsApp", "ok");
+        } else if (ask?.attempted && ask.waMeUrl) {
+          const openWa = await askConfirm({
+            title: "Pedir avaliação?",
+            message:
+              "WhatsApp automático indisponível. Abrir conversa com o pedido educado de avaliação no Google?",
+            confirmLabel: "Abrir WhatsApp",
+          });
+          if (openWa) {
+            const customerId = res.customer?.id || selectedVip?.id;
+            if (customerId) {
+              await api(`/api/customers/${customerId}/ask-google-review`, {
+                method: "POST",
+                body: JSON.stringify({ force: true }),
+              }).catch(() => undefined);
+            }
+            window.open(ask.waMeUrl, "_blank", "noopener,noreferrer");
+          }
+        }
+      } else {
+        onToast(`Aberto · ${res.customer?.name || name}`, "ok");
+      }
+      resetLiberarForm();
+      await refresh();
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Falha ao liberar");
+    } finally {
+      setLiberarBusy(false);
+    }
+  };
+
+  const liberarForm = (
     <div style={{ marginBottom: "0.75rem" }}>
       <p className="muted" style={{ margin: "0 0 0.35rem" }}>
-        Tipo de liberação
+        Tipo
       </p>
       <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
-        {(
-          [
-            ["staff_timed", "Staff (tempo)"],
-            ["staff_open", "Staff (aberto)"],
-            ["guest_named", "Convidado"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            className={`btn ${unlockKind === id ? "" : "ghost"}`}
-            type="button"
-            onClick={() => setUnlockKind(id)}
-          >
-            {label}
-          </button>
-        ))}
+        <button
+          className={`btn ${liberarMode === "sale" ? "" : "ghost"}`}
+          type="button"
+          onClick={() => setLiberarMode("sale")}
+        >
+          Venda + liberar
+        </button>
+        <button
+          className={`btn ${liberarMode === "open" ? "" : "ghost"}`}
+          type="button"
+          onClick={() => setLiberarMode("open")}
+        >
+          Aberto (só nome)
+        </button>
       </div>
-      {unlockKind === "guest_named" && (
-        <div className="field" style={{ marginBottom: "0.5rem" }}>
-          <label>Rótulo do convidado</label>
-          <input
-            value={guestLabel}
-            onChange={(e) => setGuestLabel(e.target.value)}
-            placeholder="Ex.: João (amigo)"
-            maxLength={40}
-          />
-          {recents.length > 0 && (
-            <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
-              {recents.map((r: string) => (
-                <button key={r} className="btn ghost" type="button" onClick={() => setGuestLabel(r)}>
-                  {r}
-                </button>
-              ))}
+      <div className="field" style={{ marginBottom: "0.5rem" }}>
+        <label>Cliente VIP</label>
+        <input
+          value={selectedVip ? selectedVip.name : vipQuery}
+          onChange={(e) => {
+            setSelectedVip(null);
+            setVipQuery(e.target.value);
+          }}
+          placeholder="Buscar ou digitar nome novo"
+          maxLength={80}
+        />
+        {vipMatches.length > 0 && !selectedVip && vipQuery.trim().length >= 1 && (
+          <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
+            {vipMatches.map((c) => (
+              <button
+                key={c.id}
+                className="btn ghost"
+                type="button"
+                onClick={() => {
+                  setSelectedVip(c);
+                  setVipQuery(c.name);
+                }}
+              >
+                {c.name}
+                <span className="muted" style={{ marginLeft: "0.35rem" }}>
+                  {formatHours(c.time_balance_seconds ?? 0)}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+        {!selectedVip && vipQuery.trim().length >= 2 && (
+          <p className="muted" style={{ margin: "0.35rem 0 0", fontSize: "0.85rem" }}>
+            Se não existir, cria VIP só com este nome.
+          </p>
+        )}
+      </div>
+      {liberarMode === "sale" && (
+        <>
+          <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
+            <button
+              className={`btn ${saleBy === "hours" ? "" : "ghost"}`}
+              type="button"
+              onClick={() => setSaleBy("hours")}
+            >
+              Tempo
+            </button>
+            <button
+              className={`btn ${saleBy === "reais" ? "" : "ghost"}`}
+              type="button"
+              onClick={() => setSaleBy("reais")}
+            >
+              Valor R$
+            </button>
+          </div>
+          {saleBy === "hours" ? (
+            <div className="field">
+              <label>Tempo a creditar (mín. 5 min)</label>
+              <TimeDurationPicker
+                hours={unlockH}
+                minutes={unlockM}
+                onChange={(h, m) => {
+                  setUnlockH(h);
+                  setUnlockM(m);
+                }}
+              />
+              <p style={{ margin: "0.5rem 0 0", fontWeight: 600 }}>
+                {unlockH}h {String(unlockM).padStart(2, "0")}min · R$ {estimatedReais.toFixed(2)}
+              </p>
+              <p className="muted" style={{ margin: "0.25rem 0 0", fontSize: "0.85rem" }}>
+                Tarifa R$ {hourPrice.toFixed(2)}/h
+                {vipIsSubscriber ? " (assinante)" : ""} · cobrado ao liberar
+              </p>
+            </div>
+          ) : (
+            <div className="field">
+              <label>Valor (R$)</label>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={saleReais}
+                onChange={(e) => setSaleReais(e.target.value)}
+              />
+              {packs.length > 0 && (
+                <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginTop: "0.35rem" }}>
+                  {packs.map((p) => (
+                    <button
+                      key={`${p.label}-${p.amountReais}`}
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => setSaleReais(String(p.amountReais))}
+                    >
+                      {p.label || `R$ ${p.amountReais}`}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
-          <label className="row" style={{ gap: "0.5rem", alignItems: "center", marginTop: "0.5rem" }}>
-            <input type="checkbox" checked={guestOpen} onChange={(e) => setGuestOpen(e.target.checked)} />
-            Sem tempo (até travar)
-          </label>
-        </div>
+        </>
       )}
     </div>
   );
@@ -194,9 +347,13 @@ export function EstacoesTab({
             const st = liveStatus[s.id];
             const modeLabel =
               st?.mode === "admin"
-                ? `Liberado · ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
+                ? st?.occupantKind === "staff_open" || st?.balanceSeconds == null
+                  ? `Aberto · ${st.customerName || "equipe"} · ${formatClock(st.elapsed ?? 0)}`
+                  : `Liberado · resta ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
                 : st?.mode === "vip"
-                  ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                  ? st?.occupantKind === "vip_desk"
+                    ? `VIP balcão · ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                    : `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
                   : st?.phase === "locked" || st?.phase === "boot"
                     ? "Travado"
                     : online
@@ -235,33 +392,29 @@ export function EstacoesTab({
                 )}
                 {!remoteReadOnly && liberarId === s.id ? (
                   <div>
-                    {unlockKindControls}
-                    {unlockKind !== "staff_open" && !guestOpen && (
-                      <>
-                        <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-                          Tempo (mín. 30 min, máx. {maxMin} min)
-                        </p>
-                        <TimeDurationPicker
-                          hours={unlockH}
-                          minutes={unlockM}
-                          onChange={(h, m) => {
-                            setUnlockH(h);
-                            setUnlockM(m);
-                          }}
-                        />
-                      </>
-                    )}
+                    {liberarForm}
                     <button
                       className="btn"
                       type="button"
                       style={{ marginTop: "0.5rem", width: "100%" }}
-                      onClick={() => void liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
+                      disabled={liberarBusy}
+                      onClick={() => void deskLiberar(s.id)}
                     >
-                      {unlockKind === "staff_open" || guestOpen
-                        ? "Liberar aberto"
-                        : `Liberar ${unlockH}h ${String(unlockM).padStart(2, "0")}min`}
+                      {liberarBusy
+                        ? "…"
+                        : liberarMode === "open"
+                          ? "Liberar aberto"
+                          : saleBy === "hours"
+                            ? `Liberar · R$ ${estimatedReais.toFixed(2)}`
+                            : "Vender e liberar"}
                     </button>
-                    <button className="btn ghost" type="button" style={{ marginTop: "0.5rem", width: "100%" }} onClick={() => setLiberarId(null)}>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      style={{ marginTop: "0.5rem", width: "100%" }}
+                      disabled={liberarBusy}
+                      onClick={() => resetLiberarForm()}
+                    >
                       Cancelar
                     </button>
                   </div>
@@ -294,21 +447,35 @@ export function EstacoesTab({
         {remoteReadOnly && <p className="muted">De casa não dá para travar/destravar PC.</p>}
         {!remoteReadOnly && (
         <>
-        {unlockKindControls}
-        {unlockKind !== "staff_open" && !guestOpen && (
-          <>
-            <p className="muted" style={{ margin: "0 0 0.5rem" }}>
-              Tempo ao Liberar / Destravar (mín. 30 min, máx. {maxMin} min)
-            </p>
-            <TimeDurationPicker
-              hours={unlockH}
-              minutes={unlockM}
-              onChange={(h, m) => {
-                setUnlockH(h);
-                setUnlockM(m);
-              }}
-            />
-          </>
+        <p className="muted" style={{ margin: "0 0 0.75rem" }}>
+          Liberar: escolha o PC → cliente VIP → valor ou horas (ou só nome no aberto).
+        </p>
+        {liberarId && (
+          <div className="panel" style={{ marginBottom: "1rem", boxShadow: "none" }}>
+            <h3 style={{ marginTop: 0 }}>
+              Liberar · {stations.find((x) => x.id === liberarId)?.name || "PC"}
+            </h3>
+            {liberarForm}
+            <div className="row" style={{ gap: "0.5rem", flexWrap: "wrap" }}>
+              <button
+                className="btn"
+                type="button"
+                disabled={liberarBusy}
+                onClick={() => void deskLiberar(liberarId)}
+              >
+                {liberarBusy
+                  ? "…"
+                  : liberarMode === "open"
+                    ? "Liberar aberto"
+                    : saleBy === "hours"
+                      ? `Liberar · R$ ${estimatedReais.toFixed(2)}`
+                      : "Vender e liberar"}
+              </button>
+              <button className="btn ghost" type="button" disabled={liberarBusy} onClick={() => resetLiberarForm()}>
+                Cancelar
+              </button>
+            </div>
+          </div>
         )}
         <form
           className="row"
@@ -399,18 +566,20 @@ export function EstacoesTab({
               const st = liveStatus[s.id];
               const modeLabel =
                 st?.mode === "admin"
-                  ? `Admin · ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
-                  : st?.mode === "guest"
-                    ? `Convidado ${st.customerName || ""}`
-                    : st?.mode === "vip"
-                      ? `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
-                      : st?.phase === "locked" || st?.phase === "boot"
-                        ? "Travada"
-                        : st?.phase === "offline"
-                          ? "Offline (app)"
-                          : online
-                            ? "Conectada"
-                            : "—";
+                  ? st?.occupantKind === "staff_open" || st?.balanceSeconds == null
+                    ? `Aberto · ${st.customerName || "equipe"} · ${formatClock(st.elapsed ?? 0)}`
+                    : `Admin · resta ${formatClock(st.balanceSeconds ?? st.elapsed ?? 0)}`
+                  : st?.mode === "vip"
+                    ? st?.occupantKind === "vip_desk"
+                      ? `VIP balcão · ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                      : `VIP ${st.customerName || ""} · ${formatDuration(st.elapsed || 0)}`
+                    : st?.phase === "locked" || st?.phase === "boot"
+                      ? "Travada"
+                      : st?.phase === "offline"
+                        ? "Offline (app)"
+                        : online
+                          ? "Conectada"
+                          : "—";
 
               return (
                 <tr key={s.id}>
@@ -448,12 +617,8 @@ export function EstacoesTab({
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "lock_screen")}>
                       Travar
                     </button>
-                    <button
-                      className="btn ghost"
-                      type="button"
-                      onClick={() => void liberarPor(s.id, durationToSeconds(unlockH, unlockM))}
-                    >
-                      Destravar
+                    <button className="btn ghost" type="button" onClick={() => setLiberarId(s.id)}>
+                      Liberar
                     </button>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
                       Encerrar
@@ -612,23 +777,6 @@ export function EstacoesTab({
             }}
           >
             Encerrar apps
-          </button>
-          <button
-            className="btn"
-            type="button"
-            onClick={() =>
-              api("/api/stations/command-all", {
-                method: "POST",
-                body: JSON.stringify({
-                  command: "unlock_screen",
-                  durationSec: durationToSeconds(unlockH, unlockM),
-                }),
-              })
-                .then(() => onToast("Destravar todos enviado", "ok"))
-                .catch((e) => onError(e.message))
-            }
-          >
-            Destravar todos
           </button>
           <button
             className="btn"

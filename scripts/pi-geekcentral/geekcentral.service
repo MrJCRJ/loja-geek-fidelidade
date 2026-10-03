@@ -1,0 +1,18 @@
+[Unit]
+Description=GeekCentral API (Raspberry Pi, sem face)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=geek
+Group=geek
+WorkingDirectory=/opt/geekcentral/repo/server
+EnvironmentFile=/etc/geekcentral.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=on-failure
+RestartSec=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

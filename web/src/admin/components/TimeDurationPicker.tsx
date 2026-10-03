@@ -1,4 +1,4 @@
-const MIN_MINUTES = 30;
+const MIN_MINUTES = 5;
 const MAX_HOURS = 23;
 
 type Props = {

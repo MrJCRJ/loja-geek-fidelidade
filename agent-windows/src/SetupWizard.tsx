@@ -2,22 +2,31 @@ import { useEffect, useRef, useState } from "react";
 import { pairStationLan, checkHealth, openUserCamera, attachCameraStream } from "./api";
 import type { DiscoveryPeer, GeekLockConfig } from "./vite-env";
 
+const CLOUD_API = "https://api.geekloja.com.br";
+
 type Props = {
+  initialConfig?: GeekLockConfig | null;
   onDone: (cfg: GeekLockConfig) => void;
 };
 
-export function SetupWizard({ onDone }: Props) {
+export function SetupWizard({ initialConfig, onDone }: Props) {
   const [peers, setPeers] = useState<DiscoveryPeer[]>([]);
-  const [serverUrl, setServerUrl] = useState("");
-  const [stationName, setStationName] = useState("PC-01");
+  const [serverUrl, setServerUrl] = useState(() => {
+    const fromCfg = (initialConfig?.serverUrl || "").trim().replace(/\/$/, "");
+    return fromCfg || CLOUD_API;
+  });
+  const [stationName, setStationName] = useState(() => {
+    const n = (initialConfig?.stationName || "").trim();
+    return n || "PC-01";
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [scanning, setScanning] = useState(true);
   const [camOk, setCamOk] = useState(false);
   const [camMsg, setCamMsg] = useState("Teste a câmera (DroidCam ou webcam USB) antes de conectar.");
+  const [healthOk, setHealthOk] = useState<boolean | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const autoPicked = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -28,10 +37,6 @@ export function SetupWizard({ onDone }: Props) {
         if (cancelled) return;
         const list = await window.geeklock.getDiscoveryPeers();
         setPeers(list);
-        if (!autoPicked.current && list.length > 0) {
-          autoPicked.current = true;
-          setServerUrl(list[0].serverUrl);
-        }
         timer = window.setTimeout(tick, 1500);
       };
       tick();
@@ -43,6 +48,28 @@ export function SetupWizard({ onDone }: Props) {
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const url = serverUrl.trim().replace(/\/$/, "");
+    if (!url || !/^https?:\/\//i.test(url)) {
+      setHealthOk(null);
+      return;
+    }
+    setHealthOk(null);
+    const t = window.setTimeout(async () => {
+      try {
+        await checkHealth({ serverUrl: url, stationName: "", sharedSecret: "", absentSecondsToLock: 60 });
+        if (!cancelled) setHealthOk(true);
+      } catch {
+        if (!cancelled) setHealthOk(false);
+      }
+    }, 400);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [serverUrl]);
 
   const testCamera = async () => {
     setCamMsg("Abrindo câmera…");
@@ -69,7 +96,7 @@ export function SetupWizard({ onDone }: Props) {
     const url = serverUrl.trim().replace(/\/$/, "");
     const name = stationName.trim();
     if (!url || !/^https?:\/\//i.test(url)) {
-      setError("Espere achar o GeekCentral na rede, ou informe http://192.168.3.70:8787");
+      setError("Informe a URL do Central (ex.: https://api.geekloja.com.br)");
       return;
     }
     if (!name) {
@@ -104,15 +131,17 @@ export function SetupWizard({ onDone }: Props) {
 
   return (
     <div className="screen">
-      <div className="card" style={{ maxWidth: 520 }}>
-        <h1 className="brand" style={{ fontSize: "2rem" }}>
+      <div className="card" style={{ maxWidth: 640, width: "min(640px, 92vw)" }}>
+        <h1 className="brand" style={{ fontSize: "2.4rem" }}>
           GeekLock
         </h1>
-        <p className="muted">Na rede da loja o Central aparece sozinho. Só confirme o nome deste PC.</p>
+        <p className="muted">
+          Conecte este PC ao GeekCentral na nuvem. Confirme o nome da estação e clique em Conectar.
+        </p>
 
         <div className="field">
           <label>Teste de câmera</label>
-          <div className="video-wrap" style={{ maxHeight: 180, marginBottom: 8 }}>
+          <div className="video-wrap" style={{ maxHeight: 220, marginBottom: 8 }}>
             <video ref={videoRef} muted playsInline />
             {!camOk && <div className="video-placeholder">{camMsg}</div>}
           </div>
@@ -122,27 +151,38 @@ export function SetupWizard({ onDone }: Props) {
         </div>
 
         <div className="field">
-          <label>GeekCentral na rede</label>
-          {peers.length === 0 ? (
-            <p className="muted">{scanning ? "Procurando…" : "Nenhum Central na LAN"}</p>
-          ) : (
-            <div className="row" style={{ flexDirection: "column", alignItems: "stretch" }}>
-              {peers.map((p) => (
-                <button
-                  key={p.serverUrl}
-                  type="button"
-                  className={`btn ${p.serverUrl === serverUrl ? "" : "ghost"}`}
-                  style={{ justifyContent: "flex-start", textAlign: "left" }}
-                  onClick={() => setServerUrl(p.serverUrl)}
-                >
-                  <strong>{p.unitName || "GeekCentral"}</strong>
-                  <span className="muted" style={{ marginLeft: 8 }}>
-                    {p.serverUrl}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
+          <label>URL do GeekCentral</label>
+          <input
+            value={serverUrl}
+            onChange={(e) => setServerUrl(e.target.value)}
+            placeholder={CLOUD_API}
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <p className="muted" style={{ marginTop: 6 }}>
+            {healthOk === true && "API respondeu OK"}
+            {healthOk === false && "Sem resposta — confira internet / URL"}
+            {healthOk === null && "Testando conexão…"}
+          </p>
+          <div className="row" style={{ marginTop: 8, flexWrap: "wrap", gap: 8 }}>
+            <button className="btn ghost" type="button" onClick={() => setServerUrl(CLOUD_API)}>
+              Usar nuvem
+            </button>
+            {peers.map((p) => (
+              <button
+                key={p.serverUrl}
+                type="button"
+                className="btn ghost"
+                onClick={() => setServerUrl(p.serverUrl)}
+              >
+                LAN: {p.unitName || p.serverUrl}
+              </button>
+            ))}
+            {scanning && peers.length === 0 && (
+              <span className="muted">Procurando Central na LAN (opcional)…</span>
+            )}
+          </div>
         </div>
 
         <div className="field">
@@ -151,7 +191,7 @@ export function SetupWizard({ onDone }: Props) {
         </div>
         {error && <p className="error-text">{error}</p>}
         <div className="row">
-          <button className="btn" type="button" disabled={busy || !serverUrl} onClick={submit}>
+          <button className="btn" type="button" disabled={busy || !serverUrl.trim()} onClick={submit}>
             {busy ? "Conectando…" : "Conectar"}
           </button>
         </div>

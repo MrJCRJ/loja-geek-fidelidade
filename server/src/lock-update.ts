@@ -150,21 +150,59 @@ export async function findLatestLockRelease(force = false): Promise<{
   };
 }
 
+function readLocalLockPackage(): { version: string; path: string } | null {
+  const dest = lockPackagePath();
+  const metaPath = path.join(lockUpdateDir(), "version.json");
+  if (!fs.existsSync(dest)) return null;
+  try {
+    const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as { version?: string };
+    const version = String(meta.version || "").trim();
+    if (!version) return null;
+    return { version, path: dest };
+  } catch {
+    return null;
+  }
+}
+
+/** Aceita pacote colocado à mão na VPS (scp) sem exigir release no GitHub. */
 export async function ensureLockPackageCached(): Promise<{
   ok: boolean;
   error?: string;
   latestVersion?: string;
   applying?: boolean;
 }> {
+  const dest = lockPackagePath();
+  const metaPath = path.join(lockUpdateDir(), "version.json");
+  const local = readLocalLockPackage();
   const found = await findLatestLockRelease();
+
+  if (local) {
+    const localWins =
+      !found.ok ||
+      !found.latestVersion ||
+      cmpSemver(local.version, found.latestVersion) >= 0;
+    if (localWins) {
+      setLockTargetVersion(local.version);
+      return { ok: true, latestVersion: local.version, applying: true };
+    }
+  }
+
   if (!found.ok || !found.latestVersion || !found.assetUrl) {
+    if (local) {
+      setLockTargetVersion(local.version);
+      return { ok: true, latestVersion: local.version, applying: true };
+    }
     return { ok: false, error: found.error || "Sem release do GeekLock" };
   }
   const { token } = resolveGithubToken();
-  if (!token) return { ok: false, error: "GitHub não autenticado neste PC" };
+  if (!token) {
+    if (local) {
+      setLockTargetVersion(local.version);
+      return { ok: true, latestVersion: local.version, applying: true };
+    }
+    return { ok: false, error: "GitHub não autenticado neste PC" };
+  }
 
-  const dest = lockPackagePath();
-  const metaPath = path.join(lockUpdateDir(), "version.json");
   try {
     const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as { version?: string };
     if (meta.version === found.latestVersion && fs.existsSync(dest)) {
@@ -194,17 +232,31 @@ export function lockUpdateHintForStation(currentVersion: string | null | undefin
 
 export async function lockUpdateStatus() {
   const latest = await findLatestLockRelease();
-  const version = latest.latestVersion || getLockTargetVersion();
+  const local = readLocalLockPackage();
+  let version = latest.latestVersion || getLockTargetVersion() || "";
+  let source = latest.source || "";
+  let ok = latest.ok;
+  let error = latest.error;
+  if (local) {
+    if (!version || cmpSemver(local.version, version) >= 0) {
+      version = local.version;
+      source = source ? `${source}+local` : "local";
+      ok = true;
+      error = undefined;
+    }
+  } else if (!ok && getLockTargetVersion()) {
+    version = getLockTargetVersion();
+  }
   const stations = listStations().map((s) => classifyLockStation(s, version || ""));
   const outdated = stations.filter((s) => s.status === "outdated" || s.status === "offline_outdated");
   return {
-    ok: latest.ok,
-    error: latest.error,
+    ok,
+    error,
     latestVersion: version || "",
     tag: latest.tag,
     notes: latest.notes,
     hasGithub: latest.hasGithub,
-    source: latest.source,
+    source,
     packageReady: fs.existsSync(lockPackagePath()),
     stations,
     outdatedCount: outdated.length,

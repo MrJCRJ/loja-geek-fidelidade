@@ -5,7 +5,19 @@
  */
 const isLinux = process.platform === "linux";
 const isWin = process.platform === "win32";
+const { screen } = require("electron");
 const { applyOsHarden, unregisterLockShortcuts } = require("./os-harden.cjs");
+
+function coverPrimaryDisplay(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    const display = screen.getPrimaryDisplay();
+    const b = display.bounds;
+    win.setBounds({ x: b.x, y: b.y, width: b.width, height: b.height });
+  } catch {
+    /* ignore */
+  }
+}
 
 function delay(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -155,6 +167,7 @@ class OverlayLockController {
     if (isLinux) {
       win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     }
+    coverPrimaryDisplay(win);
     try {
       if (isWin && typeof win.setKiosk === "function") {
         win.setKiosk(true);
@@ -164,6 +177,7 @@ class OverlayLockController {
     } catch {
       win.setFullScreen(true);
     }
+    coverPrimaryDisplay(win);
     win.setSkipTaskbar(true);
     win.show();
     win.focus();

@@ -70,10 +70,10 @@ describe("Pareamento LAN", () => {
     expect(isLanPairAllowed(req({ host: "localhost" }))).toBe(true);
   });
 
-  it("túnel / casa / API pública bloqueia", () => {
+  it("painel (casa/loja) bloqueia; API pública libera Lock", () => {
     expect(isLanPairAllowed(req({ host: HOME_HOST }))).toBe(false);
     expect(isLanPairAllowed(req({ host: SHOP_PUBLIC_HOST }))).toBe(false);
-    expect(isLanPairAllowed(req({ host: PUBLIC_API_HOST }))).toBe(false);
+    expect(isLanPairAllowed(req({ host: PUBLIC_API_HOST }))).toBe(true);
   });
 });
 

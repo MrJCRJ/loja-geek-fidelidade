@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { getDb } from "./db.js";
 import { getSetting, setSetting } from "./customers.js";
 
-export type OccupantKind = "vip" | "staff_timed" | "staff_open" | "guest_named";
+export type OccupantKind = "vip" | "vip_desk" | "staff_timed" | "staff_open" | "guest_named";
 
 export type GpuInfo = {
   vendor: "nvidia" | "amd" | "intel" | "other";

@@ -43,7 +43,7 @@ describe("Estações", () => {
     await app.close();
   });
 
-  it("pair-lan fora da loja bloqueia", async () => {
+  it("pair-lan no painel (admin) bloqueia", async () => {
     const app = await createTestApp();
     const res = await app.inject({
       method: "POST",
@@ -52,6 +52,21 @@ describe("Estações", () => {
       payload: { name: "PC-Casa" },
     });
     expect(res.statusCode).toBe(403);
+    await app.close();
+  });
+
+  it("pair-lan via API pública cria estação", async () => {
+    const app = await createTestApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/stations/pair-lan",
+      headers: { host: "api.geekloja.com.br" },
+      payload: { name: "PC-Nuvem" },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as { name: string; token: string };
+    expect(body.name).toBe("PC-Nuvem");
+    expect(body.token).toBeTruthy();
     await app.close();
   });
 

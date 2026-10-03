@@ -49,3 +49,5 @@ data/*.db-*
 *.db-wal
 *.db-shm
 dist-release/
+
+agent-windows/release-user/

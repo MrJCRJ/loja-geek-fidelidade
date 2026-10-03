@@ -53,7 +53,7 @@ export function getPresenceMatchThreshold(faceMatchThreshold: number) {
 type StaffUnlockWindow = { startedAt: number; durationSec: number; timer?: ReturnType<typeof setTimeout> };
 const staffUnlockWindows = new Map<string, StaffUnlockWindow>();
 
-const STAFF_UNLOCK_MIN_SEC = 30 * 60;
+const STAFF_UNLOCK_MIN_SEC = 5 * 60;
 const STAFF_UNLOCK_MAX_SEC = 23 * 3600 + 59 * 60;
 
 export function clampStaffUnlockSeconds(seconds: number) {

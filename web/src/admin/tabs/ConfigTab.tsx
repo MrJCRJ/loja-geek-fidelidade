@@ -992,8 +992,12 @@ export function ConfigTab({ settings, setSettings, onError, onToast, askConfirm 
       <section className="panel" style={{ maxWidth: 560, marginTop: "1rem" }}>
         <h2>Atualizar GeekLock</h2>
         <p className="muted" style={{ marginTop: 0 }}>
-          GitHub: <span className="mono">{lockUpd?.latestVersion || "—"}</span>
+          Pacote: <span className="mono">{lockUpd?.latestVersion || "—"}</span>
+          {lockUpd?.packageReady ? " · pronto na nuvem" : " · sem pacote"}
           {lockUpd?.outdatedCount ? ` · ${lockUpd.outdatedCount} desatualizado(s)` : ""}
+        </p>
+        <p className="muted">
+          Só o dono. PCs online baixam agora; os desligados na próxima ligação. Pareamento preservado.
         </p>
         {lockUpd?.offlineOutdated && lockUpd.offlineOutdated.length > 0 && (
           <p className="muted">

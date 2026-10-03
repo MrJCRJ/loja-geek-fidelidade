@@ -77,12 +77,18 @@ function isPublicStaffHost(host: string): boolean {
   return host === SHOP_PUBLIC_HOST || host === HOME_HOST;
 }
 
-/** Parear Lock: só rede da loja, nunca túnel/internet. */
+/**
+ * Parear Lock:
+ * - LAN / geek.local / IP privado: ok
+ * - api.geekloja.com.br: ok (Locks da loja usam a API pública via Cloudflare)
+ * - admin / loja.geekloja (painel): bloqueado (não é endpoint de estação)
+ */
 export function isLanPairAllowed(
   req: FastifyRequest | { ip?: string; headers?: Record<string, string | string[] | undefined> },
 ): boolean {
   const host = requestHost(req);
-  if (host === PUBLIC_API_HOST || host === HOME_HOST || host === SHOP_PUBLIC_HOST) return false;
+  if (host === HOME_HOST || host === SHOP_PUBLIC_HOST) return false;
+  if (host === PUBLIC_API_HOST) return true;
   if (host === SHOP_HOST || host.endsWith(".local") || isPrivateIpv4(host) || isLoopbackHost(host)) {
     return true;
   }
@@ -117,10 +123,26 @@ export function isOnStoreNetwork(
   return false;
 }
 
+/**
+ * IP público da loja (NAT) para liberar equipe no painel via Cloudflare.
+ * Em API na nuvem/VPS: NÃO probear a saída do servidor (vira IP da VPS e
+ * marca todo mundo "fora do Wi‑Fi"). Use STORE_PUBLIC_IP no .env.
+ * Probe (1.1.1.1) só quando ainda não há IP e estamos em rede privada (Central on-prem).
+ */
 export async function refreshStorePublicIp(): Promise<string | null> {
   const fromEnv = (process.env.STORE_PUBLIC_IP || "").trim();
   if (fromEnv) {
     storePublicIp = fromEnv;
+    return storePublicIp;
+  }
+  // Já temos um IP conhecido (ex.: setado por teste / env anterior): não sobrescrever
+  // com o egress da VPS.
+  if (storePublicIp) return storePublicIp;
+
+  const lans = centralLanIpv4s();
+  const onPrem = lans.some((ip) => isPrivateIpv4(ip) && !ip.startsWith("127."));
+  if (!onPrem) {
+    // API na nuvem sem STORE_PUBLIC_IP: deixa null (isOnStoreNetwork usa outras regras / falha fechado para clerk).
     return storePublicIp;
   }
   try {

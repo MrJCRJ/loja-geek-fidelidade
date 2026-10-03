@@ -1,23 +1,21 @@
 @echo off
 setlocal EnableExtensions EnableDelayedExpansion
-chcp 65001 >nul 2>&1
-title GeekLock — instalador do pendrive
+title GeekLock - instalador do pendrive
 color 0A
 cd /d "%~dp0"
 
-set "GL_VER=1.1.9"
+set "GL_VER=1.1.14"
 set "GL_SERVER=https://api.geekloja.com.br"
-set "GL_HOST=api.geekloja.com.br"
 set "GL_DEST=C:\GeekLock"
 set "GL_LOG=%TEMP%\geeklock-install.log"
+set "STAGE=%TEMP%\geeklock-inst"
 
 call :LOG ==== GeekLock instalador iniciado ====
 call :LOG bat=%~f0
-call :LOG cwd=%CD%
 
 echo.
 echo  ========================================
-echo    GeekLock %GL_VER% — instalador
+echo    GeekLock %GL_VER% - instalador
 echo  ========================================
 echo.
 echo  Destino : %GL_DEST%
@@ -28,14 +26,15 @@ echo  ATENCAO: apaga o GeekLock antigo e abre o CADASTRO.
 echo.
 
 net session >nul 2>&1
-if %errorLevel%==0 goto :ADMIN
+if not errorlevel 1 goto :ADMIN
 
 echo  [elevacao] Precisa de administrador. Abrindo o UAC...
 echo             Clique em SIM.
 echo.
 call :LOG elevating via UAC
 
-set "STAGE=%TEMP%\geeklock-inst"
+for %%I in ("%~dp0.") do set "HERE_NAME=%%~nxI"
+if /i "!HERE_NAME!"=="geeklock-inst" goto :STAGE_READY
 if exist "%STAGE%" rd /s /q "%STAGE%"
 mkdir "%STAGE%" >nul 2>&1
 mkdir "%STAGE%\pack" >nul 2>&1
@@ -43,204 +42,124 @@ mkdir "%STAGE%\pack" >nul 2>&1
 call :RESOLVE_SRC
 if errorlevel 1 (
   echo  ERRO: GeekLock.exe nao encontrado neste pendrive.
-  echo  Coloque o .bat na pasta GeekLock\ ou na raiz ao lado dela.
   call :LOG ERRO: fonte nao encontrada
-  pause
+  call :HOLD
   exit /b 1
 )
 
-echo  Preparando copia em TEMP...
-robocopy "!SRC!" "%STAGE%\pack" /E /XF INSTALAR-GEEKLOCK.bat INSTALAR-GEEKLOCK.ps1 GeekLock-Setup-*.exe LEIA-ME.txt LEIA-ME-GEEKLOCK.txt /NFL /NDL /NJH /NJS /nc /ns /np >nul
+echo  Preparando copia em TEMP (para o UAC nao perder a letra do USB)...
+robocopy "!SRC!" "%STAGE%\pack" /E /XJ /XF INSTALAR-GEEKLOCK.bat INSTALAR-GEEKLOCK.ps1 LEIA-ME.txt LEIA-ME-GEEKLOCK.txt /NFL /NDL /NJH /NJS /nc /ns /np >nul
 copy /y "%~f0" "%STAGE%\INSTALAR-GEEKLOCK.bat" >nul
-copy /y "%GL_LOG%" "%STAGE%\geeklock-install-prev.log" >nul 2>&1
+call :COPY_PS1 "%STAGE%\INSTALAR-GEEKLOCK.ps1"
+if exist "%~dp0GeekLock-harden.ps1" copy /y "%~dp0GeekLock-harden.ps1" "%STAGE%\pack\GeekLock-harden.ps1" >nul
+if exist "%~dp0GeekLock\GeekLock-harden.ps1" if not exist "%STAGE%\pack\GeekLock-harden.ps1" copy /y "%~dp0GeekLock\GeekLock-harden.ps1" "%STAGE%\pack\GeekLock-harden.ps1" >nul
 if exist "%~dp0GeekLock-autostart.vbs" copy /y "%~dp0GeekLock-autostart.vbs" "%STAGE%\pack\GeekLock-autostart.vbs" >nul
 if exist "%~dp0GeekLock\GeekLock-autostart.vbs" if not exist "%STAGE%\pack\GeekLock-autostart.vbs" copy /y "%~dp0GeekLock\GeekLock-autostart.vbs" "%STAGE%\pack\GeekLock-autostart.vbs" >nul
 if not exist "%STAGE%\pack\GeekLock.exe" (
   echo  ERRO: falhou a copia para TEMP.
-  call :LOG ERRO: copia TEMP sem GeekLock.exe
-  pause
+  call :HOLD
+  exit /b 1
+)
+if not exist "%STAGE%\INSTALAR-GEEKLOCK.ps1" (
+  echo  ERRO: INSTALAR-GEEKLOCK.ps1 nao foi para TEMP.
+  call :HOLD
   exit /b 1
 )
 
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%STAGE%\INSTALAR-GEEKLOCK.bat' -WorkingDirectory '%STAGE%' -Verb RunAs"
+:STAGE_READY
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath 'cmd.exe' -WorkingDirectory '%STAGE%' -Verb RunAs -ArgumentList '/k \"\"%STAGE%\INSTALAR-GEEKLOCK.bat\"\"'"
 if errorlevel 1 (
-  echo.
   echo  ERRO: o Windows nao abriu o UAC.
-  echo  Clique com o BOTAO DIREITO neste arquivo e
-  echo  escolha 'Executar como administrador'.
-  call :LOG ERRO: UAC falhou
-  pause
+  echo  Botao direito neste .bat ^> Executar como administrador.
+  call :HOLD
   exit /b 1
 )
 echo.
-echo  Se o UAC nao aparecer: botao direito neste .bat
-echo  ^> Executar como administrador.
-echo  A instalacao continua na janela elevada.
-timeout /t 8 /nobreak >nul
+echo  UAC pedido. Continue na janela ELEVADA.
+pause
 exit /b 0
 
 :ADMIN
-echo  Admin OK.
-call :LOG admin OK
+echo  Admin OK. Chamando instalador PowerShell...
+call :LOG admin OK - delegando ao ps1
 echo.
 
-call :RESOLVE_SRC
-if errorlevel 1 (
-  echo  ERRO: GeekLock.exe nao encontrado.
-  call :LOG ERRO: fonte admin
-  pause
+set "PS1="
+if exist "%~dp0INSTALAR-GEEKLOCK.ps1" set "PS1=%~dp0INSTALAR-GEEKLOCK.ps1"
+if not defined PS1 if exist "%~dp0GeekLock\INSTALAR-GEEKLOCK.ps1" set "PS1=%~dp0GeekLock\INSTALAR-GEEKLOCK.ps1"
+if not defined PS1 if exist "%~dp0pack\INSTALAR-GEEKLOCK.ps1" set "PS1=%~dp0pack\INSTALAR-GEEKLOCK.ps1"
+if not defined PS1 (
+  echo  ERRO: INSTALAR-GEEKLOCK.ps1 nao encontrado ao lado deste .bat.
+  call :LOG ERRO: ps1 ausente
+  call :HOLD
   exit /b 1
 )
-echo  Fonte: !SRC!
-call :LOG fonte=!SRC!
+
+echo  PS1: !PS1!
+echo.
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "!PS1!"
+set "RC=!ERRORLEVEL!"
+call :LOG ps1 exit=!RC!
 
 echo.
-echo  [0/7] Checando Central na lan (%GL_HOST%)...
-ping -n 1 -w 1000 %GL_HOST% >nul 2>&1
-if errorlevel 1 (
-  echo        AVISO: %GL_HOST% nao respondeu ao ping.
-  echo        Da para instalar mesmo assim; o CADASTRO
-  echo        so conecta quando o GeekCentral estiver online.
-  call :LOG ping FAIL %GL_HOST%
-) else (
-  echo        OK: %GL_HOST% respondeu.
-  call :LOG ping OK %GL_HOST%
-)
-echo.
-
-echo  [1/7] Encerrando GeekLock se estiver aberto...
-taskkill /IM GeekLock.exe /F >nul 2>&1
-taskkill /IM "GeekLock Setup.exe" /F >nul 2>&1
-timeout /t 2 /nobreak >nul
-
-echo  [2/7] Limpando dados antigos (AppData + Run)...
-if exist "%APPDATA%\GeekLock" rd /s /q "%APPDATA%\GeekLock"
-if exist "%APPDATA%\geeklock-agent" rd /s /q "%APPDATA%\geeklock-agent"
-if exist "%LOCALAPPDATA%\GeekLock" rd /s /q "%LOCALAPPDATA%\GeekLock"
-if exist "%LOCALAPPDATA%\geeklock-agent" rd /s /q "%LOCALAPPDATA%\geeklock-agent"
-reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v GeekLock /f >nul 2>&1
-call :LOG limpeza AppData/Run
-
-echo  [3/7] Apagando %GL_DEST%...
-if exist "%GL_DEST%" (
-  taskkill /IM GeekLock.exe /F >nul 2>&1
-  timeout /t 1 /nobreak >nul
-  attrib -R -S -H "%GL_DEST%\*.*" /S /D >nul 2>&1
-  rd /s /q "%GL_DEST%"
-)
-if exist "%GL_DEST%" (
-  echo  ERRO: nao consegui apagar %GL_DEST%. Feche o GeekLock e tente de novo.
-  call :LOG ERRO: rd C:\GeekLock falhou
-  pause
+if not "!RC!"=="0" (
+  echo  ERRO: instalador PowerShell falhou ^(codigo !RC!^).
+  call :HOLD
   exit /b 1
 )
-mkdir "%GL_DEST%" >nul
-call :LOG destino limpo
 
-echo  [4/7] Copiando arquivos...
-robocopy "!SRC!" "%GL_DEST%" /E /XF config.json INSTALAR-GEEKLOCK.bat INSTALAR-GEEKLOCK.ps1 GeekLock-Setup-*.exe LEIA-ME.txt LEIA-ME-GEEKLOCK.txt /R:2 /W:1 /NFL /NDL /NJH /NJS /nc /ns /np
-if errorlevel 8 (
-  echo  ERRO: falha ao copiar o pack.
-  call :LOG ERRO: robocopy %ERRORLEVEL%
-  pause
-  exit /b 1
-)
 if not exist "%GL_DEST%\GeekLock.exe" (
-  echo  ERRO: apos a copia, GeekLock.exe nao esta em %GL_DEST%.
-  call :LOG ERRO: GeekLock.exe ausente no destino
-  pause
+  echo  ERRO: C:\GeekLock\GeekLock.exe nao existe apos o instalador.
+  echo  A copia NAO concluiu. Veja a mensagem do PowerShell acima.
+  call :LOG ERRO: exe ausente apos ps1
+  call :HOLD
   exit /b 1
 )
-call :LOG copia OK
 
-echo  [5/7] Gravando config (API publica)...
-> "%GL_DEST%\config.json" (
-  echo {
-  echo   "serverUrl": "%GL_SERVER%",
-  echo   "stationName": "",
-  echo   "sharedSecret": "",
-  echo   "absentSecondsToLock": 60,
-  echo   "stationToken": "",
-  echo   "setupComplete": false,
-  echo   "openAtLogin": true
-  echo }
-)
-if exist "%GL_DEST%\resources\config.json" del /f /q "%GL_DEST%\resources\config.json"
-findstr /C:"serverUrl" "%GL_DEST%\config.json" >nul || (
-  echo  ERRO: config.json invalido.
-  call :LOG ERRO: config.json
-  pause
-  exit /b 1
-)
-echo        serverUrl=%GL_SERVER%
-
-if exist "!SRC!\GeekLock-harden.ps1" copy /y "!SRC!\GeekLock-harden.ps1" "%GL_DEST%\GeekLock-harden.ps1" >nul
-if exist "%~dp0GeekLock-harden.ps1" if not exist "%GL_DEST%\GeekLock-harden.ps1" copy /y "%~dp0GeekLock-harden.ps1" "%GL_DEST%\GeekLock-harden.ps1" >nul
-if exist "%GL_DEST%\GeekLock-harden.ps1" (
-  echo        Registrando tarefa GeekLockHarden (USB no lock)...
-  schtasks /Create /F /TN "GeekLockHarden" /RU SYSTEM /RL HIGHEST /SC ONCE /ST 23:59 /SD 01/01/2099 /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\GeekLock\GeekLock-harden.ps1" >nul 2>&1
-  if errorlevel 1 (
-    echo        AVISO: nao registrou a tarefa de harden. Pendrive no lock pode falhar sem admin.
-    call :LOG AVISO: schtasks GeekLockHarden
-  ) else (
-    echo        OK: tarefa GeekLockHarden
-    call :LOG schtasks GeekLockHarden OK
-  )
+for %%A in ("%GL_DEST%\GeekLock.exe") do echo  Verificado: %GL_DEST%\GeekLock.exe  (%%~zA bytes)
+if exist "%GL_DEST%\config.json" (
+  echo  Verificado: config.json
 ) else (
-  echo        AVISO: GeekLock-harden.ps1 ausente no pack.
-  call :LOG AVISO: sem harden.ps1
+  echo  AVISO: config.json ausente
 )
-
-if not exist "%GL_DEST%\resources\shared\lan-discovery.cjs" (
-  echo  AVISO: falta lan-discovery.cjs — descoberta automatica pode falhar.
-  echo         No cadastro use Conectar manual: %GL_SERVER%
-  call :LOG AVISO: sem lan-discovery.cjs
-)
-
-echo  [6/7] Autostart no login do Windows...
-set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-if not exist "%STARTUP%" mkdir "%STARTUP%"
-if exist "%STARTUP%\GeekLock.lnk" del /f /q "%STARTUP%\GeekLock.lnk"
-if exist "!SRC!\GeekLock-autostart.vbs" copy /y "!SRC!\GeekLock-autostart.vbs" "%STARTUP%\GeekLock.vbs" >nul
-if exist "%~dp0GeekLock-autostart.vbs" if not exist "%STARTUP%\GeekLock.vbs" copy /y "%~dp0GeekLock-autostart.vbs" "%STARTUP%\GeekLock.vbs" >nul
-if not exist "%STARTUP%\GeekLock.vbs" (
-  echo  AVISO: autostart VBS nao foi copiado.
-  call :LOG AVISO: sem VBS startup
-) else (
-  echo        OK: %STARTUP%\GeekLock.vbs
-  call :LOG autostart OK
-)
-
-echo  [7/7] Abrindo GeekLock...
-copy /y "%GL_LOG%" "%GL_DEST%\install.log" >nul 2>&1
 echo.
 echo  ========================================
-echo    OK — GeekLock %GL_VER% em %GL_DEST%
+echo    INSTALACAO CONCLUIDA
 echo  ========================================
-echo  Proximo passo no PC:
-echo    1. Nome unico da estacao (ex.: PC-02^)
-echo    2. Conectar a Central (%GL_SERVER%^)
-echo  Central na VPS: https://admin.geekloja.com.br
-echo.
-echo  Updates depois: GitHub (PC travado / sem VIP^) ou este pendrive.
-echo  Log desta instalacao: %GL_DEST%\install.log
-echo.
-call :LOG sucesso — abrindo exe
-start "" /D "%GL_DEST%" "%GL_DEST%\GeekLock.exe"
-if errorlevel 1 (
-  echo  AVISO: nao abriu sozinho. Rode %GL_DEST%\GeekLock.exe
-  call :LOG AVISO: start exe falhou
-)
+echo  Se o cadastro nao abriu, rode: %GL_DEST%\GeekLock.exe
 echo.
 pause
 exit /b 0
 
 :RESOLVE_SRC
 set "SRC="
-if exist "%~dp0pack\GeekLock.exe" set "SRC=%~dp0pack"
-if not defined SRC if exist "%~dp0GeekLock.exe" set "SRC=%~dp0."
-if not defined SRC if exist "%~dp0GeekLock\GeekLock.exe" set "SRC=%~dp0GeekLock"
+if exist "%~dp0pack\GeekLock.exe" (
+  for %%I in ("%~dp0pack") do set "SRC=%%~fI"
+)
+if not defined SRC if exist "%~dp0GeekLock.exe" (
+  for %%I in ("%~dp0.") do set "SRC=%%~fI"
+)
+if not defined SRC if exist "%~dp0GeekLock\GeekLock.exe" (
+  for %%I in ("%~dp0GeekLock") do set "SRC=%%~fI"
+)
 if not defined SRC exit /b 1
+exit /b 0
+
+:COPY_PS1
+set "PS1DST=%~1"
+if exist "%~dp0INSTALAR-GEEKLOCK.ps1" copy /y "%~dp0INSTALAR-GEEKLOCK.ps1" "%PS1DST%" >nul & exit /b 0
+if exist "%~dp0GeekLock\INSTALAR-GEEKLOCK.ps1" copy /y "%~dp0GeekLock\INSTALAR-GEEKLOCK.ps1" "%PS1DST%" >nul & exit /b 0
+if exist "!SRC!\INSTALAR-GEEKLOCK.ps1" copy /y "!SRC!\INSTALAR-GEEKLOCK.ps1" "%PS1DST%" >nul & exit /b 0
+exit /b 1
+
+:HOLD
+echo.
+echo  ----------------------------------------
+echo  Leia o erro acima. Janela fica 2 minutos.
+echo  Log: %GL_LOG%
+echo  ----------------------------------------
+timeout /t 120 /nobreak
+pause
 exit /b 0
 
 :LOG

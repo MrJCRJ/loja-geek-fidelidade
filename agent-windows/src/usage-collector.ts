@@ -1,6 +1,6 @@
 /** Coletor de uso: hardware no boot + sample a cada 15s enquanto unlocked. */
 
-export type OccupantKind = "vip" | "staff_timed" | "staff_open" | "guest_named";
+export type OccupantKind = "vip" | "vip_desk" | "staff_timed" | "staff_open" | "guest_named";
 
 export type OccupantState = {
   kind: OccupantKind;

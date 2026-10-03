@@ -1,7 +1,9 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import { z } from "zod";
+import { getTimeBalance, sellTime } from "./billing.js";
 import { config } from "./config.js";
+import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.js";
 import { adminGuard, ownerGuard, ownerWriteGuard, staffWriteGuard, stationFromHeader, actorLabel } from "./http-guards.js";
 import {
   broadcastAdmins,
@@ -31,6 +33,7 @@ import {
   sessionSafetySettingsPayload,
   startStaffUnlockWindow,
 } from "./session-safety.js";
+import { startSession } from "./sessions.js";
 import { logEvent } from "./telemetry.js";
 import { isLanPairAllowed } from "./store-network.js";
 import {
@@ -44,17 +47,52 @@ import {
   usageSettingsPayload,
 } from "./station-usage.js";
 
-const occupantKindSchema = z.enum(["vip", "staff_timed", "staff_open", "guest_named"]);
+const occupantKindSchema = z.enum(["vip", "vip_desk", "staff_timed", "staff_open", "guest_named"]);
 
 const stationCommandBody = z.object({
-  command: z.enum(["reload", "message", "lock_screen", "unlock_screen", "end_session", "quit_app"]),
+  command: z.enum([
+    "reload",
+    "message",
+    "lock_screen",
+    "unlock_screen",
+    "end_session",
+    "quit_app",
+    "apply_update",
+  ]),
   text: z.string().optional(),
   title: z.string().max(80).optional(),
   level: z.enum(["info", "warn", "urgent"]).optional(),
   durationSec: z.number().int().min(3).max(23 * 3600 + 59 * 60).optional(),
   occupantKind: occupantKindSchema.optional(),
   guestLabel: z.string().min(2).max(40).optional(),
+  customerId: z.string().min(1).optional(),
+  customerName: z.string().min(1).max(80).optional(),
+  sessionId: z.string().min(1).optional(),
+  timeBalanceSeconds: z.number().int().nonnegative().optional(),
 });
+
+function resolveDeskCustomer(input: { customerId?: string; customerName?: string }) {
+  if (input.customerId) {
+    const existing = getCustomer(input.customerId) as { id: string; consent_at?: string | null } | undefined;
+    if (!existing) throw new Error("Cliente não encontrado");
+    if (!existing.consent_at) updateCustomer(existing.id, { consent: true });
+    return getCustomer(existing.id)!;
+  }
+  const name = String(input.customerName || "").trim();
+  if (name.length < 2) throw new Error("Informe o nome do cliente (mín. 2 caracteres)");
+  const hit = (listCustomers() as Array<{ id: string; name: string; consent_at?: string | null }>).find(
+    (c) => c.name.trim().toLowerCase() === name.toLowerCase(),
+  );
+  if (hit) {
+    if (!hit.consent_at) updateCustomer(hit.id, { consent: true });
+    return getCustomer(hit.id)!;
+  }
+  return createCustomer({
+    name,
+    consent: true,
+    notes: "Criado no balcão (Liberar)",
+  });
+}
 
 export async function registerStationRoutes(app: FastifyInstance) {
   app.get("/api/stations", async (req, reply) => {
@@ -407,6 +445,139 @@ export async function registerStationRoutes(app: FastifyInstance) {
       sent: targets.map((s) => s.name),
       waitingOffline: status.offlineOutdated,
     };
+  });
+
+  /** Balcão: VIP + (venda R$/horas ou aberto só com nome) → libera a estação. */
+  app.post("/api/stations/:id/desk-liberar", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const station = listStations().find((s) => s.id === id);
+    if (!station) return reply.code(404).send({ error: "Estação não encontrada" });
+    const body = z
+      .object({
+        mode: z.enum(["sale", "open"]),
+        customerId: z.string().min(1).optional(),
+        customerName: z.string().min(2).max(80).optional(),
+        amountReais: z.number().positive().optional(),
+        hours: z.number().positive().optional(),
+      })
+      .parse(req.body || {});
+
+    try {
+      const customer = resolveDeskCustomer({
+        customerId: body.customerId,
+        customerName: body.customerName,
+      }) as { id: string; name: string };
+
+      if (body.mode === "open") {
+        clearStaffUnlockWindow(id);
+        sendCommandToStation(id, "unlock_screen", {
+          occupantKind: "staff_open",
+          customerId: customer.id,
+          customerName: customer.name,
+          guestLabel: customer.name,
+        });
+        logEvent({
+          level: "info",
+          source: "admin",
+          kind: "desk.liberar_open",
+          message: `${actorLabel(req)} liberou aberto ${station.name} para ${customer.name}`,
+          stationId: id,
+          meta: { actor: actorLabel(req), customerId: customer.id, customerName: customer.name },
+        });
+        broadcastAdmins({
+          type: "desk_liberar",
+          mode: "open",
+          station: { id: station.id, name: station.name },
+          customer,
+          at: new Date().toISOString(),
+        });
+        return { ok: true, mode: "open", customer, station: { id: station.id, name: station.name } };
+      }
+
+      if (body.amountReais == null && body.hours == null) {
+        return reply.code(400).send({ error: "Informe valor em R$ ou horas para creditar" });
+      }
+      const sale = sellTime({
+        customerId: customer.id,
+        amountReais: body.amountReais,
+        hours: body.hours,
+      });
+      const session = startSession(customer.id, id);
+      const balance = getTimeBalance(customer.id);
+      clearStaffUnlockWindow(id);
+      sendCommandToStation(id, "unlock_screen", {
+        occupantKind: "vip_desk",
+        customerId: customer.id,
+        customerName: customer.name,
+        sessionId: session.id,
+        timeBalanceSeconds: balance,
+      });
+      logEvent({
+        level: "info",
+        source: "admin",
+        kind: "desk.liberar_sale",
+        message: `${actorLabel(req)} vendeu e liberou ${station.name} para ${customer.name}`,
+        stationId: id,
+        meta: {
+          actor: actorLabel(req),
+          customerId: customer.id,
+          amountReais: sale.amountReais,
+          creditedSeconds: sale.creditedSeconds,
+          sessionId: session.id,
+        },
+      });
+      broadcastAdmins({
+        type: "desk_liberar",
+        mode: "sale",
+        station: { id: station.id, name: station.name },
+        customer: sale.customer,
+        session,
+        creditedSeconds: sale.creditedSeconds,
+        amountReais: sale.amountReais,
+        at: new Date().toISOString(),
+      });
+      broadcastAdmins({ type: "time_updated", customer: sale.customer });
+      broadcastAdmins({
+        type: "session_started",
+        session,
+        station: { id: station.id, name: station.name },
+        customer: sale.customer,
+        at: new Date().toISOString(),
+      });
+      let reviewAsk: Awaited<
+        ReturnType<(typeof import("./whatsapp.js"))["afterDeskSaleMaybeAskReview"]>
+      > | null = null;
+      try {
+        const wa = await import("./whatsapp.js");
+        const hours =
+          body.hours != null
+            ? body.hours
+            : sale.creditedSeconds != null
+              ? Number(sale.creditedSeconds) / 3600
+              : null;
+        reviewAsk = await wa.afterDeskSaleMaybeAskReview(
+          customer.id,
+          Number(sale.amountReais) || 0,
+          hours,
+        );
+      } catch {
+        reviewAsk = null;
+      }
+      return {
+        ok: true,
+        mode: "sale",
+        customer: sale.customer,
+        session,
+        creditedSeconds: sale.creditedSeconds,
+        amountReais: sale.amountReais,
+        timeBalanceSeconds: balance,
+        station: { id: station.id, name: station.name },
+        reviewAsk,
+      };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
   });
 
   app.get("/api/stations/lock-update/package", async (req, reply) => {

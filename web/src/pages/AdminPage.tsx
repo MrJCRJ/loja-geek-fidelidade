@@ -433,6 +433,7 @@ export default function AdminPage() {
       {tab === "estacoes" && (
         <EstacoesTab
           stations={data.stations}
+          customers={data.customers}
           connected={data.connected}
           liveStatus={data.liveStatus}
           settings={data.settings}

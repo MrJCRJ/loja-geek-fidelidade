@@ -1,0 +1,10 @@
+# Copiar para /etc/cloudflared/config.yml no Pi (após tunnel login / JSON do Windows)
+tunnel: b9406016-bea4-4398-b6e4-48f43e398af5
+credentials-file: /etc/cloudflared/b9406016-bea4-4398-b6e4-48f43e398af5.json
+
+ingress:
+  - hostname: api.geekloja.com.br
+    service: http://127.0.0.1:8787
+  - hostname: admin.geekloja.com.br
+    service: http://127.0.0.1:8787
+  - service: http_status:404

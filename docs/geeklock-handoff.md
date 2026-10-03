@@ -12,15 +12,23 @@ Repo: https://github.com/MrJCRJ/loja-geek-fidelidade · pasta: `/home/treegunn/l
 
 ## Versões
 
-- Lock **1.1.9** · tag `lock-v*`
+- Lock **1.1.14** · tag `lock-v*` (pacote também em `lock-updates/` na VPS)
+- Liberar no Central: VIP + R$/horas (credita e abre sessão) ou aberto só com nome; sem modo Convidado.
 - Central **1.1.7** · tag `central-v*` = **latest** do GitHub
+
+## Atualizar estações
+
+- **Dono** em Config → **Atualizar Locks** (API `ownerWriteGuard`; clerk não vê Config).
+- Pacote: `GeekLock-win-x64.zip` + `version.json` em data `lock-updates/` (scp manual ok; não exige GitHub se o local for >= release).
+- A partir de **1.1.12**, o ZIP traz `GeekLock-apply.cmd` (taskkill + rename); o Lock usa esse script ao aplicar.
+- Estações em **1.1.10/1.1.11**: primeiro update pelo pendrive; depois o botão do dono basta.
 
 ## Pendrive GEEKLOCK (~15 G, `sdb`)
 
 - Instalador completo em `scripts/pendrive-geeklock/` (TEMP antes do UAC).
 - `serverUrl` = `https://api.geekloja.com.br`
-- Após release: baixar zip Lock e regravar USB + overlay do `.bat` + `GeekLock-harden.ps1`.
-- 1.1.9: kiosk no lock, bloqueia atalhos/TaskMgr/USB storage no locked; webcam sempre livre; saúde (disco/RAM/uptime) no Central.
+- Após release: baixar zip Lock e regravar USB + overlay do `.bat` + `GeekLock-harden.ps1` + `GeekLock-apply.cmd`.
+- 1.1.12: update remoto reforçado + apply empacotado; 1.1.11 tinha cadastro nuvem + tela cheia/kiosk/harden.
 
 ## Raspberry Pi 3 B+ (GeekCentral sem face)
 

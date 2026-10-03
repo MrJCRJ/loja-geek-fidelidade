@@ -155,8 +155,9 @@ describe("Segurança de sessão (teorias produção)", () => {
     await app.close();
   });
 
-  it("liberar sem conta fica entre 30 min e 23h59", () => {
-    expect(clampStaffUnlockSeconds(15 * 60)).toBe(30 * 60);
+  it("liberar sem conta fica entre 5 min e 23h59", () => {
+    expect(clampStaffUnlockSeconds(2 * 60)).toBe(5 * 60);
+    expect(clampStaffUnlockSeconds(5 * 60)).toBe(5 * 60);
     expect(clampStaffUnlockSeconds(30 * 60)).toBe(30 * 60);
     expect(clampStaffUnlockSeconds(24 * 3600)).toBe(23 * 3600 + 59 * 60);
   });

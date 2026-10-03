@@ -1,6 +1,7 @@
 /**
  * Atualização portable via ZIP servido pelo GeekCentral.
  * Mantém config.json da estação.
+ * Prefere GeekLock-apply.cmd vindo no pacote (lógica nova sem precisar do bat antigo).
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -10,6 +11,7 @@ const { promisify } = require("node:util");
 
 const execFileAsync = promisify(execFile);
 const ASSET_NAME = "GeekLock-win-x64.zip";
+const BUNDLED_APPLY = "GeekLock-apply.cmd";
 
 let applying = false;
 
@@ -80,22 +82,49 @@ function findPayloadRoot(extractDir) {
   throw new Error("ZIP inválido: GeekLock.exe não encontrado");
 }
 
-function scheduleApplyAndRelaunch(payloadDir, log = console) {
-  const dst = installDir();
+function writeFallbackApplyBat(payloadDir, dst) {
   const bat = path.join(os.tmpdir(), `geeklock-apply-${Date.now()}.cmd`);
   const lines = [
     "@echo off",
     "setlocal",
     `set "SRC=${payloadDir}"`,
     `set "DST=${dst}"`,
-    "timeout /t 5 /nobreak >nul",
-    'robocopy "%SRC%" "%DST%" /E /XF config.json /XD data /R:3 /W:2 /NFL /NDL /NJH /NJS /nc /ns /np',
-    'if exist "%DST%\\GeekLock.exe" start "" "%DST%\\GeekLock.exe"',
+    "timeout /t 2 /nobreak >nul",
+    "taskkill /IM GeekLock.exe /F >nul 2>&1",
+    "timeout /t 6 /nobreak >nul",
+    'if exist "%DST%\\GeekLock.exe" (',
+    '  del /f /q "%DST%\\GeekLock.exe.bak" >nul 2>&1',
+    '  ren "%DST%\\GeekLock.exe" "GeekLock.exe.bak" >nul 2>&1',
+    ")",
+    'robocopy "%SRC%" "%DST%" /E /IS /IT /XF config.json GeekLock-apply.cmd /XD data /R:8 /W:2 /NFL /NDL /NJH /NJS /nc /ns /np',
+    'if exist "%DST%\\GeekLock.exe.bak" del /f /q "%DST%\\GeekLock.exe.bak" >nul 2>&1',
+    'if exist "%DST%\\GeekLock.exe" (',
+    '  start "" /D "%DST%" "%DST%\\GeekLock.exe"',
+    ") else (",
+    '  echo GeekLock.exe ausente apos robocopy > "%TEMP%\\geeklock-apply-fail.txt"',
+    ")",
     'del "%~f0"',
   ];
   fs.writeFileSync(bat, lines.join("\r\n"), "utf8");
-  log.info?.("[lock-update] apply bat:", bat);
-  const child = spawn("cmd.exe", ["/c", bat], {
+  return bat;
+}
+
+function scheduleApplyAndRelaunch(payloadDir, log = console) {
+  const dst = installDir();
+  const bundled = path.join(payloadDir, BUNDLED_APPLY);
+  let cmd;
+  let args;
+  if (fs.existsSync(bundled)) {
+    cmd = "cmd.exe";
+    args = ["/c", bundled, payloadDir, dst];
+    log.info?.("[lock-update] apply bundled:", bundled);
+  } else {
+    const bat = writeFallbackApplyBat(payloadDir, dst);
+    cmd = "cmd.exe";
+    args = ["/c", bat];
+    log.info?.("[lock-update] apply fallback bat:", bat);
+  }
+  const child = spawn(cmd, args, {
     detached: true,
     stdio: "ignore",
     windowsHide: true,

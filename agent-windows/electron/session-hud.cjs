@@ -168,7 +168,9 @@ class SessionHud {
       document.getElementById("name").textContent = admin ? "Equipe" : name;
       var timeEl = document.getElementById("time");
       var balTxt = fmtBal(bal);
-      timeEl.textContent = balTxt != null ? "resta " + balTxt : (p && p.time) || "0m 00s";
+      // Com saldo: regressivo ("resta"). Hora livre: tempo correndo (HH:MM:SS).
+      timeEl.textContent =
+        balTxt != null ? "resta " + balTxt : (p && p.time) ? String(p.time) : "00:00:00";
       timeEl.className = low ? "warn" : "";
       var state = document.getElementById("state");
       var dot = document.getElementById("dot");

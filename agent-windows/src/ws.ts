@@ -32,6 +32,10 @@ export type StationCommandPayload = {
   durationSec?: number;
   occupantKind?: string;
   guestLabel?: string;
+  customerId?: string;
+  customerName?: string;
+  sessionId?: string;
+  timeBalanceSeconds?: number;
 };
 
 type Handlers = {
@@ -125,6 +129,10 @@ export class StationSocket {
           durationSec?: number;
           occupantKind?: string;
           guestLabel?: string;
+          customerId?: string;
+          customerName?: string;
+          sessionId?: string;
+          timeBalanceSeconds?: number;
         };
         if (msg.type === "command" && msg.command) {
           this.handlers.onCommand?.(msg.command, {
@@ -134,6 +142,10 @@ export class StationSocket {
             durationSec: msg.durationSec,
             occupantKind: msg.occupantKind,
             guestLabel: msg.guestLabel,
+            customerId: msg.customerId,
+            customerName: msg.customerName,
+            sessionId: msg.sessionId,
+            timeBalanceSeconds: msg.timeBalanceSeconds,
           });
         }
       } catch {

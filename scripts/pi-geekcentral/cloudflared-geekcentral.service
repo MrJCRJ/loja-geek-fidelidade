@@ -1,0 +1,17 @@
+[Unit]
+Description=Cloudflare Tunnel GeekCentral (loja-geek-api)
+After=network-online.target geekcentral.service
+Wants=network-online.target
+Requires=geekcentral.service
+
+[Service]
+Type=simple
+User=geek
+Group=geek
+# Preferência: config em /etc/cloudflared/config.yml (credentials-file absoluto)
+ExecStart=/usr/bin/cloudflared tunnel --config /etc/cloudflared/config.yml run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

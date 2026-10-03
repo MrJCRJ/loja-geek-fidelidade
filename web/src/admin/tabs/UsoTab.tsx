@@ -62,6 +62,7 @@ function kindLabel(k: string) {
   if (k === "vip") return "VIP";
   if (k === "staff_timed") return "Staff (tempo)";
   if (k === "staff_open") return "Staff (aberto)";
+  if (k === "vip_desk") return "VIP balcão";
   if (k === "guest_named") return "Convidado";
   return k;
 }
