@@ -68,6 +68,16 @@ declare global {
         gpus?: Array<{ vendor: string; model: string; vramMb?: number | null }>;
         ramTotalMb?: number | null;
         osBuild?: string | null;
+        diskFreePct?: number | null;
+        diskTotalGb?: number | null;
+        uptimeSec?: number | null;
+        ramUsedPct?: number | null;
+      }>;
+      collectHealth?: () => Promise<{
+        diskFreePct?: number | null;
+        diskTotalGb?: number | null;
+        uptimeSec?: number | null;
+        ramUsedPct?: number | null;
       }>;
       collectLoadSample?: (opts?: { primaryGpuVendor?: string }) => Promise<{
         appProcess?: string | null;

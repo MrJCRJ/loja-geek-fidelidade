@@ -70,6 +70,21 @@ export type UsageRemoteConfig = {
 };
 
 export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
+  let health:
+    | {
+        diskFreePct?: number | null;
+        diskTotalGb?: number | null;
+        uptimeSec?: number | null;
+        ramUsedPct?: number | null;
+      }
+    | undefined;
+  try {
+    if (window.geeklock.collectHealth) {
+      health = await window.geeklock.collectHealth();
+    }
+  } catch {
+    health = undefined;
+  }
   return apiFetch<{
     ok: boolean;
     station?: { id: string; name: string };
@@ -79,7 +94,7 @@ export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
     lockUpdate?: { needed: boolean; latestVersion?: string } | null;
   }>(config, "/api/stations/heartbeat", {
     method: "POST",
-    body: JSON.stringify({ token: config.stationToken, lockVersion }),
+    body: JSON.stringify({ token: config.stationToken, lockVersion, health }),
   });
 }
 

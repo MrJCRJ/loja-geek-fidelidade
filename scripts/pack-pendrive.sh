@@ -25,10 +25,12 @@ INSTALLER="$ROOT/scripts/pendrive-geeklock"
 cp -f "$INSTALLER/INSTALAR-GEEKLOCK.bat" "$OUT/INSTALAR-GEEKLOCK.bat"
 cp -f "$INSTALLER/INSTALAR-GEEKLOCK.ps1" "$OUT/INSTALAR-GEEKLOCK.ps1"
 cp -f "$INSTALLER/GeekLock-autostart.vbs" "$OUT/GeekLock-autostart.vbs"
+cp -f "$INSTALLER/GeekLock-harden.ps1" "$OUT/GeekLock-harden.ps1"
 cp -f "$INSTALLER/LEIA-ME.txt" "$OUT/LEIA-ME.txt"
 # Atalho na raiz do pack (pendrive/INSTALAR-GEEKLOCK.bat) — dois cliques na raiz do USB
 mkdir -p "$ROOT/pendrive"
 cp -f "$INSTALLER/INSTALAR-GEEKLOCK.bat" "$ROOT/pendrive/INSTALAR-GEEKLOCK.bat"
+cp -f "$INSTALLER/GeekLock-harden.ps1" "$ROOT/pendrive/GeekLock-harden.ps1"
 
 echo "OK: $OUT"
 du -sh "$OUT"

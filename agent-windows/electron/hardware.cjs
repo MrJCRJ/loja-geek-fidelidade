@@ -31,11 +31,42 @@ async function runPs(script, timeoutMs = 8000) {
   }
 }
 
+function collectDiskHealth(rootPath) {
+  try {
+    const fs = require("node:fs");
+    if (typeof fs.statfsSync !== "function") return { diskFreePct: null, diskTotalGb: null };
+    const s = fs.statfsSync(rootPath);
+    const block = Number(s.bsize) || 0;
+    const total = Number(s.blocks) * block;
+    const free = Number(s.bavail != null ? s.bavail : s.bfree) * block;
+    if (!total) return { diskFreePct: null, diskTotalGb: null };
+    return {
+      diskFreePct: Math.round((free / total) * 1000) / 10,
+      diskTotalGb: Math.round((total / (1024 * 1024 * 1024)) * 10) / 10,
+    };
+  } catch {
+    return { diskFreePct: null, diskTotalGb: null };
+  }
+}
+
+function collectHealthFields() {
+  const root = process.platform === "win32" ? "C:\\" : "/";
+  const disk = collectDiskHealth(root);
+  const ramTotal = os.totalmem();
+  const ramFree = os.freemem();
+  return {
+    ...disk,
+    uptimeSec: Math.round(os.uptime()),
+    ramUsedPct: ramTotal ? Math.round(((ramTotal - ramFree) / ramTotal) * 1000) / 10 : null,
+  };
+}
+
 async function collectHardwareWindows() {
   const cpuName = os.cpus()[0]?.model || null;
   const cpuCores = os.cpus().length;
   const ramTotalMb = Math.round(os.totalmem() / (1024 * 1024));
   const osBuild = `${os.type()} ${os.release()}`;
+  const health = collectHealthFields();
 
   const gpuJson = await runPs(
     `$ErrorActionPreference='SilentlyContinue'; Get-CimInstance Win32_VideoController | Select-Object Name, AdapterRAM | ConvertTo-Json -Compress`,
@@ -68,6 +99,10 @@ async function collectHardwareWindows() {
     gpus,
     ramTotalMb,
     osBuild,
+    diskFreePct: health.diskFreePct,
+    diskTotalGb: health.diskTotalGb,
+    uptimeSec: health.uptimeSec,
+    ramUsedPct: health.ramUsedPct,
   };
 }
 
@@ -197,6 +232,7 @@ async function collectLoadSample(opts = {}) {
 
 async function collectHardware() {
   if (process.platform === "win32") return collectHardwareWindows();
+  const health = collectHealthFields();
   return {
     cpuName: os.cpus()[0]?.model || null,
     cpuCores: os.cpus().length,
@@ -204,7 +240,11 @@ async function collectHardware() {
     gpus: [],
     ramTotalMb: Math.round(os.totalmem() / (1024 * 1024)),
     osBuild: `${os.type()} ${os.release()}`,
+    diskFreePct: health.diskFreePct,
+    diskTotalGb: health.diskTotalGb,
+    uptimeSec: health.uptimeSec,
+    ramUsedPct: health.ramUsedPct,
   };
 }
 
-module.exports = { collectHardware, collectLoadSample, vendorFromName };
+module.exports = { collectHardware, collectLoadSample, collectHealthFields, vendorFromName };

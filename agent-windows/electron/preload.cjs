@@ -33,4 +33,5 @@ contextBridge.exposeInMainWorld("geeklock", {
   applyLockUpdate: () => ipcRenderer.invoke("lock:apply-update"),
   collectHardware: () => ipcRenderer.invoke("hw:inventory"),
   collectLoadSample: (opts) => ipcRenderer.invoke("hw:sample", opts || {}),
+  collectHealth: () => ipcRenderer.invoke("hw:health"),
 });

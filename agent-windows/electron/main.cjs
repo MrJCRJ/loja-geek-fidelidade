@@ -346,6 +346,23 @@ function focusMainWindow() {
 
 function quitAppFromCentral() {
   app.isQuitting = true;
+  try {
+    const win = mainWindow;
+    if (win && !win.isDestroyed()) {
+      if (typeof win.setKiosk === "function") win.setKiosk(false);
+      win.setClosable(true);
+      win.setFullScreen(false);
+    }
+  } catch {
+    /* ignore */
+  }
+  try {
+    const { applyOsHarden, unregisterLockShortcuts } = require("./os-harden.cjs");
+    unregisterLockShortcuts();
+    void applyOsHarden(false);
+  } catch {
+    /* ignore */
+  }
   app.quit();
 }
 
@@ -504,6 +521,13 @@ app.whenReady().then(() => {
 app.on("before-quit", () => {
   app.isQuitting = true;
   sessionHud.destroy();
+  try {
+    const { applyOsHarden, unregisterLockShortcuts } = require("./os-harden.cjs");
+    unregisterLockShortcuts();
+    void applyOsHarden(false);
+  } catch {
+    /* ignore */
+  }
   globalShortcut.unregisterAll();
 });
 
@@ -598,6 +622,10 @@ ipcMain.handle("lock:apply-update", async () => {
 const { collectHardware, collectLoadSample } = require("./hardware.cjs");
 ipcMain.handle("hw:inventory", async () => collectHardware());
 ipcMain.handle("hw:sample", async (_e, opts) => collectLoadSample(opts || {}));
+ipcMain.handle("hw:health", async () => {
+  const { collectHealthFields } = require("./hardware.cjs");
+  return collectHealthFields();
+});
 
 ipcMain.on("tray:update", (_e, payload) => {
   applyTrayUpdate(payload);

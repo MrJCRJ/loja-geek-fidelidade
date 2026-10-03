@@ -10,13 +10,26 @@ export type StationRow = {
   last_ip: string | null;
   online: number;
   lock_version: string | null;
+  disk_free_pct: number | null;
+  disk_total_gb: number | null;
+  uptime_sec: number | null;
+  ram_used_pct: number | null;
   created_at: string;
+};
+
+export type StationHealth = {
+  diskFreePct?: number | null;
+  diskTotalGb?: number | null;
+  uptimeSec?: number | null;
+  ramUsedPct?: number | null;
 };
 
 export function listStations() {
   return getDb()
     .prepare(
-      "SELECT id, name, last_seen_at, last_ip, online, lock_version, created_at FROM stations ORDER BY name COLLATE NOCASE",
+      `SELECT id, name, last_seen_at, last_ip, online, lock_version,
+              disk_free_pct, disk_total_gb, uptime_sec, ram_used_pct, created_at
+       FROM stations ORDER BY name COLLATE NOCASE`,
     )
     .all() as Omit<StationRow, "token">[];
 }
@@ -67,28 +80,51 @@ export function deleteStation(id: string) {
   return getDb().prepare("DELETE FROM stations WHERE id = ?").run(id).changes > 0;
 }
 
-export function heartbeatStationById(id: string, ip?: string, lockVersion?: string) {
+export function heartbeatStationById(id: string, ip?: string, lockVersion?: string, health?: StationHealth | null) {
   const station = getStation(id);
   if (!station) return null;
   const now = new Date().toISOString();
   const ver = String(lockVersion || "").trim();
+  const diskFree =
+    health?.diskFreePct != null && Number.isFinite(health.diskFreePct) ? Number(health.diskFreePct) : null;
+  const diskTotal =
+    health?.diskTotalGb != null && Number.isFinite(health.diskTotalGb) ? Number(health.diskTotalGb) : null;
+  const uptime =
+    health?.uptimeSec != null && Number.isFinite(health.uptimeSec) ? Math.round(Number(health.uptimeSec)) : null;
+  const ramUsed =
+    health?.ramUsedPct != null && Number.isFinite(health.ramUsedPct) ? Number(health.ramUsedPct) : null;
+
   if (ver) {
     getDb()
-      .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1, lock_version = ? WHERE id = ?")
-      .run(now, ip || station.last_ip, ver, station.id);
+      .prepare(
+        `UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1, lock_version = ?,
+         disk_free_pct = COALESCE(?, disk_free_pct),
+         disk_total_gb = COALESCE(?, disk_total_gb),
+         uptime_sec = COALESCE(?, uptime_sec),
+         ram_used_pct = COALESCE(?, ram_used_pct)
+         WHERE id = ?`,
+      )
+      .run(now, ip || station.last_ip, ver, diskFree, diskTotal, uptime, ramUsed, station.id);
   } else {
     getDb()
-      .prepare("UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1 WHERE id = ?")
-      .run(now, ip || station.last_ip, station.id);
+      .prepare(
+        `UPDATE stations SET last_seen_at = ?, last_ip = ?, online = 1,
+         disk_free_pct = COALESCE(?, disk_free_pct),
+         disk_total_gb = COALESCE(?, disk_total_gb),
+         uptime_sec = COALESCE(?, uptime_sec),
+         ram_used_pct = COALESCE(?, ram_used_pct)
+         WHERE id = ?`,
+      )
+      .run(now, ip || station.last_ip, diskFree, diskTotal, uptime, ramUsed, station.id);
   }
   return getStation(station.id);
 }
 
 /** `token` deve ser o valor em claro enviado pela estação (não o hash do banco). */
-export function heartbeatStation(token: string, ip?: string, lockVersion?: string) {
+export function heartbeatStation(token: string, ip?: string, lockVersion?: string, health?: StationHealth | null) {
   const station = getStationByToken(token);
   if (!station) return null;
-  return heartbeatStationById(station.id, ip, lockVersion);
+  return heartbeatStationById(station.id, ip, lockVersion, health);
 }
 
 export function markStationOffline(id: string) {

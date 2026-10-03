@@ -160,6 +160,18 @@ export function initDb(databasePath?: string) {
   if (!stationCols.includes("lock_version")) {
     conn.exec("ALTER TABLE stations ADD COLUMN lock_version TEXT");
   }
+  if (!stationCols.includes("disk_free_pct")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN disk_free_pct REAL");
+  }
+  if (!stationCols.includes("disk_total_gb")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN disk_total_gb REAL");
+  }
+  if (!stationCols.includes("uptime_sec")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN uptime_sec INTEGER");
+  }
+  if (!stationCols.includes("ram_used_pct")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN ram_used_pct REAL");
+  }
 
   conn.exec(`
     CREATE TABLE IF NOT EXISTS web_orders (

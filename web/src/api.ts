@@ -29,6 +29,10 @@ export type Station = {
   last_ip?: string | null;
   online?: number;
   lock_version?: string | null;
+  disk_free_pct?: number | null;
+  disk_total_gb?: number | null;
+  uptime_sec?: number | null;
+  ram_used_pct?: number | null;
   created_at?: string;
 };
 

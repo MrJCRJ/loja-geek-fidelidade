@@ -208,6 +208,13 @@ export function EstacoesTab({
               : online
                 ? `v${ver}`
                 : `v${ver} · desligado`;
+            const diskPct = s.disk_free_pct;
+            const diskWarn = diskPct != null && diskPct < 15;
+            const healthBits = [
+              diskPct != null ? `disco ${diskPct}% livre` : null,
+              s.ram_used_pct != null ? `RAM ${s.ram_used_pct}%` : null,
+              s.uptime_sec != null ? `ligado ${formatDuration(s.uptime_sec)}` : null,
+            ].filter(Boolean);
             return (
               <section key={s.id} className="panel pc-card">
                 <div className="pc-card-head">
@@ -220,6 +227,12 @@ export function EstacoesTab({
                     {verHint}
                   </span>
                 </p>
+                {healthBits.length > 0 && (
+                  <p className="muted" style={{ margin: "0 0 0.75rem", color: diskWarn ? "crimson" : undefined }}>
+                    {healthBits.join(" · ")}
+                    {diskWarn ? " · disco baixo" : ""}
+                  </p>
+                )}
                 {!remoteReadOnly && liberarId === s.id ? (
                   <div>
                     {unlockKindControls}
@@ -366,13 +379,14 @@ export function EstacoesTab({
               <th>Estado ao vivo</th>
               <th>IP</th>
               <th>Versão</th>
+              <th>Saúde</th>
               <th>Ações</th>
             </tr>
           </thead>
           <tbody>
             {stations.length === 0 && (
               <tr>
-                <td colSpan={6}>
+                <td colSpan={7}>
                   <div className="empty-state">
                     <strong>Nenhuma estação</strong>
                     <p>Crie uma acima ou pareie pelo GeekLock na LAN (nome + Conectar).</p>
@@ -415,6 +429,17 @@ export function EstacoesTab({
                   </td>
                   <td>{s.last_ip || "—"}</td>
                   <td className="mono">{s.lock_version || "—"}</td>
+                  <td>
+                    {s.disk_free_pct != null || s.ram_used_pct != null || s.uptime_sec != null ? (
+                      <span style={{ color: s.disk_free_pct != null && s.disk_free_pct < 15 ? "crimson" : undefined }}>
+                        {s.disk_free_pct != null ? `disco ${s.disk_free_pct}%` : "—"}
+                        {s.ram_used_pct != null ? ` · RAM ${s.ram_used_pct}%` : ""}
+                        {s.uptime_sec != null ? ` · ${formatDuration(s.uptime_sec)}` : ""}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="row" style={{ flexWrap: "wrap" }}>
                     {remoteReadOnly ? (
                       <span className="muted">só ver</span>

@@ -5,9 +5,9 @@ title GeekLock — instalador do pendrive
 color 0A
 cd /d "%~dp0"
 
-set "GL_VER=1.1.8"
-set "GL_SERVER=http://192.168.3.70:8787"
-set "GL_HOST=192.168.3.70"
+set "GL_VER=1.1.9"
+set "GL_SERVER=https://api.geekloja.com.br"
+set "GL_HOST=api.geekloja.com.br"
 set "GL_DEST=C:\GeekLock"
 set "GL_LOG=%TEMP%\geeklock-install.log"
 
@@ -153,7 +153,7 @@ if not exist "%GL_DEST%\GeekLock.exe" (
 )
 call :LOG copia OK
 
-echo  [5/7] Gravando config da lan...
+echo  [5/7] Gravando config (API publica)...
 > "%GL_DEST%\config.json" (
   echo {
   echo   "serverUrl": "%GL_SERVER%",
@@ -173,6 +173,23 @@ findstr /C:"serverUrl" "%GL_DEST%\config.json" >nul || (
   exit /b 1
 )
 echo        serverUrl=%GL_SERVER%
+
+if exist "!SRC!\GeekLock-harden.ps1" copy /y "!SRC!\GeekLock-harden.ps1" "%GL_DEST%\GeekLock-harden.ps1" >nul
+if exist "%~dp0GeekLock-harden.ps1" if not exist "%GL_DEST%\GeekLock-harden.ps1" copy /y "%~dp0GeekLock-harden.ps1" "%GL_DEST%\GeekLock-harden.ps1" >nul
+if exist "%GL_DEST%\GeekLock-harden.ps1" (
+  echo        Registrando tarefa GeekLockHarden (USB no lock)...
+  schtasks /Create /F /TN "GeekLockHarden" /RU SYSTEM /RL HIGHEST /SC ONCE /ST 23:59 /SD 01/01/2099 /TR "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\GeekLock\GeekLock-harden.ps1" >nul 2>&1
+  if errorlevel 1 (
+    echo        AVISO: nao registrou a tarefa de harden. Pendrive no lock pode falhar sem admin.
+    call :LOG AVISO: schtasks GeekLockHarden
+  ) else (
+    echo        OK: tarefa GeekLockHarden
+    call :LOG schtasks GeekLockHarden OK
+  )
+) else (
+  echo        AVISO: GeekLock-harden.ps1 ausente no pack.
+  call :LOG AVISO: sem harden.ps1
+)
 
 if not exist "%GL_DEST%\resources\shared\lan-discovery.cjs" (
   echo  AVISO: falta lan-discovery.cjs — descoberta automatica pode falhar.
@@ -203,9 +220,9 @@ echo  ========================================
 echo  Proximo passo no PC:
 echo    1. Nome unico da estacao (ex.: PC-02^)
 echo    2. Conectar a Central (%GL_SERVER%^)
-echo  PC controle precisa estar com GeekCentral ligado.
+echo  Central na VPS: https://admin.geekloja.com.br
 echo.
-echo  Updates depois: GitHub (PC travado / sem VIP^).
+echo  Updates depois: GitHub (PC travado / sem VIP^) ou este pendrive.
 echo  Log desta instalacao: %GL_DEST%\install.log
 echo.
 call :LOG sucesso — abrindo exe

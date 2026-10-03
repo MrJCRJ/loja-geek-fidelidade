@@ -13,6 +13,7 @@ import {
 import {
   deleteStation,
   heartbeatStation,
+  heartbeatStationById,
   listStations,
   registerStation,
   renameStation,
@@ -88,8 +89,22 @@ export async function registerStationRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/stations/heartbeat", async (req, reply) => {
-    const body = z.object({ token: z.string(), lockVersion: z.string().max(32).optional() }).parse(req.body);
-    const station = heartbeatStation(body.token, req.ip, body.lockVersion);
+    const body = z
+      .object({
+        token: z.string(),
+        lockVersion: z.string().max(32).optional(),
+        health: z
+          .object({
+            diskFreePct: z.number().min(0).max(100).optional().nullable(),
+            diskTotalGb: z.number().min(0).max(102400).optional().nullable(),
+            uptimeSec: z.number().int().min(0).max(20 * 365 * 24 * 3600).optional().nullable(),
+            ramUsedPct: z.number().min(0).max(100).optional().nullable(),
+          })
+          .optional()
+          .nullable(),
+      })
+      .parse(req.body);
+    const station = heartbeatStation(body.token, req.ip, body.lockVersion, body.health || null);
     if (!station) return reply.code(401).send({ error: "Token de estação inválido" });
     broadcastAdmins({ type: "station_heartbeat", station });
     return {
@@ -253,9 +268,21 @@ export async function registerStationRoutes(app: FastifyInstance) {
           .optional(),
         ramTotalMb: z.number().int().min(256).max(1048576).optional().nullable(),
         osBuild: z.string().max(80).optional().nullable(),
+        diskFreePct: z.number().min(0).max(100).optional().nullable(),
+        diskTotalGb: z.number().min(0).max(102400).optional().nullable(),
+        uptimeSec: z.number().int().min(0).max(20 * 365 * 24 * 3600).optional().nullable(),
+        ramUsedPct: z.number().min(0).max(100).optional().nullable(),
       })
       .parse(req.body || {});
     const saved = upsertStationHardware(station.id, body);
+    if (body.diskFreePct != null || body.uptimeSec != null || body.ramUsedPct != null || body.diskTotalGb != null) {
+      heartbeatStationById(station.id, undefined, undefined, {
+        diskFreePct: body.diskFreePct,
+        diskTotalGb: body.diskTotalGb,
+        uptimeSec: body.uptimeSec,
+        ramUsedPct: body.ramUsedPct,
+      });
+    }
     return { ok: true, hardware: saved, usage: usageSettingsPayload() };
   });
 

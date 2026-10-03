@@ -1,8 +1,9 @@
-GeekLock 1.1.7 — instalação pelo pendrive
+GeekLock 1.1.9 — instalação pelo pendrive
 ========================================
 
 Pré-requisito
-- PC CONTROLE (192.168.3.70) com GeekCentral online em http://192.168.3.70:8787
+- GeekCentral online (VPS): https://api.geekloja.com.br
+- Painel dono: https://admin.geekloja.com.br
 - Pendrive label GEEKLOCK (~15 G) — não misturar com outro USB
 
 Instalar em cada PC de jogo
@@ -15,15 +16,16 @@ Instalar em cada PC de jogo
 O que o .bat faz
 - Copia o pack para TEMP antes do UAC (letra do USB não some)
 - Apaga C:\GeekLock e dados antigos do app (pareamento incluso)
-- Copia o pack novo (1.1.7)
-- Grava config com serverUrl da lan (sem PIN local)
+- Copia o pack novo (1.1.9) — sem PIN local; destrave/sair só pelo Central
+- Grava config com serverUrl=https://api.geekloja.com.br
+- Registra tarefa GeekLockHarden (bloqueia pendrive só com tela travada; webcam livre)
 - Coloca autostart no login do Windows
 - Abre o GeekLock no assistente de cadastro
 
 Se der erro
 - "GeekLock.exe nao encontrado": use o .bat que está na pasta GeekLock do pendrive
 - UAC não abre: botão direito no .bat → Executar como administrador
-- Não conecta: confira se o Central está ligado e se o IP 192.168.3.70 responde na lan
+- Não conecta: confira https://api.geekloja.com.br/api/health no celular
 
 Atualização depois
 - Com a máquina já instalada, o GeekLock baixa update do GitHub sozinho

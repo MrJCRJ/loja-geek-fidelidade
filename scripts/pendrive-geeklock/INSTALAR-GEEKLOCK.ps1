@@ -1,5 +1,5 @@
 # Fallback PowerShell (o fluxo principal e o INSTALAR-GEEKLOCK.bat).
-# Instala GeekLock 1.1.8 do pendrive em C:\GeekLock.
+# Instala GeekLock 1.1.9 do pendrive em C:\GeekLock.
 # APAGA a pasta antiga (pareamento incluso) e abre o assistente para ligar de novo no Central.
 $ErrorActionPreference = "Stop"
 
@@ -53,7 +53,7 @@ if (-not (Test-Path $vbsSrc)) {
   $vbsSrc = Join-Path $here "GeekLock-autostart.vbs"
 }
 
-Write-Host "Fonte: $src (GeekLock 1.1.8)"
+Write-Host "Fonte: $src (GeekLock 1.1.9)"
 Write-Host "Destino: $dest"
 Write-Host "Instalacao NOVA: apaga C:\GeekLock, config, token e dados do app. Vai para o cadastro."
 Write-Host ""
@@ -111,7 +111,7 @@ if ($LASTEXITCODE -ge 8) {
 }
 
 $fresh = @{
-  serverUrl           = "http://192.168.3.70:8787"
+  serverUrl           = "https://api.geekloja.com.br"
   stationName         = ""
   sharedSecret        = ""
   absentSecondsToLock = 60
@@ -143,13 +143,27 @@ if (-not (Test-Path $vbsSrc)) {
 }
 Copy-Item -Force $vbsSrc $vbsDest
 
+$hardenSrc = Join-Path $src "GeekLock-harden.ps1"
+if (-not (Test-Path $hardenSrc)) { $hardenSrc = Join-Path $here "GeekLock-harden.ps1" }
+if (Test-Path $hardenSrc) {
+  Copy-Item -Force $hardenSrc (Join-Path $dest "GeekLock-harden.ps1")
+  $tr = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File C:\GeekLock\GeekLock-harden.ps1'
+  & schtasks /Create /F /TN "GeekLockHarden" /RU SYSTEM /RL HIGHEST /SC ONCE /ST 23:59 /SD 01/01/2099 /TR $tr | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host "Tarefa GeekLockHarden registrada (USB bloqueado so no lock)."
+  } else {
+    Write-Host "AVISO: nao registrou GeekLockHarden."
+  }
+}
+
 Write-Host "Autostart: $vbsDest"
 Write-Host ""
 
 Start-Process -FilePath (Join-Path $dest "GeekLock.exe") -WorkingDirectory $dest
 
-Write-Host "OK: GeekLock 1.1.8 em C:\GeekLock — vai abrir o CADASTRO, nao a camera VIP."
+Write-Host "OK: GeekLock 1.1.9 em C:\GeekLock — vai abrir o CADASTRO, nao a camera VIP."
 Write-Host "OK: no reinicio o Windows abre o Lock."
+Write-Host "Central: https://api.geekloja.com.br"
 Write-Host "No assistente: nome unico (PC-02, PC-03...) + Conectar a Central."
 Read-Host "Enter para fechar"
 exit 0
