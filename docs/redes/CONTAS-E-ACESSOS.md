@@ -107,9 +107,11 @@ Stack: `/opt/loja-geek-whatsapp` · containers `loja_evo_api` + `loja_wa_bot` ·
 ### Modo desejado (combinado)
 
 - FAQ conhecido → resposta automática ok.  
-- Preço / estoque / caso novo → rascunho + aprovação humana.
+- Preço / estoque / caso novo → avisa equipe **só no plantão**.
 
-Hoje o `.env` pode estar com `SUPERVISION_MODE=false` (mais automático). Quando quiser forçar aprovação em tudo menos FAQ fino, ajuste no VPS e reinicie o bot — peça ao Cursor na hora.
+**Plantão humano (2026-10-04):** seg–sáb **08:00–18:00** (Paulo Afonso). Domingo / fora do horário: sem WhatsApp para Luiz/Kauã/dono; cliente recebe aviso de retorno. Vars: `LOJA_HORARIO_INICIO`, `LOJA_HORARIO_FIM`, `LOJA_DIAS_ABERTOS`.
+
+`SUPERVISION_MODE=false` = resposta ao cliente pode sair auto; plantão controla só o **aviso à equipe**.
 
 ### Pedido de avaliação
 
