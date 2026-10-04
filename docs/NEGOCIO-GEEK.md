@@ -3,7 +3,8 @@
 Atualizado em **2026-10-03**.  
 Público: **dono** (+ Cursor). Modo balcão (versão simples) fica para depois.
 
-Índice ops do dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md) · índice docs: [`README.md`](./README.md) · vivo vs arquivo: [`VIVO-VS-ARQUIVO.md`](./VIVO-VS-ARQUIVO.md)
+Índice ops do dia a dia: [`PENDENCIAS.md`](./PENDENCIAS.md) · índice docs: [`README.md`](./README.md) · vivo vs arquivo: [`VIVO-VS-ARQUIVO.md`](./VIVO-VS-ARQUIVO.md)  
+**Redes (posts, respostas, contas Google/Meta/WA):** [`redes/README.md`](./redes/README.md)
 
 ---
 
@@ -125,11 +126,17 @@ Detalhe de papéis: [`GEEKADMIN-CELULAR.md`](./GEEKADMIN-CELULAR.md).
 
 ---
 
+## Redes sociais (agora)
+
+- Rascunhos IG/FB/Maps + guia de contas: [`redes/`](./redes/).  
+- WhatsApp: Evolution na VPS; FAQ pode ser auto; resto com supervisão humana.  
+- Publicação automática IG/FB/Maps: só depois do checklist em [`redes/CONTAS-E-ACESSOS.md`](./redes/CONTAS-E-ACESSOS.md).
+
 ## Backlog ~6 meses (sem data)
 
 - **Site financeiro Geek** (app **separado**, Vercel): entradas/saídas, contas a pagar, **multi-unidade** (Loja / Game Box / Lan); dono + 1–2 do balcão. Ligar à API Geek (horas/Pix) depois. **Não** misturar com Finanças da Família.  
 - Quiosque Windows / fechar sessão Steam limpa.  
-- Bot WA com mais respostas automáticas em FAQ simples.  
+- APIs Meta / Google Business para publicar e responder sem colar na mão.  
 - Assinatura / planos mensais mais claros.  
 - Litestream / monitoramento extra.  
 - Multi-unidade GeekLock se abrir 2ª sala de PCs.

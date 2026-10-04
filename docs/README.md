@@ -23,6 +23,7 @@ Repo: https://github.com/MrJCRJ/loja-geek-fidelidade
 | Quem controla de onde (dono / equipe / Wi‑Fi) | [GEEKADMIN-CELULAR.md](./GEEKADMIN-CELULAR.md) |
 | Atualizar o GeekCentral | [UPDATE-GEEKCENTRAL.md](./UPDATE-GEEKCENTRAL.md) |
 | Avaliação Google / textos | [atracao/TEXTOS-AVALIAR.txt](./atracao/TEXTOS-AVALIAR.txt) |
+| Redes (IG/FB/Maps/WA — contas + rascunhos) | [redes/README.md](./redes/README.md) |
 
 ---
 
