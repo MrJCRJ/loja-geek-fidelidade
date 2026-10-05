@@ -5,7 +5,7 @@ import { TimeDurationPicker, durationToSeconds } from "../components/TimeDuratio
 import { formatHours } from "../format";
 import type { AdminSettings, LiveStationStatus } from "../types";
 
-type LiberarMode = "sale" | "open";
+type LiberarMode = "sale" | "open" | "balance";
 
 type Props = {
   stations: Station[];
@@ -117,6 +117,18 @@ export function EstacoesTab({
         confirmLabel: "Liberar aberto",
       });
       if (!ok) return;
+    } else if (liberarMode === "balance") {
+      const bal = selectedVip?.time_balance_seconds ?? 0;
+      if (bal <= 0) {
+        onError("Sem saldo — venda horas ou liberar aberto");
+        return;
+      }
+      const ok = await askConfirm({
+        title: "Usar saldo",
+        message: `${name} · ${formatHours(bal)} nesta máquina?`,
+        confirmLabel: "Liberar",
+      });
+      if (!ok) return;
     } else {
       const amountReais = saleBy === "reais" ? Number(saleReais) : undefined;
       const durationSec = durationToSeconds(unlockH, unlockM);
@@ -154,6 +166,7 @@ export function EstacoesTab({
         customer?: Customer;
         creditedSeconds?: number;
         amountReais?: number;
+        timeBalanceSeconds?: number;
         mode?: string;
         reviewAsk?: {
           attempted?: boolean;
@@ -191,6 +204,11 @@ export function EstacoesTab({
             window.open(ask.waMeUrl, "_blank", "noopener,noreferrer");
           }
         }
+      } else if (liberarMode === "balance") {
+        onToast(
+          `Saldo · ${res.customer?.name || name} · ${formatHours(res.timeBalanceSeconds || selectedVip?.time_balance_seconds || 0)}`,
+          "ok",
+        );
       } else {
         onToast(`Aberto · ${res.customer?.name || name}`, "ok");
       }
@@ -203,27 +221,30 @@ export function EstacoesTab({
     }
   };
 
+  const liberarActionLabel = () => {
+    if (liberarBusy) return "…";
+    if (liberarMode === "open") return "Liberar aberto";
+    if (liberarMode === "balance") return "Usar saldo";
+    if (saleBy === "hours") return `Liberar · R$ ${estimatedReais.toFixed(2)}`;
+    return "Vender e liberar";
+  };
+
+  const sendPower = async (stationId: string, stationName: string, command: "shutdown" | "hibernate") => {
+    const ok = await askConfirm({
+      title: command === "shutdown" ? `Desligar ${stationName}?` : `Hibernar ${stationName}?`,
+      message:
+        command === "shutdown"
+          ? "O Windows vai desligar. Só use se o PC estiver online no GeekLock."
+          : "O PC hiberna. Acordar depois é local (botão/energia) — sem WoL nesta versão.",
+      danger: command === "shutdown",
+      confirmLabel: command === "shutdown" ? "Desligar" : "Hibernar",
+    });
+    if (!ok) return;
+    sendCmd(stationId, command);
+  };
+
   const liberarForm = (
     <div style={{ marginBottom: "0.75rem" }}>
-      <p className="muted" style={{ margin: "0 0 0.35rem" }}>
-        Tipo
-      </p>
-      <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
-        <button
-          className={`btn ${liberarMode === "sale" ? "" : "ghost"}`}
-          type="button"
-          onClick={() => setLiberarMode("sale")}
-        >
-          Venda + liberar
-        </button>
-        <button
-          className={`btn ${liberarMode === "open" ? "" : "ghost"}`}
-          type="button"
-          onClick={() => setLiberarMode("open")}
-        >
-          Aberto (só nome)
-        </button>
-      </div>
       <div className="field" style={{ marginBottom: "0.5rem" }}>
         <label>Cliente VIP</label>
         <input
@@ -245,6 +266,8 @@ export function EstacoesTab({
                 onClick={() => {
                   setSelectedVip(c);
                   setVipQuery(c.name);
+                  const bal = c.time_balance_seconds ?? 0;
+                  setLiberarMode(bal > 0 ? "balance" : "sale");
                 }}
               >
                 {c.name}
@@ -261,6 +284,61 @@ export function EstacoesTab({
           </p>
         )}
       </div>
+
+      {selectedVip && (
+        <div
+          className="panel"
+          style={{ marginBottom: "0.75rem", padding: "0.65rem 0.75rem", boxShadow: "none" }}
+        >
+          <p style={{ margin: "0 0 0.45rem", fontWeight: 600 }}>
+            Saldo: {formatHours(selectedVip.time_balance_seconds ?? 0)}
+          </p>
+          <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem" }}>
+            <button
+              className={`btn ${(selectedVip.time_balance_seconds ?? 0) > 0 && liberarMode === "balance" ? "" : "ghost"}`}
+              type="button"
+              disabled={(selectedVip.time_balance_seconds ?? 0) <= 0}
+              onClick={() => setLiberarMode("balance")}
+            >
+              Usar saldo
+            </button>
+            <button
+              className={`btn ${liberarMode === "sale" ? "" : "ghost"}`}
+              type="button"
+              onClick={() => setLiberarMode("sale")}
+            >
+              Vender
+            </button>
+            <button
+              className={`btn ${liberarMode === "open" ? "" : "ghost"}`}
+              type="button"
+              onClick={() => setLiberarMode("open")}
+            >
+              Aberto
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!selectedVip && (
+        <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
+          <button
+            className={`btn ${liberarMode === "sale" ? "" : "ghost"}`}
+            type="button"
+            onClick={() => setLiberarMode("sale")}
+          >
+            Vender
+          </button>
+          <button
+            className={`btn ${liberarMode === "open" ? "" : "ghost"}`}
+            type="button"
+            onClick={() => setLiberarMode("open")}
+          >
+            Aberto
+          </button>
+        </div>
+      )}
+
       {liberarMode === "sale" && (
         <>
           <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem", marginBottom: "0.5rem" }}>
@@ -400,13 +478,7 @@ export function EstacoesTab({
                       disabled={liberarBusy}
                       onClick={() => void deskLiberar(s.id)}
                     >
-                      {liberarBusy
-                        ? "…"
-                        : liberarMode === "open"
-                          ? "Liberar aberto"
-                          : saleBy === "hours"
-                            ? `Liberar · R$ ${estimatedReais.toFixed(2)}`
-                            : "Vender e liberar"}
+                      {liberarActionLabel()}
                     </button>
                     <button
                       className="btn ghost"
@@ -429,6 +501,20 @@ export function EstacoesTab({
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
                       Encerrar
                     </button>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => void sendPower(s.id, s.name, "hibernate")}
+                    >
+                      Hibernar
+                    </button>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => void sendPower(s.id, s.name, "shutdown")}
+                    >
+                      Desligar
+                    </button>
                   </div>
                 ) : null}
               </section>
@@ -448,7 +534,7 @@ export function EstacoesTab({
         {!remoteReadOnly && (
         <>
         <p className="muted" style={{ margin: "0 0 0.75rem" }}>
-          Liberar: escolha o PC → cliente VIP → valor ou horas (ou só nome no aberto).
+          Liberar: VIP → Usar saldo / Vender / Aberto.
         </p>
         {liberarId && (
           <div className="panel" style={{ marginBottom: "1rem", boxShadow: "none" }}>
@@ -463,13 +549,7 @@ export function EstacoesTab({
                 disabled={liberarBusy}
                 onClick={() => void deskLiberar(liberarId)}
               >
-                {liberarBusy
-                  ? "…"
-                  : liberarMode === "open"
-                    ? "Liberar aberto"
-                    : saleBy === "hours"
-                      ? `Liberar · R$ ${estimatedReais.toFixed(2)}`
-                      : "Vender e liberar"}
+                {liberarActionLabel()}
               </button>
               <button className="btn ghost" type="button" disabled={liberarBusy} onClick={() => resetLiberarForm()}>
                 Cancelar
@@ -622,6 +702,20 @@ export function EstacoesTab({
                     </button>
                     <button className="btn ghost" type="button" onClick={() => sendCmd(s.id, "end_session")}>
                       Encerrar
+                    </button>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => void sendPower(s.id, s.name, "hibernate")}
+                    >
+                      Hibernar
+                    </button>
+                    <button
+                      className="btn ghost"
+                      type="button"
+                      onClick={() => void sendPower(s.id, s.name, "shutdown")}
+                    >
+                      Desligar
                     </button>
                     <button
                       className="btn danger"

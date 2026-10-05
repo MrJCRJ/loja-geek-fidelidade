@@ -52,7 +52,12 @@ export function formatBalanceShort(seconds: number) {
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
 }
 
-/** Saldo ao vivo entre heartbeats (desconta 1s/s quando cobrança ativa). */
+/**
+ * Saldo ao vivo entre heartbeats (desconta 1s/s quando cobrança ativa).
+ * Limita drift local: sem sync do servidor o HUD não “inventa” horas debitadas.
+ */
+export const LIVE_BALANCE_MAX_DRIFT_SEC = 20;
+
 export function liveBalanceSeconds(
   base: number | null | undefined,
   syncedAtMs: number | null | undefined,
@@ -60,7 +65,10 @@ export function liveBalanceSeconds(
 ): number | null {
   if (base == null || !Number.isFinite(base)) return null;
   if (billingPaused || syncedAtMs == null) return Math.max(0, Math.floor(base));
-  const elapsed = Math.floor((Date.now() - syncedAtMs) / 1000);
+  const elapsed = Math.min(
+    LIVE_BALANCE_MAX_DRIFT_SEC,
+    Math.max(0, Math.floor((Date.now() - syncedAtMs) / 1000)),
+  );
   return Math.max(0, Math.floor(base) - elapsed);
 }
 

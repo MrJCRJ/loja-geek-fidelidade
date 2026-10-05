@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld("geeklock", {
   lock: () => ipcRenderer.invoke("lock:lock"),
   unlock: () => ipcRenderer.invoke("lock:unlock"),
   quitFromCentral: () => ipcRenderer.invoke("app:quit-central"),
+  powerFromCentral: (kind) => ipcRenderer.invoke("app:power", kind),
   getLastFailure: () => ipcRenderer.invoke("failure:get"),
   clearLastFailure: () => ipcRenderer.invoke("failure:clear"),
   writeLastFailure: (payload) => ipcRenderer.invoke("failure:write", payload),

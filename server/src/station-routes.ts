@@ -58,6 +58,8 @@ const stationCommandBody = z.object({
     "end_session",
     "quit_app",
     "apply_update",
+    "shutdown",
+    "hibernate",
   ]),
   text: z.string().optional(),
   title: z.string().max(80).optional(),
@@ -447,7 +449,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
     };
   });
 
-  /** Balcão: VIP + (venda R$/horas ou aberto só com nome) → libera a estação. */
+  /** Balcão: VIP + (saldo / venda R$/horas / aberto) → libera a estação. */
   app.post("/api/stations/:id/desk-liberar", async (req, reply) => {
     if (!(await staffWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
@@ -455,7 +457,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
     if (!station) return reply.code(404).send({ error: "Estação não encontrada" });
     const body = z
       .object({
-        mode: z.enum(["sale", "open"]),
+        mode: z.enum(["sale", "open", "balance"]),
         customerId: z.string().min(1).optional(),
         customerName: z.string().min(2).max(80).optional(),
         amountReais: z.number().positive().optional(),
@@ -493,6 +495,59 @@ export async function registerStationRoutes(app: FastifyInstance) {
           at: new Date().toISOString(),
         });
         return { ok: true, mode: "open", customer, station: { id: station.id, name: station.name } };
+      }
+
+      if (body.mode === "balance") {
+        const balance = getTimeBalance(customer.id);
+        if (balance <= 0) {
+          return reply.code(400).send({ error: "Sem crédito de horas — venda ou liberar aberto" });
+        }
+        const session = startSession(customer.id, id);
+        clearStaffUnlockWindow(id);
+        sendCommandToStation(id, "unlock_screen", {
+          occupantKind: "vip_desk",
+          customerId: customer.id,
+          customerName: customer.name,
+          sessionId: session.id,
+          timeBalanceSeconds: balance,
+        });
+        logEvent({
+          level: "info",
+          source: "admin",
+          kind: "desk.liberar_balance",
+          message: `${actorLabel(req)} liberou com saldo ${station.name} para ${customer.name}`,
+          stationId: id,
+          meta: {
+            actor: actorLabel(req),
+            customerId: customer.id,
+            sessionId: session.id,
+            timeBalanceSeconds: balance,
+          },
+        });
+        broadcastAdmins({
+          type: "desk_liberar",
+          mode: "balance",
+          station: { id: station.id, name: station.name },
+          customer,
+          session,
+          timeBalanceSeconds: balance,
+          at: new Date().toISOString(),
+        });
+        broadcastAdmins({
+          type: "session_started",
+          session,
+          station: { id: station.id, name: station.name },
+          customer,
+          at: new Date().toISOString(),
+        });
+        return {
+          ok: true,
+          mode: "balance",
+          customer,
+          session,
+          timeBalanceSeconds: balance,
+          station: { id: station.id, name: station.name },
+        };
       }
 
       if (body.amountReais == null && body.hours == null) {

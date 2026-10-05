@@ -205,6 +205,31 @@ describe("Sessões de máquina", () => {
     await app.close();
   });
 
+  it("desk-liberar balance usa saldo sem venda", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const station = await claimStation(app);
+    await creditHours(app, admin, customer.id);
+
+    const res = await app.inject({
+      method: "POST",
+      url: `/api/stations/${station.id}/desk-liberar`,
+      headers: authHeaders(admin),
+      payload: { mode: "balance", customerId: customer.id },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json() as {
+      mode: string;
+      session?: { id: string };
+      timeBalanceSeconds?: number;
+    };
+    expect(body.mode).toBe("balance");
+    expect(body.session?.id).toBeTruthy();
+    expect(Number(body.timeBalanceSeconds)).toBeGreaterThan(0);
+    await app.close();
+  });
+
   it("admin lista sessões e stats", async () => {
     const app = await createTestApp();
     const token = await adminToken(app);

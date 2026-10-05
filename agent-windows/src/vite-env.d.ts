@@ -53,6 +53,7 @@ declare global {
       lock: () => Promise<{ locked: boolean }>;
       unlock: () => Promise<{ locked: boolean }>;
       quitFromCentral: () => Promise<{ ok: boolean }>;
+      powerFromCentral: (kind: "shutdown" | "hibernate") => Promise<{ ok: boolean; kind?: string; error?: string }>;
       getLastFailure: () => Promise<{ kind: string; message: string; at: string } | null>;
       clearLastFailure: () => Promise<{ ok: boolean }>;
       writeLastFailure: (payload: { kind?: string; message?: string }) => Promise<{ ok: boolean }>;

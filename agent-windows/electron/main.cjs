@@ -365,6 +365,38 @@ function quitAppFromCentral() {
   app.quit();
 }
 
+/** Energia remota (equipe via Central). Só Windows. */
+function powerFromCentral(kind) {
+  if (process.platform !== "win32") return { ok: false, error: "Só Windows" };
+  try {
+    const { applyOsHarden, unregisterLockShortcuts } = require("./os-harden.cjs");
+    unregisterLockShortcuts();
+    void applyOsHarden(false);
+  } catch {
+    /* ignore */
+  }
+  try {
+    const win = mainWindow;
+    if (win && !win.isDestroyed()) {
+      if (typeof win.setKiosk === "function") win.setKiosk(false);
+      win.setClosable(true);
+    }
+  } catch {
+    /* ignore */
+  }
+  const { exec } = require("node:child_process");
+  if (kind === "hibernate") {
+    exec("shutdown /h", (err) => {
+      if (err) debug.error("hibernate failed", err);
+    });
+    return { ok: true, kind: "hibernate" };
+  }
+  exec('shutdown /s /t 8 /c "GeekLock: desligamento pela equipe"', (err) => {
+    if (err) debug.error("shutdown failed", err);
+  });
+  return { ok: true, kind: "shutdown" };
+}
+
 function reloadAppPage() {
   focusMainWindow();
   if (!mainWindow || mainWindow.isDestroyed()) return;
@@ -616,6 +648,10 @@ ipcMain.handle("lock:unlock", () => {
 ipcMain.handle("app:quit-central", () => {
   quitAppFromCentral();
   return { ok: true };
+});
+ipcMain.handle("app:power", (_e, kind) => {
+  const k = kind === "hibernate" ? "hibernate" : "shutdown";
+  return powerFromCentral(k);
 });
 
 ipcMain.handle("failure:get", () => readLastFailure());

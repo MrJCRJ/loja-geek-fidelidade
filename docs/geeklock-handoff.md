@@ -12,10 +12,11 @@ Repo: https://github.com/MrJCRJ/loja-geek-fidelidade · pasta: `/home/treegunn/l
 
 ## Versões
 
-- Lock **1.1.14** · tag `lock-v*` (pacote também em `lock-updates/` na VPS)
-- Liberar no Central: VIP + R$/horas (credita e abre sessão) ou aberto só com nome; sem modo Convidado.
-- Central **1.1.7** · tag `central-v*` = **latest** do GitHub
-
+- Lock **1.1.15** · tag `lock-v*` (pacote também em `lock-updates/` na VPS)
+- Liberar no Central: VIP + **Usar saldo** / R$/horas / aberto só com nome; sem modo Convidado.
+- Central **1.1.8** · tag `central-v*` = **latest** do GitHub
+- Diagnóstico trava/desliga: `docs/DIAGNOSTICO-TRAVAR-DESLIGAR.md`
+- Energia remota (código local): comandos `shutdown` / `hibernate` no Central (confirmação); Lock precisa update.
 ## Atualizar estações
 
 - **Dono** em Config → **Atualizar Locks** (API `ownerWriteGuard`; clerk não vê Config).

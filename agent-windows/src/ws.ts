@@ -10,7 +10,9 @@ export type StationCommand =
   | "message"
   | "reload"
   | "apply_update"
-  | "quit_app";
+  | "quit_app"
+  | "shutdown"
+  | "hibernate";
 
 export type StationStatusPayload = {
   phase: string;

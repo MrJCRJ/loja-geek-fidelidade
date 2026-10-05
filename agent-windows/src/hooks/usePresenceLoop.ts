@@ -1,10 +1,9 @@
 import { useEffect, useRef, type RefObject } from "react";
-import { captureFrame, checkPresence, sessionHeartbeat } from "../api";
+import { captureFrame, checkPresence } from "../api";
 import {
   FACE_GRACE_MS,
   INTRUDER_HOLD_MS,
   PRESENCE_MS,
-  SESSION_HB_MS,
   STRONG_MATCH_SCORE,
   type Phase,
 } from "../kiosk-helpers";
@@ -32,6 +31,7 @@ type Args = {
   startCam: () => Promise<void>;
   doEndSession: (reason: string) => Promise<void>;
   onIntruder: (kind: IntruderKind) => Promise<void>;
+  /** Mantidos por compatibilidade; cobrança de horas fica no App.tsx. */
   setBalanceSeconds: (v: number | null) => void;
   setLowBalanceWarn: (v: boolean) => void;
   onLowBalanceWarn?: (balanceSeconds: number) => void;
@@ -59,21 +59,13 @@ export function usePresenceLoop({
   presenceMissStreakRef,
   deskLiberarRef,
   startCam,
-  doEndSession,
   onIntruder,
-  setBalanceSeconds,
-  setLowBalanceWarn,
-  onLowBalanceWarn,
 }: Args) {
   const presenceTimerRef = useRef<number | null>(null);
-  const warnedLowRef = useRef(false);
   const intruderSinceRef = useRef<{ kind: IntruderKind; since: number } | null>(null);
   const intruderBusyRef = useRef(false);
-  const onLowBalanceWarnRef = useRef(onLowBalanceWarn);
-  onLowBalanceWarnRef.current = onLowBalanceWarn;
 
   useEffect(() => {
-    warnedLowRef.current = false;
     intruderSinceRef.current = null;
     intruderBusyRef.current = false;
     absentSinceRef.current = null;
@@ -91,7 +83,6 @@ export function usePresenceLoop({
     }
 
     let cancelled = false;
-    let lastHb = 0;
     let vipPresent = true;
 
     const markIntruder = (kind: IntruderKind): boolean => {
@@ -132,7 +123,6 @@ export function usePresenceLoop({
       const sess = sessionRef.current;
       if (!cfg || !sess || sess.id !== sessionId) return;
 
-      const now = Date.now();
       const grace = inFaceGrace(faceGraceUntilRef);
       const vipId = sess.customer_id || customerId;
       const deskLiberar = Boolean(deskLiberarRef?.current);
@@ -204,35 +194,6 @@ export function usePresenceLoop({
 
       syncAbsentMark(grace);
 
-      if (now - lastHb >= SESSION_HB_MS) {
-        lastHb = now;
-        try {
-          const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling: false });
-          if (sessionRef.current) {
-            sessionRef.current = { ...sessionRef.current, ...hb.session };
-          }
-          const bal =
-            typeof hb.timeBalanceSeconds === "number"
-              ? hb.timeBalanceSeconds
-              : typeof hb.session?.time_balance_seconds === "number"
-                ? hb.session.time_balance_seconds
-                : null;
-          if (bal != null) setBalanceSeconds(bal);
-          const low = Boolean(hb.lowBalanceWarn) || (bal != null && bal > 0 && bal <= 300);
-          setLowBalanceWarn(low);
-          if (low && bal != null && !warnedLowRef.current) {
-            warnedLowRef.current = true;
-            onLowBalanceWarnRef.current?.(bal);
-          }
-          if (hb.timeDepleted || hb.session?.time_depleted) {
-            await doEndSession("no_credit");
-            return;
-          }
-        } catch {
-          /* ledger */
-        }
-      }
-
       if (!cancelled) {
         presenceTimerRef.current = window.setTimeout(() => {
           tick().catch(() => undefined);
@@ -240,7 +201,6 @@ export function usePresenceLoop({
       }
     };
 
-    lastHb = 0;
     tick().catch(() => undefined);
 
     return () => {
@@ -252,7 +212,7 @@ export function usePresenceLoop({
     };
   }, [
     phase,
-    config,
+    config?.stationToken,
     sessionId,
     customerId,
     videoRef,
@@ -262,10 +222,8 @@ export function usePresenceLoop({
     faceGraceUntilRef,
     absentSinceRef,
     presenceMissStreakRef,
+    deskLiberarRef,
     startCam,
-    doEndSession,
     onIntruder,
-    setBalanceSeconds,
-    setLowBalanceWarn,
   ]);
 }

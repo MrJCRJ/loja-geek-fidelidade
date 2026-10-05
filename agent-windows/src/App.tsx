@@ -17,7 +17,7 @@ import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
 import { OfflineScreen } from "./OfflineScreen";
 import { RemoteBannerOverlay } from "./RemoteBannerOverlay";
-import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, staffUnlockLeftSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, STAFF_UNLOCK_WARN_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep } from "./kiosk-helpers";
+import { scanVisualFromReason, type Phase, type RemoteBanner, formatBalanceShort, liveBalanceSeconds, staffUnlockLeftSeconds, DEFAULT_STAFF_UNLOCK_MAX_SEC, STAFF_UNLOCK_WARN_SEC, DEFAULT_PORTAL_URL, portalRegisterUrl, playLockWarnChime, playUnlockChime, sessionStartErrorMessage, FACE_GRACE_MS, DEFAULT_ABSENT_SEC, playSoftLockBeep, SESSION_HB_MS } from "./kiosk-helpers";
 import { useRecognizeLoop, type PendingLogin } from "./hooks/useRecognizeLoop";
 import { usePresenceLoop } from "./hooks/usePresenceLoop";
 import { startUsageLoop, type OccupantState } from "./usage-collector";
@@ -724,6 +724,24 @@ export default function App() {
         window.setTimeout(() => {
           window.geeklock.quitFromCentral().catch(() => undefined);
         }, 600);
+        return;
+      }
+      if (command === "shutdown" || command === "hibernate") {
+        const hibernate = command === "hibernate";
+        setRemoteBanner({
+          title: hibernate ? "Hibernando PC" : "Desligando PC",
+          text: hibernate
+            ? "A equipe pediu hibernar esta máquina."
+            : "A equipe pediu desligar esta máquina.",
+          level: "urgent",
+          until: Date.now() + 8_000,
+        });
+        window.setTimeout(() => {
+          const power = window.geeklock.powerFromCentral;
+          if (power) {
+            power(hibernate ? "hibernate" : "shutdown").catch(() => undefined);
+          }
+        }, 800);
       }
     };
 
@@ -999,6 +1017,18 @@ export default function App() {
         presenceMissStreakRef.current = 0;
         setStatus(`VIP balcão · ${name}`);
         playUnlockChime();
+        // Primeiro débito/sync imediato — não espera o loop de presença/câmera.
+        void sessionHeartbeat(configRef.current, session.id)
+          .then((hb) => {
+            const next =
+              typeof hb.timeBalanceSeconds === "number"
+                ? hb.timeBalanceSeconds
+                : typeof hb.session?.time_balance_seconds === "number"
+                  ? hb.session.time_balance_seconds
+                  : null;
+            if (next != null) syncBalance(next);
+          })
+          .catch(() => undefined);
         await unlockUi();
       } catch (err) {
         deskLiberarRef.current = false;
@@ -1178,6 +1208,54 @@ export default function App() {
     setLowBalanceWarn,
     onLowBalanceWarn: showLowBalanceBanner,
   });
+
+  // Cobrança de horas: heartbeat de sessão independente da câmera/presença.
+  // Evita HUD “descer” sem o servidor debitar (rede/câmera travada).
+  useEffect(() => {
+    if (phase !== "unlocked" || !config?.stationToken || !session?.id) return;
+    if (customer?.id === "staff" || customer?.id === "guest") return;
+    let cancelled = false;
+    let warnedLow = false;
+    const tick = async () => {
+      const cfg = configRef.current;
+      const sess = sessionRef.current;
+      if (!cfg || !sess || cancelled) return;
+      try {
+        const pauseBilling = absentSinceRef.current != null && !deskLiberarRef.current;
+        const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling });
+        if (cancelled) return;
+        if (sessionRef.current) {
+          sessionRef.current = { ...sessionRef.current, ...hb.session };
+        }
+        const bal =
+          typeof hb.timeBalanceSeconds === "number"
+            ? hb.timeBalanceSeconds
+            : typeof hb.session?.time_balance_seconds === "number"
+              ? hb.session.time_balance_seconds
+              : null;
+        if (bal != null) syncBalance(bal);
+        const low = Boolean(hb.lowBalanceWarn) || (bal != null && bal > 0 && bal <= 300);
+        setLowBalanceWarn(low);
+        if (low && bal != null && !warnedLow) {
+          warnedLow = true;
+          showLowBalanceBanner(bal);
+        }
+        if (hb.timeDepleted || hb.session?.time_depleted) {
+          await doEndSession("no_credit");
+        }
+      } catch {
+        /* próxima tentativa */
+      }
+    };
+    void tick();
+    const t = window.setInterval(() => {
+      void tick();
+    }, SESSION_HB_MS);
+    return () => {
+      cancelled = true;
+      window.clearInterval(t);
+    };
+  }, [phase, config?.stationToken, session?.id, customer?.id, syncBalance, doEndSession, showLowBalanceBanner]);
 
   // T6 — staff_timed / guest timed: auto-trava + "resta".
   // Hora livre (staff_open / convidado sem tempo): tempo correndo para cima.
