@@ -576,6 +576,13 @@ app.whenReady().then(() => {
 
   registerAppShortcuts();
 
+  try {
+    const { startPs3EyeBridge } = require("./ps3eye-bridge.cjs");
+    startPs3EyeBridge(debug);
+  } catch (err) {
+    debug.warn("ps3eye:", err);
+  }
+
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
@@ -583,6 +590,11 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   app.isQuitting = true;
+  try {
+    require("./ps3eye-bridge.cjs").stopPs3EyeBridge();
+  } catch {
+    /* ignore */
+  }
   sessionHud.destroy();
   try {
     const { applyOsHarden, unregisterLockShortcuts } = require("./os-harden.cjs");
