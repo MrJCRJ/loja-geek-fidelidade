@@ -8,6 +8,7 @@ import {
 } from "../../shared/camera";
 import { formatDuration as formatDurationShared } from "../../shared/format-time";
 import type { Customer, GeekLockConfig, Session } from "./vite-env";
+import { openPs3EyeBridge } from "./ps3eye";
 
 function joinUrl(base: string, path: string) {
   return `${base.replace(/\/$/, "")}${path}`;
@@ -252,15 +253,21 @@ export function cameraErrorMessage(err: unknown): string {
 }
 
 export async function openUserCamera(): Promise<MediaStream> {
-  return openUserCameraShared({
-    requireSecureContext: false,
-    preferredWidth: 640,
-    preferredHeight: 480,
-    timeoutMs: 20_000,
-    timeoutMessage:
-      "Timeout ao abrir câmera (20s). DroidCam conectado no celular? Feche outros apps usando /dev/video0.",
-    formatError: cameraErrorMessage,
-  });
+  try {
+    return await openUserCameraShared({
+      requireSecureContext: false,
+      preferredWidth: 640,
+      preferredHeight: 480,
+      timeoutMs: 20_000,
+      timeoutMessage:
+        "Timeout ao abrir câmera (20s). DroidCam conectado no celular? Feche outros apps usando /dev/video0.",
+      formatError: cameraErrorMessage,
+    });
+  } catch (err) {
+    const raw = err instanceof Error ? err.message : String(err);
+    if (!/nenhuma câmera|não encontrada|notfound/i.test(raw)) throw err;
+    return openPs3EyeBridge();
+  }
 }
 
 export async function attachCameraStream(video: HTMLVideoElement, stream: MediaStream): Promise<void> {
