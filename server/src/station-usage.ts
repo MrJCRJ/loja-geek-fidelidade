@@ -1,6 +1,5 @@
 /** Uso da estação: hardware, samples 15s → agregados 1 min. */
 
-import { randomUUID } from "node:crypto";
 import { getDb } from "./db.js";
 import { getSetting, setSetting } from "./customers.js";
 

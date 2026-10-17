@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>geeks — Apresentação da loja</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --void: #04070f;
+        --ink: #e6ebf4;
+        --mute: #8b97ad;
+        --amber: #f0a12b;
+        --font: "DM Sans", system-ui, sans-serif;
+        --display: "Instrument Serif", Georgia, serif;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: var(--void);
+        color: var(--ink);
+        font-family: var(--font);
+        color-scheme: dark;
+      }
+
+      .deck {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        touch-action: pan-y;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.7s var(--ease), visibility 0.7s;
+      }
+
+      .slide.is-active {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        z-index: 1;
+      }
+
+      .slide-media {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
+        background: #0a1220;
+      }
+
+      .slide-media img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.08);
+        filter: saturate(1.05) contrast(1.04);
+        transition: transform 8s linear;
+      }
+
+      .slide.is-active .slide-media img {
+        transform: scale(1.18) translate3d(-1.5%, -1%, 0);
+      }
+
+      .slide.is-active.ken-alt .slide-media img {
+        transform: scale(1.16) translate3d(2%, 1.5%, 0);
+      }
+
+      .slide-shade {
+        position: absolute;
+        inset: 0;
+        background:
+          linear-gradient(180deg, rgba(4, 7, 15, 0.35) 0%, rgba(4, 7, 15, 0.15) 35%, rgba(4, 7, 15, 0.78) 100%),
+          radial-gradient(ellipse 80% 50% at 50% 100%, rgba(240, 161, 43, 0.12), transparent 55%);
+      }
+
+      .slide-copy {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        padding: clamp(1.5rem, 4vw, 3.5rem);
+        padding-bottom: max(5.5rem, calc(env(safe-area-inset-bottom) + 5rem));
+        max-width: 720px;
+        z-index: 2;
+      }
+
+      .kicker {
+        margin: 0 0 0.55rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: var(--amber);
+        opacity: 0;
+        transform: translateY(18px);
+      }
+
+      .slide.is-active .kicker {
+        animation: rise 0.7s var(--ease) 0.15s forwards;
+      }
+
+      .slide h1,
+      .slide h2 {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.2rem, 7vw, 3.8rem);
+        line-height: 1.02;
+        letter-spacing: -0.02em;
+        color: #fff;
+        opacity: 0;
+        transform: translateY(24px);
+      }
+
+      .slide.is-active h1,
+      .slide.is-active h2 {
+        animation: rise 0.8s var(--ease) 0.28s forwards;
+      }
+
+      .slide h1 em,
+      .slide h2 em {
+        font-style: italic;
+        color: color-mix(in srgb, var(--amber) 90%, #fff);
+      }
+
+      .lead {
+        margin: 0.85rem 0 0;
+        max-width: 34rem;
+        color: color-mix(in srgb, var(--mute) 70%, #fff);
+        font-size: clamp(0.98rem, 2.2vw, 1.15rem);
+        line-height: 1.5;
+        opacity: 0;
+        transform: translateY(20px);
+      }
+
+      .slide.is-active .lead {
+        animation: rise 0.75s var(--ease) 0.42s forwards;
+      }
+
+      .cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1.25rem;
+        opacity: 0;
+        transform: translateY(16px);
+      }
+
+      .slide.is-active .cta-row {
+        animation: rise 0.7s var(--ease) 0.55s forwards;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 0.75rem 1.2rem;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        text-decoration: none;
+        background: var(--amber);
+        color: #1a1004;
+        transition: background 0.2s ease, transform 0.15s ease;
+      }
+
+      .btn:hover {
+        background: #ffb94a;
+      }
+
+      .btn:active {
+        transform: scale(0.98);
+      }
+
+      .btn.ghost {
+        background: rgba(4, 7, 15, 0.45);
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.22);
+        backdrop-filter: blur(8px);
+      }
+
+      @keyframes rise {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .chrome {
+        position: fixed;
+        z-index: 10;
+        left: 0;
+        right: 0;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 0.85rem 1.1rem;
+        padding-top: max(0.85rem, env(safe-area-inset-top));
+        background: linear-gradient(180deg, rgba(4, 7, 15, 0.65), transparent);
+        pointer-events: none;
+      }
+
+      .chrome a,
+      .chrome button {
+        pointer-events: auto;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+        color: #fff;
+        text-decoration: none;
+        font-family: var(--display);
+        font-style: italic;
+        font-size: 1.15rem;
+      }
+
+      .brand img {
+        height: 30px;
+        width: auto;
+      }
+
+      .chrome-actions {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+      }
+
+      .icon-btn {
+        appearance: none;
+        width: 40px;
+        height: 40px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(4, 7, 15, 0.45);
+        color: #fff;
+        cursor: pointer;
+        backdrop-filter: blur(8px);
+        font-size: 1.1rem;
+        line-height: 1;
+      }
+
+      .icon-btn:hover {
+        border-color: rgba(240, 161, 43, 0.55);
+        color: var(--amber);
+      }
+
+      .progress {
+        position: fixed;
+        z-index: 10;
+        left: 1.1rem;
+        right: 1.1rem;
+        bottom: max(1rem, env(safe-area-inset-bottom));
+        display: flex;
+        gap: 0.35rem;
+        align-items: center;
+      }
+
+      .bar {
+        flex: 1;
+        height: 3px;
+        border-radius: 99px;
+        background: rgba(255, 255, 255, 0.16);
+        overflow: hidden;
+      }
+
+      .bar > i {
+        display: block;
+        height: 100%;
+        width: 0;
+        background: var(--amber);
+        border-radius: inherit;
+      }
+
+      .bar.is-done > i {
+        width: 100%;
+      }
+
+      .bar.is-active > i {
+        animation: fill var(--slide-ms, 6.5s) linear forwards;
+      }
+
+      @keyframes fill {
+        from {
+          width: 0;
+        }
+        to {
+          width: 100%;
+        }
+      }
+
+      .hint {
+        position: fixed;
+        z-index: 10;
+        right: 1.1rem;
+        bottom: max(2.4rem, calc(env(safe-area-inset-bottom) + 2.2rem));
+        font-size: 0.75rem;
+        color: rgba(230, 235, 244, 0.55);
+        pointer-events: none;
+      }
+
+      @media (max-width: 640px) {
+        .hint {
+          display: none;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .slide-media img,
+        .slide.is-active .slide-media img,
+        .bar.is-active > i {
+          animation: none !important;
+          transition: none !important;
+          transform: none !important;
+        }
+        .slide.is-active .kicker,
+        .slide.is-active h1,
+        .slide.is-active h2,
+        .slide.is-active .lead,
+        .slide.is-active .cta-row {
+          animation: none !important;
+          opacity: 1;
+          transform: none;
+        }
+        .bar.is-active > i {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chrome">
+      <a class="brand" href="./overview.html">
+        <img src="../public/brand/logo.png" alt="" />
+        apresentação
+      </a>
+      <div class="chrome-actions">
+        <button type="button" class="icon-btn" id="btnPrev" aria-label="Slide anterior">‹</button>
+        <button type="button" class="icon-btn" id="btnPlay" aria-label="Pausar ou continuar">❚❚</button>
+        <button type="button" class="icon-btn" id="btnNext" aria-label="Próximo slide">›</button>
+      </div>
+    </div>
+
+    <div class="deck" id="deck" aria-live="polite">
+      <section class="slide is-active" data-ms="7000">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-01.jpg" alt="Fachada da Loja GEEKS na Rua Santo Antônio" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Paulo Afonso · BA</p>
+          <h1>Loja <em>GEEKS</em></h1>
+          <p class="lead">Celular, games e a lan house com GeekLock — uma apresentação rápida da casa, com fotos do Street View.</p>
+        </div>
+      </section>
+
+      <section class="slide ken-alt" data-ms="6500">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-02.jpg" alt="Vista da rua em frente à loja" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Onde estamos</p>
+          <h2>R. Santo Antônio, <em>6</em> — Centro</h2>
+          <p class="lead">No coração da cidade. Vitrine na rua, atendimento no balcão, PCs na lan.</p>
+        </div>
+      </section>
+
+      <section class="slide" data-ms="6500">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-03.jpg" alt="Perspectiva da rua da Loja GEEKS" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Chegada</p>
+          <h2>Fácil de <em>achar</em></h2>
+          <p class="lead">Fachada clara, faixa dourada, placa na parede — a referência visual da marca na rua.</p>
+        </div>
+      </section>
+
+      <section class="slide ken-alt" data-ms="6500">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-05.jpg" alt="Outro ângulo da fachada" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Na loja</p>
+          <h2>Games, celular, <em>conserto</em></h2>
+          <p class="lead">Do acessório ao console — e o crédito de horas no portal, no celular.</p>
+        </div>
+      </section>
+
+      <section class="slide" data-ms="6500">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-04.jpg" alt="Vista ampliada da rua" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Lan House Geeks</p>
+          <h2>Jogue com <em>GeekLock</em></h2>
+          <p class="lead">Compra as horas pelo site, libera o PC com o rosto. Sem ficha, sem fila de senha.</p>
+        </div>
+      </section>
+
+      <section class="slide ken-alt" data-ms="8000">
+        <div class="slide-media">
+          <img src="./assets/loja/maps-06.jpg" alt="Ambiente da rua ao redor da loja" />
+        </div>
+        <div class="slide-shade"></div>
+        <div class="slide-copy">
+          <p class="kicker">Portal do cliente</p>
+          <h2>Pronto para <em>entrar</em>?</h2>
+          <p class="lead">Protótipo visual — fotos do Maps + animação de apresentação. Sem vídeo.</p>
+          <div class="cta-row">
+            <a class="btn" href="https://loja-geek-portal.vercel.app/">Abrir portal</a>
+            <a class="btn ghost" href="./overview.html">Voltar ao Design System</a>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="progress" id="progress" aria-hidden="true"></div>
+    <p class="hint">← → ou clique · espaço pausa</p>
+
+    <script>
+      (function () {
+        const slides = Array.from(document.querySelectorAll(".slide"));
+        const progress = document.getElementById("progress");
+        const btnPrev = document.getElementById("btnPrev");
+        const btnNext = document.getElementById("btnNext");
+        const btnPlay = document.getElementById("btnPlay");
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+        let index = 0;
+        let timer = 0;
+        let playing = !reduce;
+        let touchX = null;
+
+        slides.forEach((_, i) => {
+          const bar = document.createElement("div");
+          bar.className = "bar";
+          bar.innerHTML = "<i></i>";
+          bar.dataset.i = String(i);
+          progress.appendChild(bar);
+        });
+
+        const bars = Array.from(progress.querySelectorAll(".bar"));
+
+        function msFor(i) {
+          return Number(slides[i].dataset.ms || 6500);
+        }
+
+        function paintBars() {
+          bars.forEach((bar, i) => {
+            bar.classList.remove("is-active", "is-done");
+            bar.style.setProperty("--slide-ms", msFor(i) + "ms");
+            const fill = bar.querySelector("i");
+            if (fill) fill.style.animation = "none";
+            void bar.offsetWidth;
+            if (i < index) bar.classList.add("is-done");
+            if (i === index && playing) {
+              bar.classList.add("is-active");
+              if (fill) fill.style.animation = "";
+            } else if (i === index && !playing) {
+              bar.classList.add("is-done");
+            }
+          });
+        }
+
+        function show(i, { restart = true } = {}) {
+          index = (i + slides.length) % slides.length;
+          slides.forEach((s, n) => s.classList.toggle("is-active", n === index));
+          paintBars();
+          if (restart) arm();
+        }
+
+        function arm() {
+          window.clearTimeout(timer);
+          if (!playing) return;
+          timer = window.setTimeout(() => show(index + 1), msFor(index));
+        }
+
+        function setPlaying(next) {
+          playing = next;
+          btnPlay.textContent = playing ? "❚❚" : "▶";
+          btnPlay.setAttribute("aria-label", playing ? "Pausar" : "Continuar");
+          paintBars();
+          arm();
+        }
+
+        btnPrev.addEventListener("click", () => show(index - 1));
+        btnNext.addEventListener("click", () => show(index + 1));
+        btnPlay.addEventListener("click", () => setPlaying(!playing));
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key === "ArrowRight" || e.key === "PageDown") {
+            e.preventDefault();
+            show(index + 1);
+          } else if (e.key === "ArrowLeft" || e.key === "PageUp") {
+            e.preventDefault();
+            show(index - 1);
+          } else if (e.key === " ") {
+            e.preventDefault();
+            setPlaying(!playing);
+          }
+        });
+
+        document.getElementById("deck").addEventListener(
+          "pointerdown",
+          (e) => {
+            if (e.target.closest("a,button")) return;
+            touchX = e.clientX;
+          },
+          { passive: true }
+        );
+
+        document.getElementById("deck").addEventListener("pointerup", (e) => {
+          if (touchX == null || e.target.closest("a,button")) {
+            touchX = null;
+            return;
+          }
+          const dx = e.clientX - touchX;
+          touchX = null;
+          if (Math.abs(dx) > 50) {
+            show(index + (dx < 0 ? 1 : -1));
+            return;
+          }
+          // click sides
+          const mid = window.innerWidth / 2;
+          show(index + (e.clientX > mid ? 1 : -1));
+        });
+
+        show(0);
+      })();
+    </script>
+  </body>
+</html>

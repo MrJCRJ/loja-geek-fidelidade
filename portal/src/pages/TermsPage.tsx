@@ -66,8 +66,8 @@ export default function TermsPage() {
           </p>
         </div>
         <div className="row page-in-cta">
-          <Link className="btn prox" to="/register">
-            Criar conta
+          <Link className="btn prox" to="/login">
+            Entrar
           </Link>
           <Link className="btn ghost prox" to="/">
             Voltar

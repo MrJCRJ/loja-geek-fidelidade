@@ -25,6 +25,14 @@ function installDir() {
 
 function currentVersion() {
   try {
+    const file = path.join(installDir(), "version.json");
+    const meta = JSON.parse(fs.readFileSync(file, "utf8"));
+    const version = String(meta.version || "").trim();
+    if (version) return version;
+  } catch {
+    /* version.json ausente: usa a versão gravada no executável */
+  }
+  try {
     return String(getApp().getVersion() || "0.0.0");
   } catch {
     try {

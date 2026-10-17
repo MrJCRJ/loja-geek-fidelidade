@@ -429,6 +429,16 @@ function coverPrimaryDisplay(win) {
   }
 }
 
+const KIOSK_ZOOM = 1.2;
+function applyKioskZoom(win) {
+  if (!win || win.isDestroyed()) return;
+  try {
+    win.webContents.setZoomFactor(KIOSK_ZOOM);
+  } catch {
+    /* ignore */
+  }
+}
+
 function createWindow() {
   const primary = screen.getPrimaryDisplay().bounds;
   mainWindow = new BrowserWindow({
@@ -457,8 +467,10 @@ function createWindow() {
   setupLoadFallback(mainWindow);
   loadApp(mainWindow);
 
+  mainWindow.webContents.on("did-finish-load", () => applyKioskZoom(mainWindow));
   mainWindow.once("ready-to-show", () => {
     coverPrimaryDisplay(mainWindow);
+    applyKioskZoom(mainWindow);
     // Cadastro e kiosk: sempre tela cheia na estação.
     void lock.lock();
   });
@@ -689,9 +701,27 @@ ipcMain.handle("lock:apply-update", async () => {
 const { collectHardware, collectLoadSample } = require("./hardware.cjs");
 ipcMain.handle("hw:inventory", async () => collectHardware());
 ipcMain.handle("hw:sample", async (_e, opts) => collectLoadSample(opts || {}));
+function collectDisplayFields() {
+  try {
+    const display = screen.getPrimaryDisplay();
+    const factor = Number(display.scaleFactor) || 1;
+    const bounds = display.bounds || {};
+    const width = Math.round(Number(bounds.width) * factor);
+    const height = Math.round(Number(bounds.height) * factor);
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 320 || height < 240) return {};
+    return {
+      displayWidth: width,
+      displayHeight: height,
+      displayScalePct: Math.round(factor * 1000) / 10,
+    };
+  } catch {
+    return {};
+  }
+}
+
 ipcMain.handle("hw:health", async () => {
   const { collectHealthFields } = require("./hardware.cjs");
-  return collectHealthFields();
+  return { ...collectHealthFields(), ...collectDisplayFields() };
 });
 
 ipcMain.on("tray:update", (_e, payload) => {

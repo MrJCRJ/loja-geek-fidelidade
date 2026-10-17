@@ -1,24 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, getAdminToken, setAdminToken, type Customer } from "../api";
-import { AdminTabs } from "../admin/components/AdminTabs";
+import { AdminTabs, CLERK_TABS } from "../admin/components/AdminTabs";
+import { AdminLogin } from "./AdminLogin";
+import { AdminTabBody } from "./AdminTabBody";
+import { ConsoleAlertBar } from "../admin/components/ConsoleAlertBar";
 import { ConfirmModal } from "../admin/components/ConfirmModal";
 import { ToastStack } from "../admin/components/Toast";
 import { useAdminData } from "../admin/hooks/useAdminData";
 import { useAdminEnrollCamera } from "../admin/hooks/useAdminEnrollCamera";
 import { useAdminSocket } from "../admin/hooks/useAdminSocket";
 import { useToast } from "../admin/hooks/useToast";
-import { CaixaTab } from "../admin/tabs/CaixaTab";
-import { ClientesTab } from "../admin/tabs/ClientesTab";
-import { AjudaTab } from "../admin/tabs/AjudaTab";
-import { EquipeTab } from "../admin/tabs/EquipeTab";
-import { ConfigTab } from "../admin/tabs/ConfigTab";
-import { DashboardTab } from "../admin/tabs/DashboardTab";
-import { EstacoesTab } from "../admin/tabs/EstacoesTab";
-import { FeedTab } from "../admin/tabs/FeedTab";
-import { RecompensasTab } from "../admin/tabs/RecompensasTab";
-import { SaudeTab } from "../admin/tabs/SaudeTab";
-import { SessoesTab } from "../admin/tabs/SessoesTab";
-import { UsoTab } from "../admin/tabs/UsoTab";
 import type { LiveFeedItem, Tab } from "../admin/types";
 
 type ConfirmState = {
@@ -45,11 +36,11 @@ export default function AdminPage() {
   const [bootName, setBootName] = useState("");
   const [bootPass, setBootPass] = useState("");
   const [remoteReadOnly, setRemoteReadOnly] = useState(false);
-  const [offStoreWifi, setOffStoreWifi] = useState<boolean | null>(null);
   const [shopUrl, setShopUrl] = useState("https://loja.geekloja.com.br/admin");
   const [sysAlerts, setSysAlerts] = useState<Array<{ severity: string; message: string }>>([]);
   const [installHint, setInstallHint] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<{ prompt: () => Promise<void> } | null>(null);
+  const [consoleAddId, setConsoleAddId] = useState<string | null>(null);
 
   const toast = useToast();
   const data = useAdminData(token);
@@ -75,6 +66,8 @@ export default function AdminPage() {
     token,
     onLive: setLive,
     onLiveStatus: data.setLiveStatus,
+    onOpenRequests: data.setOpenRequests,
+    onOpenCharge: (message) => toast.push(message, "info"),
     scheduleRefresh: data.scheduleRefresh,
   });
 
@@ -88,17 +81,12 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    if (!token) {
-      setOffStoreWifi(null);
-      return;
-    }
-    setOffStoreWifi(null);
+    if (!token) return;
     api<{
       role: string;
       displayName?: string | null;
       needsBootstrap?: boolean;
       remoteReadOnly?: boolean;
-      offStoreWifi?: boolean;
       shopUrl?: string;
     }>("/api/admin/me")
       .then((me) => {
@@ -106,9 +94,7 @@ export default function AdminPage() {
         setDisplayName(me.displayName || "");
         setNeedsBootstrap(Boolean(me.needsBootstrap));
         setRemoteReadOnly(Boolean(me.remoteReadOnly));
-        setOffStoreWifi(Boolean(me.offStoreWifi));
         if (me.shopUrl) setShopUrl(me.shopUrl);
-        if (me.offStoreWifi) return;
         if (me.role === "clerk") setTab("estacoes");
         return data.refreshNow();
       })
@@ -172,64 +158,18 @@ export default function AdminPage() {
   const logout = () => {
     setAdminToken(null);
     setToken(null);
-    setOffStoreWifi(null);
   };
-
-  if (token && offStoreWifi) {
-    return (
-      <div className="shell" style={{ maxWidth: 420 }}>
-        <h1 className="brand">Loja</h1>
-        <div className="panel off-wifi">
-          <strong>Fora do Wi‑Fi da loja</strong>
-          <p>
-            O controle das máquinas só funciona na rede da loja. Conecte no Wi‑Fi da loja e abra de novo este
-            link.
-          </p>
-          <p className="muted">O dono pode operar de casa. A equipe, não.</p>
-          <button className="btn danger" type="button" onClick={logout}>
-            Sair
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (!token) {
     return (
-      <div className="shell" style={{ maxWidth: 420 }}>
-        <h1 className="brand">GeekCentral</h1>
-        <p className="muted">Acesso só da equipe — geeks · Celular e Game</p>
-        <form className="panel" onSubmit={login}>
-          <div className="field">
-            <label>Usuário</label>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              autoFocus
-              data-testid="admin-username"
-              placeholder="dono (vazio só no 1º acesso)"
-            />
-          </div>
-          <div className="field">
-            <label>Senha</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete="current-password"
-              data-testid="admin-password"
-            />
-          </div>
-          {error && <p style={{ color: "crimson" }}>{error}</p>}
-          <button className="btn" type="submit" data-testid="admin-login">
-            Entrar
-          </button>
-          <p className="muted" style={{ marginTop: "0.75rem" }}>
-            Loja: <code>https://loja.geekloja.com.br</code> · Casa: <code>https://admin.geekloja.com.br</code>
-          </p>
-        </form>
-      </div>
+      <AdminLogin
+        username={username}
+        password={password}
+        error={error}
+        onUsername={setUsername}
+        onPassword={setPassword}
+        onSubmit={login}
+      />
     );
   }
 
@@ -317,7 +257,7 @@ export default function AdminPage() {
         tab={tab}
         clerk={clerk}
         onChange={(id) => {
-          if (clerk && id !== "estacoes" && id !== "caixa" && id !== "clientes") return;
+          if (clerk && !CLERK_TABS.includes(id)) return;
           setTab(id);
         }}
       />
@@ -383,99 +323,33 @@ export default function AdminPage() {
 
       {error && <div className="banner">{error}</div>}
 
-      {tab === "dashboard" && !clerk && <DashboardTab onError={setError} />}
-      {tab === "feed" && !clerk && <FeedTab live={live} events={data.events} />}
-      {tab === "clientes" && (
-        <ClientesTab
-          customers={data.customers}
-          selected={selected}
-          setSelected={setSelected}
-          videoRef={enroll.videoRef}
-          camLoading={enroll.camLoading}
-          camReady={enroll.camReady}
-          enrollStep={enroll.enrollStep}
-          setEnrollStep={enroll.setEnrollStep}
-          enrollBusy={enroll.enrollBusy}
-          enrollMsg={enroll.enrollMsg}
-          setEnrollMsg={enroll.setEnrollMsg}
-          autoEnrollActive={enroll.autoEnrollActive}
-          setAutoEnrollActive={enroll.setAutoEnrollActive}
-          autoEnrollPaused={enroll.autoEnrollPaused}
-          setAutoEnrollPaused={enroll.setAutoEnrollPaused}
-          setAutoEnrollToken={enroll.setAutoEnrollToken}
-          autoEnroll={enroll.autoEnroll}
-          startCam={enroll.startCam}
-          stopCam={enroll.stopCam}
-          enrollFace={enroll.enrollFace}
-          beginAutoEnroll={enroll.beginAutoEnroll}
-          refresh={data.refreshNow}
-          loadTimeForCustomer={data.loadTimeForCustomer}
-          pointsLedger={data.pointsLedger}
-          onError={setError}
-          onToast={toast.push}
-          askConfirm={askConfirm}
-        />
-      )}
-      {tab === "caixa" && (
-        <CaixaTab
-          customers={data.customers}
-          selected={selected}
-          setSelected={setSelected}
-          settings={data.settings}
-          timeLedger={data.timeLedger}
-          refresh={data.refreshNow}
-          loadTimeForCustomer={data.loadTimeForCustomer}
-          onError={setError}
-          onToast={toast.push}
+      {token && (
+        <ConsoleAlertBar
           remoteReadOnly={remoteReadOnly}
-        />
-      )}
-      {tab === "estacoes" && (
-        <EstacoesTab
-          stations={data.stations}
-          customers={data.customers}
-          connected={data.connected}
-          liveStatus={data.liveStatus}
-          settings={data.settings}
-          refresh={data.refreshNow}
           onError={setError}
           onToast={toast.push}
-          askConfirm={askConfirm}
-          remoteReadOnly={remoteReadOnly}
-          compact={clerk}
+          onAdd={(id) => {
+            setConsoleAddId(id);
+            setTab("consoles");
+          }}
         />
       )}
-      {tab === "uso" && !clerk && (
-        <UsoTab
-          stationNames={Object.fromEntries(data.stations.map((s) => [s.id, s.name]))}
-          onError={setError}
-          onToast={toast.push}
-        />
-      )}
-      {tab === "sessoes" && !clerk && <SessoesTab sessions={data.sessions} sessionStats={data.sessionStats} />}
-      {tab === "recompensas" && !clerk && (
-        <RecompensasTab
-          rewards={data.rewards}
-          refresh={data.refreshNow}
-          onError={setError}
-          onToast={toast.push}
-          askConfirm={askConfirm}
-        />
-      )}
-      {tab === "saude" && !clerk && <SaudeTab onError={setError} />}
-      {tab === "ajuda" && !clerk && <AjudaTab clerk={false} />}
-      {tab === "equipe" && !clerk && (
-        <EquipeTab remoteReadOnly={remoteReadOnly} onError={setError} onToast={toast.push} />
-      )}
-      {tab === "config" && !clerk && (
-        <ConfigTab
-          settings={data.settings}
-          setSettings={data.setSettings}
-          onError={setError}
-          onToast={toast.push}
-          askConfirm={askConfirm}
-        />
-      )}
+
+      <AdminTabBody
+        tab={tab}
+        clerk={clerk}
+        data={data}
+        live={live}
+        selected={selected}
+        setSelected={setSelected}
+        enroll={enroll}
+        remoteReadOnly={remoteReadOnly}
+        consoleAddId={consoleAddId}
+        setConsoleAddId={setConsoleAddId}
+        setError={setError}
+        onToast={toast.push}
+        askConfirm={askConfirm}
+      />
     </div>
   );
 }

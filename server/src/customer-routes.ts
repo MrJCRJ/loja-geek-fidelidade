@@ -3,7 +3,9 @@ import { z } from "zod";
 import { exportCustomerLgpd } from "./admin-ops.js";
 import {
   adjustTime,
+  confirmOpenDuePayment,
   getCustomerTimeSummary,
+  listPendingOpenDues,
   sellTime,
   setSubscription,
 } from "./billing.js";
@@ -52,7 +54,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.post("/api/customers", async (req, reply) => {
-    if (!(await staffWriteGuard(req, reply))) return;
+    if (!(await ownerWriteGuard(req, reply))) return;
     const body = z
       .object({
         name: z.string().min(2),
@@ -121,7 +123,7 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
   });
 
   app.delete("/api/customers/:id", async (req, reply) => {
-    if (!(await ownerWriteGuard(req, reply))) return;
+    if (!(await staffWriteGuard(req, reply))) return;
     const { id } = req.params as { id: string };
     if (!deleteCustomer(id)) return reply.code(404).send({ error: "Não encontrado" });
     return { ok: true };
@@ -241,10 +243,16 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
       .object({
         hours: z.number().positive().optional(),
         amountReais: z.number().positive().optional(),
+        paymentMethod: z.enum(["pix", "card", "cash"]),
       })
       .parse(req.body);
     try {
-      const result = sellTime({ customerId: id, hours: body.hours, amountReais: body.amountReais });
+      const result = sellTime({
+        customerId: id,
+        hours: body.hours,
+        amountReais: body.amountReais,
+        paymentMethod: body.paymentMethod,
+      });
       logEvent({
         level: "info",
         source: "caixa",
@@ -259,6 +267,30 @@ export async function registerCustomerRoutes(app: FastifyInstance) {
       });
       broadcastAdmins({ type: "time_updated", customer: result.customer });
       return { ok: true, ...result };
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
+  app.get("/api/caixa/open-dues", async (req, reply) => {
+    if (!(await adminGuard(req, reply))) return;
+    return { dues: listPendingOpenDues() };
+  });
+
+  app.post("/api/caixa/open-dues/:id/pay", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const body = z.object({ paymentMethod: z.enum(["pix", "card", "cash"]) }).parse(req.body);
+    try {
+      const result = confirmOpenDuePayment(id, body.paymentMethod);
+      logEvent({
+        level: "info",
+        source: "caixa",
+        kind: "open_due.paid",
+        message: `Hora em aberto paga (${body.paymentMethod})`,
+        meta: { ledgerId: id, ...result, actor: actorLabel(req) },
+      });
+      return result;
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
     }

@@ -45,12 +45,6 @@ export function getWebOrder(orderId: string): WebOrderRow | undefined {
     | undefined;
 }
 
-export function getWebOrderByProviderRef(ref: string): WebOrderRow | undefined {
-  return getDb()
-    .prepare("SELECT * FROM web_orders WHERE provider_ref = ?")
-    .get(ref) as WebOrderRow | undefined;
-}
-
 function markOrderPaid(orderId: string) {
   const now = new Date().toISOString();
   getDb()
@@ -136,11 +130,6 @@ function resolveApprovedOrder(orderId: string) {
     demo: false,
     credited: true,
   };
-}
-
-/** Credita o pedido pending (horas ou assinatura). Idempotente se já paid/demo_ok. */
-export function fulfillWebOrder(orderId: string) {
-  return resolveApprovedOrder(orderId);
 }
 
 type MpPixResult = {

@@ -36,53 +36,22 @@ export function countFaceSamples(customerId: string): number {
   return Number(row?.c || 0);
 }
 
-export async function registerPortalCustomer(input: {
-  name: string;
-  email: string;
-  password: string;
-  phone?: string;
-  consent: boolean;
-}) {
-  if (!input.consent) throw new Error("Consentimento LGPD é obrigatório");
-  const email = normalizeEmail(input.email);
-  if (!email.includes("@")) throw new Error("E-mail inválido");
-  if (input.password.length < 6) throw new Error("Senha deve ter ao menos 6 caracteres");
-
-  const existing = getCustomerByEmail(email) as { id: string } | undefined;
-  if (existing) throw new Error("E-mail já cadastrado");
-
-  const id = nanoid();
-  const now = new Date().toISOString();
-  const passwordHash = await bcrypt.hash(input.password, 10);
-
-  getDb()
-    .prepare(
-      `INSERT INTO customers
-        (id, name, phone, level, points, consent_at, notes, created_at, updated_at,
-         email, password_hash, time_balance_seconds, subscription_status)
-       VALUES (?, ?, ?, 'bronze', 0, ?, NULL, ?, ?, ?, ?, 0, 'none')`,
-    )
-    .run(
-      id,
-      input.name.trim(),
-      input.phone?.trim() || null,
-      now,
-      now,
-      now,
-      email,
-      passwordHash,
-    );
-
-  return getCustomer(id);
-}
-
-export async function loginPortalCustomer(email: string, password: string) {
-  const customer = getCustomerByEmail(email) as
-    | { id: string; password_hash?: string | null }
-    | undefined;
-  if (!customer?.password_hash) throw new Error("E-mail ou senha inválidos");
+export async function loginPortalCustomer(login: string, password: string) {
+  const raw = login.trim();
+  const customer = (
+    raw.includes("@")
+      ? getCustomerByEmail(raw)
+      : getDb()
+          .prepare(
+            `SELECT c.*,
+              (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples
+             FROM customers c WHERE c.username = ?`,
+          )
+          .get(raw.toLowerCase())
+  ) as { id: string; password_hash?: string | null } | undefined;
+  if (!customer?.password_hash) throw new Error("Usuário ou senha inválidos");
   const ok = await bcrypt.compare(password, customer.password_hash);
-  if (!ok) throw new Error("E-mail ou senha inválidos");
+  if (!ok) throw new Error("Usuário ou senha inválidos");
   return getCustomer(customer.id);
 }
 
@@ -133,6 +102,7 @@ export function publicCustomerProfile(customerId: string) {
         id: string;
         name: string;
         email?: string | null;
+        username?: string | null;
         phone?: string | null;
         level: string;
         points: number;
@@ -151,6 +121,7 @@ export function publicCustomerProfile(customerId: string) {
     id: customer.id,
     name: customer.name,
     email: customer.email || null,
+    username: customer.username || null,
     phone: customer.phone || null,
     level: customer.level,
     points: customer.points,

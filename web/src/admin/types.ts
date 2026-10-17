@@ -1,17 +1,9 @@
-import type {
-  Customer,
-  MachineSession,
-  RecognitionEvent,
-  Reward,
-  SessionStats,
-  Station,
-} from "../api";
-
 export type Tab =
   | "dashboard"
   | "feed"
   | "clientes"
   | "caixa"
+  | "consoles"
   | "estacoes"
   | "uso"
   | "sessoes"
@@ -32,7 +24,16 @@ export type LiveStationStatus = {
   lowBalanceWarn?: boolean;
   billingPaused?: boolean;
   occupantKind?: string | null;
+  openReais?: number | null;
   at?: string;
+};
+
+export type OpenHourRequest = {
+  id: string;
+  customer_id: string;
+  station_id: string;
+  customer_name: string;
+  created_at: string;
 };
 
 export type LiveFeedItem = { text: string; at: string };
@@ -73,19 +74,6 @@ export type PointsLedgerRow = {
   delta: number;
   reason: string;
   created_at: string;
-};
-
-export type AdminData = {
-  customers: Customer[];
-  stations: Station[];
-  connected: Array<{ stationId: string; stationName: string }>;
-  liveStatus: Record<string, LiveStationStatus>;
-  rewards: Reward[];
-  events: RecognitionEvent[];
-  sessions: MachineSession[];
-  sessionStats: SessionStats | null;
-  settings: AdminSettings;
-  health: { ok: boolean; faceService: boolean; time?: string } | null;
 };
 
 export type ToastKind = "ok" | "error" | "info";

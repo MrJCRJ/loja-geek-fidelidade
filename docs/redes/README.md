@@ -1,11 +1,12 @@
 # Redes Geeks — rascunhos e acessos
 
-Atualizado em **2026-10-03**.  
+Atualizado em **2026-10-04**.  
 Tom único: **Geeks Paulo Afonso** (Loja GEEKS · Game Box · Lan House Geeks).
 
 | Arquivo / pasta | Para quê |
 |-----------------|----------|
 | [`CONTAS-E-ACESSOS.md`](./CONTAS-E-ACESSOS.md) | Passo a passo: Google → Meta → WhatsApp |
+| [`SETUP-GBP-MCP.md`](./SETUP-GBP-MCP.md) | Preparar API/MCP Business Profile (Geek agora; padaria depois) |
 | [`posts/`](./posts/) | Rascunhos de posts (IG / FB / Maps) |
 | [`respostas/`](./respostas/) | Modelos de resposta (avaliações, DMs) |
 | [`TOM.md`](./TOM.md) | Voz da marca (curto) |

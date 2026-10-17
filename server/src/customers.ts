@@ -3,7 +3,7 @@ import { getDb, type CustomerLevel } from "./db.js";
 import { GOOGLE_REVIEW_ASK_COOLDOWN_MS } from "./google-review.js";
 
 const CUSTOMER_COLS = `c.id, c.name, c.phone, c.level, c.points, c.consent_at, c.notes,
-              c.created_at, c.updated_at, c.email,
+              c.created_at, c.updated_at, c.email, c.username,
               c.time_balance_seconds, c.subscription_status, c.subscription_expires_at, c.subscriber_since,
               c.review_ask_opt_out, c.review_asked_at,
               (SELECT COUNT(*) FROM face_embeddings f WHERE f.customer_id = c.id) AS face_samples`;
@@ -132,8 +132,23 @@ export function markGoogleReviewAsked(customerId: string) {
     .run(now, now, customerId);
 }
 
+function hasTable(name: string) {
+  return Boolean(
+    getDb()
+      .prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?")
+      .get(name),
+  );
+}
+
 export function deleteCustomer(id: string) {
-  return getDb().prepare("DELETE FROM customers WHERE id = ?").run(id).changes > 0;
+  const db = getDb();
+  const tx = db.transaction(() => {
+    if (hasTable("console_sessions")) {
+      db.prepare("DELETE FROM console_sessions WHERE customer_id = ?").run(id);
+    }
+    return db.prepare("DELETE FROM customers WHERE id = ?").run(id).changes > 0;
+  });
+  return tx();
 }
 
 export function addFaceEmbedding(customerId: string, embedding: number[]) {

@@ -49,9 +49,10 @@ export async function registerSessionRoutes(app: FastifyInstance) {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Erro";
       const isCredit = /cr[eé]dito|caixa/i.test(message);
-      return reply.code(400).send({
+      const inUse = /outro PC/i.test(message);
+      return reply.code(inUse ? 409 : 400).send({
         error: message,
-        code: isCredit ? "no_credit" : "session_error",
+        code: inUse ? "already_in_use" : isCredit ? "no_credit" : "session_error",
         timeBalanceSeconds: getTimeBalance(body.customerId),
       });
     }
@@ -78,6 +79,11 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         time_balance_seconds?: number;
         customer_id: string;
         id: string;
+        open_mode?: boolean;
+        switched_to_open?: boolean;
+        open_seconds?: number;
+        open_amount_reais?: number;
+        hour_price_reais?: number;
       };
       if (session.time_depleted) {
         const ended = endSession(session.id, "no_credit");
@@ -105,6 +111,11 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         lowBalanceWarn: Boolean(session.low_balance_warn),
         lowBalanceWarnSeconds: session.low_balance_warn_seconds,
         timeBalanceSeconds: session.time_balance_seconds,
+        openMode: Boolean(session.open_mode),
+        switchedToOpen: Boolean(session.switched_to_open),
+        openSeconds: Number(session.open_seconds || 0),
+        openAmountReais: Number(session.open_amount_reais || 0),
+        hourPriceReais: session.hour_price_reais,
       };
     } catch (err) {
       return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
@@ -137,6 +148,7 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         return reply.code(400).send({ error: "Informe sessionId" });
       }
 
+      const charge = session as { open_charge_reais?: number; open_seconds?: number; customer_name?: string };
       const payload = {
         type: "session_ended",
         session,
@@ -145,6 +157,16 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         at: new Date().toISOString(),
       };
       broadcastAdmins(payload);
+      if (Number(charge.open_charge_reais) > 0) {
+        broadcastAdmins({
+          type: "open_charge",
+          station: station ? { id: station.id, name: station.name } : null,
+          customerName: charge.customer_name || null,
+          openSeconds: charge.open_seconds || 0,
+          amountReais: charge.open_charge_reais,
+          at: new Date().toISOString(),
+        });
+      }
       if (station) sendToStation(station.id, payload);
       return { ok: true, session };
     } catch (err) {

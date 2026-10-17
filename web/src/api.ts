@@ -8,6 +8,7 @@ export type Customer = {
   name: string;
   phone?: string | null;
   email?: string | null;
+  username?: string | null;
   level: CustomerLevel;
   points: number;
   consent_at?: string | null;
@@ -35,6 +36,9 @@ export type Station = {
   disk_total_gb?: number | null;
   uptime_sec?: number | null;
   ram_used_pct?: number | null;
+  display_width?: number | null;
+  display_height?: number | null;
+  display_scale_pct?: number | null;
   created_at?: string;
 };
 

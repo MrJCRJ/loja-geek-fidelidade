@@ -1,8 +1,19 @@
 import { nanoid } from "nanoid";
-import { consumeTime, getTimeBalance } from "./billing.js";
+import { consumeTime, effectiveHourPrice, getTimeBalance, recordOpenHourDue } from "./billing.js";
 import { getCustomer } from "./customers.js";
 import { getDb } from "./db.js";
 import { getLowBalanceWarnSeconds } from "./session-safety.js";
+
+/** O PC avisa cerca de 1 vez por minuto. Até 90s cobra o tempo real; um buraco maior não desconta tudo de uma vez. */
+const BILLING_GAP_CAP_SEC = 90;
+/** Sem heartbeat de sessão nesse prazo, o outro PC já fechou ou caiu. */
+const STALE_OTHER_SESSION_MS = 2 * 60 * 1000;
+
+function billableDeltaSeconds(lastSeenIso: string, nowMs: number): number {
+  const lastMs = Date.parse(lastSeenIso);
+  const last = Number.isFinite(lastMs) ? lastMs : nowMs;
+  return Math.max(0, Math.min(BILLING_GAP_CAP_SEC, Math.floor((nowMs - last) / 1000)));
+}
 
 export type SessionRow = {
   id: string;
@@ -13,6 +24,9 @@ export type SessionRow = {
   last_seen_at: string;
   seconds_total: number;
   status: "active" | "closed";
+  open_after_balance?: number | null;
+  open_started_at?: string | null;
+  open_seconds?: number | null;
 };
 
 function enrich(session: SessionRow) {
@@ -52,6 +66,41 @@ export function getSession(id: string) {
   return getDb().prepare("SELECT * FROM machine_sessions WHERE id = ?").get(id) as SessionRow | undefined;
 }
 
+function sessionIsStale(lastSeenAt: string, nowMs = Date.now()) {
+  const seen = Date.parse(lastSeenAt);
+  if (!Number.isFinite(seen)) return true;
+  return nowMs - seen >= STALE_OTHER_SESSION_MS;
+}
+
+/**
+ * Fecha sessões desta conta que pararam de mandar sinal.
+ * Se outra estação ainda está ativa, impede o login.
+ */
+export function releaseStaleCustomerSessions(
+  customerId: string,
+  stationId: string,
+  opts?: { includeThisStation?: boolean },
+) {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, station_id, last_seen_at FROM machine_sessions
+       WHERE customer_id = ? AND status = 'active'`,
+    )
+    .all(customerId) as Array<{ id: string; station_id: string; last_seen_at: string }>;
+
+  let liveElsewhere = false;
+  for (const row of rows) {
+    const here = row.station_id === stationId;
+    if (here && !opts?.includeThisStation) continue;
+    if (sessionIsStale(row.last_seen_at)) {
+      endSession(row.id, "stale_other_pc");
+      continue;
+    }
+    liveElsewhere = true;
+  }
+  if (liveElsewhere) throw new Error("Esta conta já está em outro PC");
+}
+
 export function startSession(customerId: string, stationId: string) {
   const balance = getTimeBalance(customerId);
   if (balance <= 0) {
@@ -70,14 +119,7 @@ export function startSession(customerId: string, stationId: string) {
     endSession(existing.id, "replaced");
   }
 
-  const other = db
-    .prepare(
-      `SELECT id FROM machine_sessions WHERE customer_id = ? AND status = 'active' AND station_id != ?`,
-    )
-    .all(customerId, stationId) as Array<{ id: string }>;
-  for (const row of other) {
-    endSession(row.id, "moved");
-  }
+  releaseStaleCustomerSessions(customerId, stationId);
 
   const id = nanoid();
   db.prepare(
@@ -105,11 +147,31 @@ export function heartbeatSession(
 
   const pauseBilling = Boolean(opts?.pauseBilling);
   const now = Date.now();
-  const lastMs = Date.parse(session.last_seen_at);
-  const last = Number.isFinite(lastMs) ? lastMs : now;
-  // Cap curto (T12/T24): rede atrasada ou relógio torto não engole minutos de uma vez.
-  const deltaSec = Math.max(0, Math.min(45, Math.floor((now - last) / 1000)));
+  const deltaSec = billableDeltaSeconds(session.last_seen_at, now);
   const iso = new Date(now).toISOString();
+
+  if (session.open_started_at) {
+    const openSeconds = Math.max(0, Number(session.open_seconds || 0)) + (pauseBilling ? 0 : deltaSec);
+    db.prepare(
+      `UPDATE machine_sessions
+       SET last_seen_at = ?, open_seconds = ?, seconds_total = seconds_total + ?
+       WHERE id = ?`,
+    ).run(iso, openSeconds, pauseBilling ? 0 : deltaSec, sessionId);
+    const hourPrice = effectiveHourPrice(session.customer_id);
+    const amountReais = Math.round((openSeconds / 3600) * hourPrice * 100) / 100;
+    return {
+      ...enrich(getSession(sessionId)!),
+      time_balance_seconds: 0,
+      time_depleted: false,
+      billing_paused: pauseBilling,
+      low_balance_warn: false,
+      low_balance_warn_seconds: getLowBalanceWarnSeconds(),
+      open_mode: true,
+      open_seconds: openSeconds,
+      open_amount_reais: amountReais,
+      hour_price_reais: hourPrice,
+    };
+  }
 
   // Em pausa (VIP ausente): só avança last_seen — evita cobrar o gap da ausência (T10).
   if (pauseBilling) {
@@ -142,6 +204,25 @@ export function heartbeatSession(
   }
 
   const warnAt = getLowBalanceWarnSeconds();
+  if (timeDepleted && Number(session.open_after_balance) === 1) {
+    db.prepare(
+      `UPDATE machine_sessions SET open_started_at = ?, open_seconds = 0 WHERE id = ?`,
+    ).run(iso, sessionId);
+    const hourPrice = effectiveHourPrice(session.customer_id);
+    return {
+      ...enrich(getSession(sessionId)!),
+      time_balance_seconds: 0,
+      time_depleted: false,
+      billing_paused: false,
+      low_balance_warn: false,
+      low_balance_warn_seconds: warnAt,
+      open_mode: true,
+      switched_to_open: true,
+      open_seconds: 0,
+      open_amount_reais: 0,
+      hour_price_reais: hourPrice,
+    };
+  }
   return {
     ...enrich(getSession(sessionId)!),
     time_balance_seconds: timeBalance,
@@ -149,7 +230,35 @@ export function heartbeatSession(
     billing_paused: false,
     low_balance_warn: !timeDepleted && timeBalance > 0 && timeBalance <= warnAt,
     low_balance_warn_seconds: warnAt,
+    open_mode: false,
   };
+}
+
+export function markOpenAfterBalance(sessionId: string) {
+  getDb().prepare(`UPDATE machine_sessions SET open_after_balance = 1 WHERE id = ?`).run(sessionId);
+}
+
+/** Sessão já em hora em aberto, sem saldo. */
+export function startOpenSession(customerId: string, stationId: string) {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const existing = getActiveSessionForStation(stationId);
+  if (existing) {
+    if (existing.customer_id === customerId && existing.open_started_at) {
+      return enrich(existing);
+    }
+    endSession(existing.id, "replaced");
+  }
+  releaseStaleCustomerSessions(customerId, stationId);
+
+  const id = nanoid();
+  db.prepare(
+    `INSERT INTO machine_sessions
+      (id, customer_id, station_id, started_at, ended_at, last_seen_at, seconds_total, status,
+       open_after_balance, open_started_at, open_seconds)
+     VALUES (?, ?, ?, ?, NULL, ?, 0, 'active', 1, ?, 0)`,
+  ).run(id, customerId, stationId, now, now, now);
+  return enrich(getSession(id)!);
 }
 
 export function endSession(sessionId: string, _reason = "end") {
@@ -159,9 +268,29 @@ export function endSession(sessionId: string, _reason = "end") {
   if (session.status === "closed") return enrich(session);
 
   const now = Date.now();
-  const last = Date.parse(session.last_seen_at);
-  const deltaSec = Math.max(0, Math.min(45, Math.floor((now - last) / 1000)));
+  const deltaSec = billableDeltaSeconds(session.last_seen_at, now);
   const iso = new Date(now).toISOString();
+
+  if (session.open_started_at) {
+    const openSeconds = Math.max(0, Number(session.open_seconds || 0)) + deltaSec;
+    db.prepare(
+      `UPDATE machine_sessions
+       SET status = 'closed', ended_at = ?, last_seen_at = ?, seconds_total = seconds_total + ?, open_seconds = ?
+       WHERE id = ?`,
+    ).run(iso, iso, deltaSec, openSeconds, sessionId);
+    const due = recordOpenHourDue({
+      customerId: session.customer_id,
+      openSeconds,
+      sessionId,
+      stationId: session.station_id,
+    });
+    return {
+      ...enrich(getSession(sessionId)!),
+      open_seconds: openSeconds,
+      open_charge_reais: due.amountReais,
+      hour_price_reais: due.hourPrice,
+    };
+  }
 
   db.prepare(
     `UPDATE machine_sessions

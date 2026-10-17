@@ -92,26 +92,6 @@ function paidBaseText(input: {
   return `geeks — pagamento confirmado: R$ ${input.amountReais.toFixed(2)}${hoursPart}. Saldo liberado no portal. Bom jogo!`;
 }
 
-export async function notifyWhatsAppPaid(input: {
-  phone?: string | null;
-  name: string;
-  amountReais: number;
-  hours?: number | null;
-  demo?: boolean;
-  includeReviewAsk?: boolean;
-}) {
-  if (!input.phone || input.demo) return { ok: false, skipped: "no_phone_or_demo" as const };
-  let text = paidBaseText(input);
-  if (input.includeReviewAsk) {
-    text = `${text}\n\n${GOOGLE_REVIEW_ASK_TEXT}`;
-  }
-  return sendWhatsAppText({
-    phone: input.phone,
-    kind: input.includeReviewAsk ? "whatsapp.paid_review" : "whatsapp.paid",
-    text,
-  });
-}
-
 export async function notifyWhatsAppLowBalance(input: {
   phone?: string | null;
   name: string;

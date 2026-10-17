@@ -25,6 +25,7 @@ export type StationStatusPayload = {
   lowBalanceWarn?: boolean;
   billingPaused?: boolean;
   occupantKind?: string | null;
+  openReais?: number | null;
 };
 
 export type StationCommandPayload = {

@@ -23,7 +23,3 @@ export function captureException(err: unknown) {
     .then((Sentry) => Sentry.captureException(err))
     .catch(() => undefined);
 }
-
-export function isSentryEnabled() {
-  return enabled;
-}

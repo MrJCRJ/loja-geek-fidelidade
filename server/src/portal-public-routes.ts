@@ -3,7 +3,6 @@ import { z } from "zod";
 import {
   loginPortalCustomer,
   publicCustomerProfile,
-  registerPortalCustomer,
   requestPortalPasswordReset,
   resetPasswordWithToken,
 } from "./customer-auth.js";
@@ -16,29 +15,10 @@ export async function registerPortalPublicRoutes(app: FastifyInstance) {
 
   app.get("/api/portal/health", async () => buildPortalHealth());
 
-  app.post("/api/portal/register", async (req, reply) => {
-    const ip = req.ip || "unknown";
-    if (!rateLimit(`reg:${ip}`, 10, 60_000)) {
-      return reply.code(429).send({ error: "Muitas tentativas — aguarde um minuto" });
-    }
-    const body = z
-      .object({
-        name: z.string().min(2),
-        email: z.string().email(),
-        password: z.string().min(6),
-        phone: z.string().optional(),
-        consent: z.boolean(),
-      })
-      .parse(req.body);
-
-    try {
-      const customer = await registerPortalCustomer(body);
-      const customerId = (customer as { id: string }).id;
-      const token = signPortalToken(app, customerId);
-      return { token, customer: publicCustomerProfile(customerId) };
-    } catch (err) {
-      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
-    }
+  app.post("/api/portal/register", async (_req, reply) => {
+    return reply.code(403).send({
+      error: "Conta nova só no PC da loja, na tela do GeekLock.",
+    });
   });
 
   app.post("/api/portal/login", async (req, reply) => {
@@ -48,12 +28,15 @@ export async function registerPortalPublicRoutes(app: FastifyInstance) {
     }
     const body = z
       .object({
-        email: z.string().email(),
+        email: z.string().min(1).optional(),
+        username: z.string().min(1).optional(),
         password: z.string().min(1),
       })
       .parse(req.body);
+    const login = (body.username || body.email || "").trim();
+    if (!login) return reply.code(400).send({ error: "Informe usuário ou e-mail" });
     try {
-      const customer = await loginPortalCustomer(body.email, body.password);
+      const customer = await loginPortalCustomer(login, body.password);
       const customerId = (customer as { id: string }).id;
       const token = signPortalToken(app, customerId);
       return { token, customer: publicCustomerProfile(customerId) };

@@ -121,7 +121,7 @@ describe("Contas da equipe + controle só na LAN", () => {
     await app.close();
   });
 
-  it("funcionário só controla no Wi‑Fi da loja; dono controla de casa", async () => {
+  it("funcionário controla fora do Wi‑Fi da loja; dono controla de casa", async () => {
     setStorePublicIpForTest("203.0.113.10");
     const app = await createTestApp();
     const bootToken = await adminToken(app);
@@ -163,10 +163,10 @@ describe("Contas da equipe + controle só na LAN", () => {
     });
     expect(meHome.statusCode).toBe(200);
     const homeBody = meHome.json() as { offStoreWifi: boolean; remoteReadOnly: boolean };
-    expect(homeBody.offStoreWifi).toBe(true);
-    expect(homeBody.remoteReadOnly).toBe(true);
+    expect(homeBody.offStoreWifi).toBe(false);
+    expect(homeBody.remoteReadOnly).toBe(false);
 
-    const blocked = await app.inject({
+    const allowed = await app.inject({
       method: "POST",
       url: "/api/stations/x/command",
       headers: {
@@ -176,8 +176,7 @@ describe("Contas da equipe + controle só na LAN", () => {
       },
       payload: { command: "unlock_screen" },
     });
-    expect(blocked.statusCode).toBe(403);
-    expect((blocked.json() as { code: string }).code).toBe("off_store_wifi");
+    expect(allowed.statusCode).toBe(200);
 
     const meShop = await app.inject({
       method: "GET",
@@ -232,7 +231,7 @@ describe("Contas da equipe + controle só na LAN", () => {
       method: "POST",
       url: `/api/customers/${id}/time/sale`,
       headers: authHeaders(token),
-      payload: { amountReais: 10 },
+      payload: { amountReais: 10, paymentMethod: "pix" },
     });
 
     const audit = await app.inject({

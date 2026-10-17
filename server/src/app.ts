@@ -128,6 +128,11 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
             elapsed?: number;
             present?: boolean;
             absentLeft?: number | null;
+            balanceSeconds?: number | null;
+            lowBalanceWarn?: boolean;
+            billingPaused?: boolean;
+            occupantKind?: string | null;
+            openReais?: number | null;
             at?: string;
           };
           if (msg.type === "station_status") {
@@ -140,6 +145,11 @@ export async function buildApp(options?: { logger?: boolean; databasePath?: stri
               elapsed: msg.elapsed,
               present: msg.present,
               absentLeft: msg.absentLeft,
+              balanceSeconds: msg.balanceSeconds,
+              lowBalanceWarn: msg.lowBalanceWarn,
+              billingPaused: msg.billingPaused,
+              occupantKind: msg.occupantKind,
+              openReais: msg.openReais,
               at: msg.at || new Date().toISOString(),
             };
             setStationStatus(station.id, payload);

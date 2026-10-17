@@ -111,6 +111,16 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_sessions_customer ON machine_sessions(customer_id);
     CREATE INDEX IF NOT EXISTS idx_sessions_station ON machine_sessions(station_id);
 
+    CREATE TABLE IF NOT EXISTS open_hour_requests (
+      id TEXT PRIMARY KEY,
+      customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      station_id TEXT NOT NULL REFERENCES stations(id) ON DELETE CASCADE,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      resolved_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_open_requests_station ON open_hour_requests(station_id, status);
+
     CREATE TABLE IF NOT EXISTS time_ledger (
       id TEXT PRIMARY KEY,
       customer_id TEXT NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -155,6 +165,7 @@ export function initDb(databasePath?: string) {
   ensureCol("email_verified_at", "email_verified_at TEXT");
   ensureCol("review_ask_opt_out", "review_ask_opt_out INTEGER NOT NULL DEFAULT 0");
   ensureCol("review_asked_at", "review_asked_at TEXT");
+  ensureCol("username", "username TEXT");
 
   const stationCols = (conn.prepare("PRAGMA table_info(stations)").all() as TableInfoRow[]).map(
     (c) => c.name,
@@ -174,6 +185,38 @@ export function initDb(databasePath?: string) {
   if (!stationCols.includes("ram_used_pct")) {
     conn.exec("ALTER TABLE stations ADD COLUMN ram_used_pct REAL");
   }
+  if (!stationCols.includes("display_width")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN display_width INTEGER");
+  }
+  if (!stationCols.includes("display_height")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN display_height INTEGER");
+  }
+  if (!stationCols.includes("display_scale_pct")) {
+    conn.exec("ALTER TABLE stations ADD COLUMN display_scale_pct REAL");
+  }
+
+  const sessionCols = (conn.prepare("PRAGMA table_info(machine_sessions)").all() as TableInfoRow[]).map(
+    (c) => c.name,
+  );
+  if (!sessionCols.includes("open_after_balance")) {
+    conn.exec("ALTER TABLE machine_sessions ADD COLUMN open_after_balance INTEGER NOT NULL DEFAULT 0");
+  }
+  if (!sessionCols.includes("open_started_at")) {
+    conn.exec("ALTER TABLE machine_sessions ADD COLUMN open_started_at TEXT");
+  }
+  if (!sessionCols.includes("open_seconds")) {
+    conn.exec("ALTER TABLE machine_sessions ADD COLUMN open_seconds INTEGER NOT NULL DEFAULT 0");
+  }
+
+  const ledgerCols = (conn.prepare("PRAGMA table_info(time_ledger)").all() as TableInfoRow[]).map(
+    (c) => c.name,
+  );
+  if (!ledgerCols.includes("payment_method")) {
+    conn.exec("ALTER TABLE time_ledger ADD COLUMN payment_method TEXT");
+  }
+  if (!ledgerCols.includes("paid_at")) {
+    conn.exec("ALTER TABLE time_ledger ADD COLUMN paid_at TEXT");
+  }
 
   conn.exec(`
     CREATE TABLE IF NOT EXISTS web_orders (
@@ -192,6 +235,8 @@ export function initDb(databasePath?: string) {
     CREATE INDEX IF NOT EXISTS idx_web_orders_customer ON web_orders(customer_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_email
       ON customers(email) WHERE email IS NOT NULL AND email != '';
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_username
+      ON customers(username) WHERE username IS NOT NULL AND username != '';
   `);
 
   const countRewards = conn.prepare("SELECT COUNT(*) AS c FROM rewards").get() as CountRow;

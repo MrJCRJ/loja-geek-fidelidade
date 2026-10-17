@@ -6,10 +6,6 @@ import { HOME_HOST, PUBLIC_API_HOST, SHOP_HOST, SHOP_PUBLIC_HOST, requestHost } 
 let storePublicIp = (process.env.STORE_PUBLIC_IP || "").trim() || null;
 let lanIpsOverride: string[] | null = null;
 
-export function getStorePublicIp(): string | null {
-  return storePublicIp;
-}
-
 export function setStorePublicIpForTest(ip: string | null) {
   storePublicIp = ip;
 }

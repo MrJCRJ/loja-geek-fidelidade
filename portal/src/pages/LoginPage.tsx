@@ -7,10 +7,6 @@ import OfflineBanner from "../components/OfflineBanner";
 import { useProximityField } from "../hooks/useProximityField";
 import { useReveal } from "../hooks/useReveal";
 
-function isEmail(v: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim());
-}
-
 export default function LoginPage() {
   const nav = useNavigate();
   const { setRef, rootRef, rootVersion } = useReveal();
@@ -24,8 +20,7 @@ export default function LoginPage() {
 
   const fieldErrors = useMemo(() => {
     const e: { email?: string; password?: string } = {};
-    if (touched.email && !email.trim()) e.email = "Informe o e-mail";
-    else if (touched.email && !isEmail(email)) e.email = "E-mail inválido";
+    if (touched.email && !email.trim()) e.email = "Informe usuário ou e-mail";
     if (touched.password && password.length < 1) e.password = "Informe a senha";
     return e;
   }, [email, password, touched]);
@@ -34,8 +29,8 @@ export default function LoginPage() {
     e.preventDefault();
     setTouched({ email: true, password: true });
     setError("");
-    if (!isEmail(email) || !password) {
-      setError("Confira e-mail e senha.");
+    if (!email.trim() || !password) {
+      setError("Confira usuário e senha.");
       return;
     }
     setBusy(true);
@@ -63,17 +58,17 @@ export default function LoginPage() {
       <h1 className="display display--lg" style={{ marginBottom: "0.5rem" }}>
         Entrar
       </h1>
-      <p className="lead">Saldo, horas e cadastro facial da lan Geeks.</p>
+      <p className="lead">Veja suas horas. Conta nova só no PC da loja.</p>
       {error ? <div className="banner">{error}</div> : null}
       <form className="card reveal" onSubmit={onSubmit} noValidate>
         <div className="field">
-          <label htmlFor="email">E-mail</label>
+          <label htmlFor="email">Usuário ou e-mail</label>
           <input
             id="email"
-            type="email"
-            autoComplete="email"
+            type="text"
+            autoComplete="username"
             value={email}
-            className={fieldErrors.email ? "field-invalid" : touched.email && isEmail(email) ? "field-ok" : undefined}
+            className={fieldErrors.email ? "field-invalid" : touched.email && email.trim() ? "field-ok" : undefined}
             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -102,9 +97,6 @@ export default function LoginPage() {
           >
             {busy ? "Entrando…" : success ? "Ok" : "Entrar"}
           </button>
-          <Link className="btn ghost prox" to="/register">
-            Criar conta
-          </Link>
         </div>
         <p className="muted" style={{ marginTop: 12 }}>
           <Link to="/forgot">Esqueci a senha</Link>

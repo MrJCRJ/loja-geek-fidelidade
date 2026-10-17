@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { getDb } from "../src/db.js";
 import {
   adminToken,
   authHeaders,
@@ -91,6 +92,40 @@ describe("Estações", () => {
     await app.close();
   });
 
+  it("heartbeat guarda resolução e escala da tela", async () => {
+    const app = await createTestApp();
+    const station = await claimStation(app);
+    const hb = await app.inject({
+      method: "POST",
+      url: "/api/stations/heartbeat",
+      payload: {
+        token: station.token,
+        lockVersion: "1.1.16",
+        health: { displayWidth: 1920, displayHeight: 1080, displayScalePct: 125 },
+      },
+    });
+    expect(hb.statusCode).toBe(200);
+    const token = await adminToken(app);
+    const list = await app.inject({
+      method: "GET",
+      url: "/api/stations",
+      headers: authHeaders(token),
+    });
+    const body = list.json() as {
+      stations: Array<{
+        id: string;
+        display_width?: number;
+        display_height?: number;
+        display_scale_pct?: number;
+      }>;
+    };
+    const found = body.stations.find((s) => s.id === station.id);
+    expect(found?.display_width).toBe(1920);
+    expect(found?.display_height).toBe(1080);
+    expect(found?.display_scale_pct).toBe(125);
+    await app.close();
+  });
+
   it("admin cria estação via painel", async () => {
     const app = await createTestApp();
     const token = await adminToken(app);
@@ -180,6 +215,48 @@ describe("Sessões de máquina", () => {
     await app.close();
   });
 
+  it("sessão parada há 2 min não bloqueia outro PC", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const pc1 = await claimStation(app, "PC-1");
+    const pc2 = await claimStation(app, "PC-2");
+    await creditHours(app, admin, customer.id);
+
+    const start = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(pc1.token),
+      payload: { customerId: customer.id },
+    });
+    const { session } = start.json() as { session: { id: string } };
+    const recent = new Date(Date.now() - 30_000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(recent, session.id);
+
+    const blocked = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(pc2.token),
+      payload: { customerId: customer.id },
+    });
+    expect(blocked.statusCode).toBe(409);
+
+    const stale = new Date(Date.now() - 2 * 60_000 - 1000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(stale, session.id);
+    const moved = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(pc2.token),
+      payload: { customerId: customer.id },
+    });
+    expect(moved.statusCode).toBe(200);
+    const old = getDb().prepare("SELECT status FROM machine_sessions WHERE id = ?").get(session.id) as {
+      status: string;
+    };
+    expect(old.status).toBe("closed");
+    await app.close();
+  });
+
   it("heartbeat atualiza sessão ativa", async () => {
     const app = await createTestApp();
     const admin = await adminToken(app);
@@ -202,6 +279,47 @@ describe("Sessões de máquina", () => {
       payload: { sessionId: session.id },
     });
     expect(hb.statusCode).toBe(200);
+    await app.close();
+  });
+
+  it("heartbeat de 60s cobra o minuto inteiro e não passa de 90s", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const station = await claimStation(app);
+    await creditHours(app, admin, customer.id);
+
+    const start = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(station.token),
+      payload: { customerId: customer.id },
+    });
+    const { session } = start.json() as { session: { id: string } };
+    const past = new Date(Date.now() - 60_000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(past, session.id);
+
+    const hb = await app.inject({
+      method: "POST",
+      url: "/api/sessions/heartbeat",
+      headers: stationHeaders(station.token),
+      payload: { sessionId: session.id },
+    });
+    expect(hb.statusCode).toBe(200);
+    const minute = hb.json() as { session: { seconds_total: number } };
+    expect(minute.session.seconds_total).toBeGreaterThanOrEqual(59);
+    expect(minute.session.seconds_total).toBeLessThanOrEqual(62);
+
+    const hole = new Date(Date.now() - 10 * 60_000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(hole, session.id);
+    const hb2 = await app.inject({
+      method: "POST",
+      url: "/api/sessions/heartbeat",
+      headers: stationHeaders(station.token),
+      payload: { sessionId: session.id },
+    });
+    const capped = hb2.json() as { session: { seconds_total: number } };
+    expect(capped.session.seconds_total - minute.session.seconds_total).toBe(90);
     await app.close();
   });
 

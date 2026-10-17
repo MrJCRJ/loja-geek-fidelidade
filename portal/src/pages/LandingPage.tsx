@@ -165,8 +165,7 @@ export default function LandingPage() {
           <BrandHeader size="lg" />
           <h1 className="display display--xl">Horas de PC na lan · Paulo Afonso</h1>
           <p className="lead">
-            Compre pelo celular, cadastre o rosto e sente no PC. O GeekLock reconhece você e desconta
-            do saldo.
+            A conta nasce no PC da loja. Aqui você entra para ver as horas.
           </p>
           <div className="row hero-cta">
             {logged ? (
@@ -175,11 +174,8 @@ export default function LandingPage() {
               </Link>
             ) : (
               <>
-                <Link className="btn prox" to="/register">
-                  Criar conta
-                </Link>
-                <Link className="btn ghost prox" to="/login">
-                  Entrar
+                <Link className="btn prox" to="/login">
+                  Ver minhas horas
                 </Link>
               </>
             )}
@@ -302,8 +298,8 @@ export default function LandingPage() {
             Minha conta
           </Link>
         ) : (
-          <Link className="btn prox" to="/register">
-            Criar conta
+          <Link className="btn prox" to="/login">
+            Ver minhas horas
           </Link>
         )}
         <a className="btn accent2 prox" href={WA_LAN} target="_blank" rel="noreferrer">

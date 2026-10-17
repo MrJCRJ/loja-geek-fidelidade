@@ -6,7 +6,7 @@ import { useReveal } from "../hooks/useReveal";
 const FAQ = [
   {
     q: "Como liberar o PC na lan?",
-    a: "Crie a conta no site, compre horas (Pix ou balcão), cadastre o rosto no celular e sente no PC com GeekLock. O reconhecimento libera a máquina.",
+    a: "Crie a conta na tela do GeekLock (nome, usuário e senha). Com webcam, a face entra junto. Compre horas no balcão e entre de novo no PC. Neste site você só vê o saldo.",
   },
   {
     q: "Assinatura dá horas ilimitadas?",
@@ -41,8 +41,8 @@ export default function FaqPage() {
         <Link className="btn ghost" to="/">
           Início
         </Link>
-        <Link className="btn" to="/register">
-          Criar conta
+        <Link className="btn" to="/login">
+          Entrar
         </Link>
         <Link className="btn ghost" to="/login">
           Entrar

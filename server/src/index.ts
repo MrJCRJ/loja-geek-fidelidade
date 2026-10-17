@@ -12,13 +12,23 @@ import { ensurePushTable } from "./push.js";
 import { startGeekLocalMdns } from "./mdns-local.js";
 import { startLocalHttpsFront } from "./local-https.js";
 import { isStaffUiHost, requestHost } from "./request-scope.js";
+import { startConsoleExpiryLoop } from "./consoles.js";
 import { startStorePublicIpProbe } from "./store-network.js";
+import { purgeCustomersWithoutCredential } from "./lock-account.js";
 
 async function main() {
   await initSentry();
   assertProductionSecrets();
   const app = await buildApp({ logger: true });
   ensurePushTable();
+  try {
+    const purged = purgeCustomersWithoutCredential();
+    if (!purged.skipped) {
+      app.log.info({ removed: purged.removed }, "Contas sem senha e sem face apagadas");
+    }
+  } catch (err) {
+    app.log.error({ err }, "Falha ao apagar contas sem credencial; a API segue no ar");
+  }
 
   app.get("/", async (req, reply) => {
     if (isStaffUiHost(requestHost(req))) {
@@ -61,6 +71,7 @@ async function main() {
     app.log.warn({ err }, "mDNS geek.local não subiu (celular pode usar o IP)");
   }
   startStorePublicIpProbe(10 * 60_000);
+  startConsoleExpiryLoop(15_000);
   startTunnelHealthProbe(60_000);
   autoStartTunnelIfEnabled().catch((err) => {
     app.log.warn({ err }, "Falha ao auto-iniciar túnel Cloudflare");

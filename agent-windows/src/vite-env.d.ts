@@ -79,6 +79,9 @@ declare global {
         diskTotalGb?: number | null;
         uptimeSec?: number | null;
         ramUsedPct?: number | null;
+        displayWidth?: number | null;
+        displayHeight?: number | null;
+        displayScalePct?: number | null;
       }>;
       collectLoadSample?: (opts?: { primaryGpuVendor?: string }) => Promise<{
         appProcess?: string | null;

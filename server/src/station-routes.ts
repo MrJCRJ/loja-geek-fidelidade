@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import fs from "node:fs";
 import { z } from "zod";
-import { getTimeBalance, sellTime } from "./billing.js";
+import { getTimeBalance, sellTime, consumeTime } from "./billing.js";
 import { config } from "./config.js";
 import { createCustomer, getCustomer, listCustomers, updateCustomer } from "./customers.js";
 import { adminGuard, ownerGuard, ownerWriteGuard, staffWriteGuard, stationFromHeader, actorLabel } from "./http-guards.js";
@@ -33,7 +33,8 @@ import {
   sessionSafetySettingsPayload,
   startStaffUnlockWindow,
 } from "./session-safety.js";
-import { startSession } from "./sessions.js";
+import { endSession, getActiveSessionForStation, startSession } from "./sessions.js";
+import { approveOpenRequest, listPendingOpenRequests, rejectOpenRequest } from "./open-hour.js";
 import { logEvent } from "./telemetry.js";
 import { isLanPairAllowed } from "./store-network.js";
 import {
@@ -103,6 +104,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
       stations: listStations(),
       connected: listConnectedStations(),
       live: getAllStationStatuses(),
+      openRequests: listPendingOpenRequests(),
     };
   });
 
@@ -139,6 +141,9 @@ export async function registerStationRoutes(app: FastifyInstance) {
             diskTotalGb: z.number().min(0).max(102400).optional().nullable(),
             uptimeSec: z.number().int().min(0).max(20 * 365 * 24 * 3600).optional().nullable(),
             ramUsedPct: z.number().min(0).max(100).optional().nullable(),
+            displayWidth: z.number().int().min(320).max(15360).optional().nullable(),
+            displayHeight: z.number().int().min(240).max(8640).optional().nullable(),
+            displayScalePct: z.number().min(50).max(400).optional().nullable(),
           })
           .optional()
           .nullable(),
@@ -449,6 +454,68 @@ export async function registerStationRoutes(app: FastifyInstance) {
     };
   });
 
+  /** Balcão: tira hora marcada a mais. Não devolve para a conta. */
+  app.post("/api/stations/:id/reduce-time", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const station = listStations().find((s) => s.id === id);
+    if (!station) return reply.code(404).send({ error: "Estação não encontrada" });
+    const body = z.object({ seconds: z.number().int().positive() }).parse(req.body || {});
+    const cut = Math.trunc(body.seconds);
+    if (cut < 60) return reply.code(400).send({ error: "Reduza pelo menos 1 minuto" });
+    const session = getActiveSessionForStation(id);
+    if (!session) return reply.code(400).send({ error: "Não há hora contando neste PC" });
+    const result = consumeTime(session.customer_id, cut, {
+      stationId: id,
+      note: "reduzir tempo no PC",
+    });
+    if (result.depleted || result.balance <= 0) {
+      endSession(session.id, "reduce_zero");
+      clearStaffUnlockWindow(id);
+      sendCommandToStation(id, "lock_screen", { text: "", title: "", level: "info", durationSec: 12 });
+    }
+    logEvent({
+      level: "info",
+      source: "admin",
+      kind: "desk.reduce_time",
+      message: `${actorLabel(req)} tirou ${result.consumed}s de ${station.name}`,
+      stationId: id,
+      meta: { actor: actorLabel(req), consumed: result.consumed, balance: result.balance },
+    });
+    return {
+      ok: true,
+      removedSeconds: result.consumed,
+      timeBalanceSeconds: result.balance,
+      closed: result.balance <= 0,
+    };
+  });
+
+  app.post("/api/stations/:id/open-request/approve", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const station = listStations().find((s) => s.id === id);
+    if (!station) return reply.code(404).send({ error: "Estação não encontrada" });
+    try {
+      return approveOpenRequest(station.id, station.name);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Erro";
+      const code = /outro PC/i.test(message) ? 409 : 400;
+      return reply.code(code).send({ error: message });
+    }
+  });
+
+  app.post("/api/stations/:id/open-request/reject", async (req, reply) => {
+    if (!(await staffWriteGuard(req, reply))) return;
+    const { id } = req.params as { id: string };
+    const station = listStations().find((s) => s.id === id);
+    if (!station) return reply.code(404).send({ error: "Estação não encontrada" });
+    try {
+      return rejectOpenRequest(station.id, station.name);
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+    }
+  });
+
   /** Balcão: VIP + (saldo / venda R$/horas / aberto) → libera a estação. */
   app.post("/api/stations/:id/desk-liberar", async (req, reply) => {
     if (!(await staffWriteGuard(req, reply))) return;
@@ -462,6 +529,7 @@ export async function registerStationRoutes(app: FastifyInstance) {
         customerName: z.string().min(2).max(80).optional(),
         amountReais: z.number().positive().optional(),
         hours: z.number().positive().optional(),
+        paymentMethod: z.enum(["pix", "card", "cash"]).optional(),
       })
       .parse(req.body || {});
 
@@ -553,10 +621,14 @@ export async function registerStationRoutes(app: FastifyInstance) {
       if (body.amountReais == null && body.hours == null) {
         return reply.code(400).send({ error: "Informe valor em R$ ou horas para creditar" });
       }
+      if (!body.paymentMethod) {
+        return reply.code(400).send({ error: "Escolha Pix, cartão ou dinheiro" });
+      }
       const sale = sellTime({
         customerId: customer.id,
         amountReais: body.amountReais,
         hours: body.hours,
+        paymentMethod: body.paymentMethod,
       });
       const session = startSession(customer.id, id);
       const balance = getTimeBalance(customer.id);

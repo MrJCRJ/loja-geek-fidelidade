@@ -36,11 +36,15 @@ export async function apiFetch<T>(
     error?: string;
     code?: string;
     timeBalanceSeconds?: number;
+    customerName?: string;
+    customer?: { id?: string; name?: string };
   };
   if (!res.ok) {
     throw new ApiError(data.error || `HTTP ${res.status}`, {
       code: data.code,
       timeBalanceSeconds: data.timeBalanceSeconds,
+      customerName: data.customerName || data.customer?.name,
+      customerId: data.customer?.id,
     });
   }
   return data as T;
@@ -76,6 +80,9 @@ export async function heartbeat(config: GeekLockConfig, lockVersion?: string) {
         diskTotalGb?: number | null;
         uptimeSec?: number | null;
         ramUsedPct?: number | null;
+        displayWidth?: number | null;
+        displayHeight?: number | null;
+        displayScalePct?: number | null;
       }
     | undefined;
   try {
@@ -216,6 +223,11 @@ export async function sessionHeartbeat(
     lowBalanceWarn?: boolean;
     lowBalanceWarnSeconds?: number;
     timeBalanceSeconds?: number;
+    openMode?: boolean;
+    switchedToOpen?: boolean;
+    openSeconds?: number;
+    openAmountReais?: number;
+    hourPriceReais?: number;
   }>(config, "/api/sessions/heartbeat", {
     method: "POST",
     body: JSON.stringify({
@@ -241,6 +253,42 @@ export async function reportStaffUnlock(config: GeekLockConfig, reason = "pin") 
   } catch {
     /* auditoria best-effort */
   }
+}
+
+export type LockAuthResult = {
+  ok: boolean;
+  customer?: Customer;
+  session?: Session;
+  timeBalanceSeconds?: number;
+  code?: string;
+};
+
+export async function lockRequestOpen(config: GeekLockConfig, username: string, password: string) {
+  return apiFetch<{ ok: boolean; pending: boolean; customerName: string; timeBalanceSeconds: number }>(
+    config,
+    "/api/lock/open-request",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    },
+  );
+}
+
+export async function lockLogin(config: GeekLockConfig, username: string, password: string) {
+  return apiFetch<LockAuthResult>(config, "/api/lock/login", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function lockRegister(
+  config: GeekLockConfig,
+  input: { name: string; username: string; password: string; imageBase64?: string },
+) {
+  return apiFetch<LockAuthResult>(config, "/api/lock/register", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
 }
 
 export function captureFrame(video: HTMLVideoElement, quality = 0.85): string {

@@ -14,6 +14,7 @@ type Metrics = {
     recognitionMatches: number;
     recognitionOther: number;
     salesReais: number;
+    payments?: { pix: number; card: number; cash: number };
     portalPaidReais: number;
     portalOrdersPaid: number;
     totalRevenueReais?: number;
@@ -53,17 +54,54 @@ type Metrics = {
     seconds_total: number;
     sessions: number;
   }>;
+  topConsolesToday: Array<{
+    console_id: string;
+    console_name: string;
+    seconds_total: number;
+    sessions: number;
+  }>;
+  consoles: Array<{
+    id: string;
+    name: string;
+    status: "free" | "active" | "expired" | "open";
+    customerName: string | null;
+    endsAt: string | null;
+    remainingSeconds: number;
+    mode: string | null;
+  }>;
+  paymentsToday?: { pix: number; card: number; cash: number };
+  openDuePending?: Array<{
+    id: string;
+    customerName: string;
+    amountReais: number;
+    openSeconds: number;
+    createdAt: string;
+  }>;
+  caixaToday?: Array<{
+    id: string;
+    customerName: string;
+    kind: string;
+    amountReais: number;
+    seconds: number;
+    paymentMethod: string | null;
+    paidAt: string | null;
+    createdAt: string;
+  }>;
   activeNow: Array<{
     id: string;
     customer_name: string;
-    station_name: string;
+    place_name: string;
+    kind: "pc" | "console";
     seconds_total: number;
+    remaining_seconds: number | null;
+    status: string;
     started_at: string;
   }>;
 };
 
 type Props = {
   onError: (msg: string) => void;
+  team?: boolean;
 };
 
 function money(n: number) {
@@ -75,7 +113,23 @@ function dayLabel(isoDay: string) {
   return d || isoDay;
 }
 
-export function DashboardTab({ onError }: Props) {
+function payLabel(method: string | null) {
+  if (method === "pix") return "Pix";
+  if (method === "card") return "Cartão";
+  if (method === "cash") return "Dinheiro";
+  return "—";
+}
+
+function clock(total: number) {
+  const s = Math.max(0, Math.floor(total));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
+  return `${m}:${String(sec).padStart(2, "0")}`;
+}
+
+export function DashboardTab({ onError, team }: Props) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [usage, setUsage] = useState<{
     kwh: number;
@@ -83,12 +137,16 @@ export function DashboardTab({ onError }: Props) {
     topApps: Array<{ process: string; minutes: number }>;
   } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     setBusy(true);
     try {
       const m = await api<Metrics>("/api/admin/metrics");
       setMetrics(m);
+      if (team) {
+        setUsage(null);
+      } else {
       try {
         const u = await api<{
           kwh: number;
@@ -99,17 +157,22 @@ export function DashboardTab({ onError }: Props) {
       } catch {
         setUsage(null);
       }
+      }
     } catch (e) {
       onError(e instanceof Error ? e.message : "Falha ao carregar métricas");
     } finally {
       setBusy(false);
     }
-  }, [onError]);
+  }, [onError, team]);
 
   useEffect(() => {
     void load();
     const t = setInterval(() => void load(), 30_000);
-    return () => clearInterval(t);
+    const tick = setInterval(() => setNow(Date.now()), 1000);
+    return () => {
+      clearInterval(t);
+      clearInterval(tick);
+    };
   }, [load]);
 
   const maxWeekSessions = useMemo(() => {
@@ -137,6 +200,33 @@ export function DashboardTab({ onError }: Props) {
         <p className="muted">Carregando…</p>
       ) : (
         <>
+          <div className="console-strip">
+            {(metrics.consoles || []).map((c) => {
+              const left =
+                c.endsAt && c.status === "active"
+                  ? Math.max(0, Math.floor((Date.parse(c.endsAt) - now) / 1000))
+                  : c.remainingSeconds;
+              const expired = c.status === "expired" || (c.status === "active" && c.mode !== "open" && left <= 0);
+              const label = !c.customerName
+                ? "Livre"
+                : c.status === "open"
+                  ? "Aberto"
+                  : expired
+                    ? "Tempo acabou"
+                    : clock(left);
+              return (
+                <article
+                  key={c.id}
+                  className={`console-card${c.customerName ? " is-busy" : ""}${expired ? " is-expired" : ""}`}
+                >
+                  <strong>{c.name}</strong>
+                  <p className="console-clock" style={{ fontSize: "1.35rem" }}>{label}</p>
+                  <p className="muted" style={{ margin: 0 }}>{c.customerName || "Ninguém"}</p>
+                </article>
+              );
+            })}
+          </div>
+
           <div className="metrics-grid">
             <article className="metric-card">
               <p className="metric-label">Sessões hoje</p>
@@ -153,16 +243,21 @@ export function DashboardTab({ onError }: Props) {
               <p className="metric-value">{money(metrics.today.salesReais)}</p>
               <p className="muted">Semana: {money(metrics.week.salesReais)}</p>
             </article>
+            {!team && (
             <article className="metric-card">
               <p className="metric-label">Portal (pago) hoje</p>
               <p className="metric-value">{money(metrics.today.portalPaidReais)}</p>
               <p className="muted">{metrics.today.portalOrdersPaid} pedidos</p>
             </article>
+            )}
+            {!team && (
             <article className="metric-card">
               <p className="metric-label">Energia 24h (est.)</p>
               <p className="metric-value">{usage ? `${usage.kwh.toFixed(2)} kWh` : "—"}</p>
               <p className="muted">{usage ? money(usage.costReais) : "Aba Uso"}</p>
             </article>
+            )}
+            {!team && (
             <article className="metric-card">
               <p className="metric-label">Top app 24h</p>
               <p className="metric-value" style={{ fontSize: "1.1rem" }}>
@@ -172,6 +267,9 @@ export function DashboardTab({ onError }: Props) {
                 {usage?.topApps?.[0] ? `${usage.topApps[0].minutes} min` : "Sem amostras"}
               </p>
             </article>
+            )}
+            {!team && (
+            <>
             <article className="metric-card">
               <p className="metric-label">Faturamento hoje</p>
               <p className="metric-value">
@@ -219,7 +317,72 @@ export function DashboardTab({ onError }: Props) {
               <p className="metric-value">{metrics.inventory.timeBalanceHours.toFixed(1)}h</p>
               <p className="muted">crédito total nos VIPs</p>
             </article>
+            </>
+            )}
           </div>
+
+          <section className="panel" style={{ marginTop: "1rem" }}>
+            <h3 style={{ marginTop: 0 }}>Caixa hoje</h3>
+            <div className="metrics-grid">
+              <article className="metric-card">
+                <p className="metric-label">Pix</p>
+                <p className="metric-value">{money(metrics.today.payments?.pix || metrics.paymentsToday?.pix || 0)}</p>
+              </article>
+              <article className="metric-card">
+                <p className="metric-label">Cartão</p>
+                <p className="metric-value">{money(metrics.today.payments?.card || metrics.paymentsToday?.card || 0)}</p>
+              </article>
+              <article className="metric-card">
+                <p className="metric-label">Dinheiro</p>
+                <p className="metric-value">{money(metrics.today.payments?.cash || metrics.paymentsToday?.cash || 0)}</p>
+              </article>
+            </div>
+            <h4>A receber — hora em aberto</h4>
+            {(metrics.openDuePending || []).length === 0 ? (
+              <p className="muted">Nada pendente.</p>
+            ) : (
+              <ul>
+                {(metrics.openDuePending || []).map((due) => (
+                  <li key={due.id}>
+                    {due.customerName} · {formatDuration(due.openSeconds)} · {money(due.amountReais)} · falta confirmar
+                  </li>
+                ))}
+              </ul>
+            )}
+            <h4>Lançamentos</h4>
+            {(metrics.caixaToday || []).length === 0 ? (
+              <p className="muted">Sem venda nem hora em aberto hoje.</p>
+            ) : (
+              <div className="table-scroll">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th>Hora</th>
+                      <th>Cliente</th>
+                      <th>Tipo</th>
+                      <th>Tempo</th>
+                      <th>Forma</th>
+                      <th>Valor</th>
+                      <th>Situação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(metrics.caixaToday || []).map((row) => (
+                      <tr key={row.id}>
+                        <td>{new Date(row.createdAt).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td>{row.customerName}</td>
+                        <td>{row.kind === "aberto" ? "Hora em aberto" : "Venda"}</td>
+                        <td>{formatDuration(row.seconds)}</td>
+                        <td>{payLabel(row.paymentMethod)}</td>
+                        <td>{money(row.amountReais)}</td>
+                        <td>{row.kind === "aberto" ? (row.paidAt ? "Pago" : "A receber") : "Pago"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
 
           <section className="panel" style={{ marginTop: "1rem" }}>
             <h3 style={{ marginTop: 0 }}>Sessões — últimos 7 dias</h3>
@@ -243,27 +406,41 @@ export function DashboardTab({ onError }: Props) {
               <h3 style={{ marginTop: 0 }}>Ativas agora</h3>
               {metrics.activeNow.length === 0 ? (
                 <div className="empty-state">
-                  <strong>Nenhuma sessão ativa</strong>
-                  <p>Quando o GeekLock liberar um PC, aparece aqui.</p>
+                  <strong>Ninguém jogando</strong>
+                  <p>Quando um PC ou console estiver em uso, aparece aqui.</p>
                 </div>
               ) : (
                 <div className="table-scroll">
                   <table className="table">
                     <thead>
                       <tr>
-                        <th>VIP</th>
-                        <th>PC</th>
+                        <th>Cliente</th>
+                        <th>Onde</th>
                         <th>Tempo</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {metrics.activeNow.map((s) => (
-                        <tr key={s.id}>
-                          <td>{s.customer_name}</td>
-                          <td>{s.station_name}</td>
-                          <td>{formatDuration(s.seconds_total)}</td>
-                        </tr>
-                      ))}
+                      {metrics.activeNow.map((s) => {
+                        const left =
+                          s.kind === "console" && s.status === "active" && s.remaining_seconds != null
+                            ? s.remaining_seconds
+                            : null;
+                        const timeLabel =
+                          s.kind === "console" && s.status === "expired"
+                            ? "Acabou"
+                            : s.kind === "console" && left == null
+                              ? "Aberto"
+                              : s.kind === "console"
+                                ? clock(left || 0)
+                                : formatDuration(s.seconds_total);
+                        return (
+                          <tr key={s.id}>
+                            <td>{s.customer_name}</td>
+                            <td>{s.place_name}</td>
+                            <td>{timeLabel}</td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -302,8 +479,9 @@ export function DashboardTab({ onError }: Props) {
             </section>
           </div>
 
-          <section className="panel" style={{ marginTop: "1rem" }}>
-            <h3 style={{ marginTop: 0 }}>Top PCs hoje</h3>
+          <div className="grid-2" style={{ marginTop: "1rem" }}>
+            <section className="panel">
+              <h3 style={{ marginTop: 0 }}>Top PCs hoje</h3>
             {metrics.topStationsToday.length === 0 ? (
               <p className="muted">Sem uso ainda hoje.</p>
             ) : (
@@ -328,7 +506,35 @@ export function DashboardTab({ onError }: Props) {
                 </table>
               </div>
             )}
-          </section>
+            </section>
+            <section className="panel">
+              <h3 style={{ marginTop: 0 }}>Top consoles hoje</h3>
+              {(metrics.topConsolesToday || []).length === 0 ? (
+                <p className="muted">Sem uso ainda hoje.</p>
+              ) : (
+                <div className="table-scroll">
+                  <table className="table">
+                    <thead>
+                      <tr>
+                        <th>Console</th>
+                        <th>Horas</th>
+                        <th>Sessões</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {metrics.topConsolesToday.map((r) => (
+                        <tr key={r.console_id}>
+                          <td>{r.console_name}</td>
+                          <td>{formatHours(r.seconds_total)}</td>
+                          <td>{r.sessions}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
         </>
       )}
     </div>

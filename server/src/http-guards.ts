@@ -1,6 +1,5 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 import { isStaffUiHost, requestHost } from "./request-scope.js";
-import { isOnStoreNetwork } from "./store-network.js";
 import { getStationByToken } from "./stations.js";
 
 export type StaffRole = "admin" | "clerk";
@@ -55,20 +54,19 @@ export async function ownerGuard(req: FastifyRequest, reply: FastifyReply) {
   return true;
 }
 
-/** Dono: qualquer host do painel. Funcionário: só na rede da Central. */
+/** Dono e equipe: painel da loja ou admin, em qualquer Wi-Fi. */
 export function staffCanWrite(req: FastifyRequest): boolean {
   const role = getAuthRole(req);
-  if (role === "admin") return isStaffUiHost(requestHost(req));
-  if (role === "clerk") return isOnStoreNetwork(req);
-  return false;
+  if (role !== "admin" && role !== "clerk") return false;
+  return isStaffUiHost(requestHost(req));
 }
 
 export async function requireLanWrite(req: FastifyRequest, reply: FastifyReply) {
   if (staffCanWrite(req)) return true;
   if (getAuthRole(req) === "clerk") {
     reply.code(403).send({
-      error: "Você está fora do Wi‑Fi da loja. Controle das máquinas só na rede da loja.",
-      code: "off_store_wifi",
+      error: "Abra o GeekCentral pelo link da loja.",
+      code: "remote_readonly",
     });
     return false;
   }
@@ -79,7 +77,7 @@ export async function requireLanWrite(req: FastifyRequest, reply: FastifyReply) 
   return false;
 }
 
-/** Funcionário ou dono, só na LAN — vendas, destrava, cadastro. */
+/** Funcionário ou dono no painel — vendas, destrava, cadastro. */
 export async function staffWriteGuard(req: FastifyRequest, reply: FastifyReply) {
   if (!(await adminGuard(req, reply))) return false;
   return requireLanWrite(req, reply);

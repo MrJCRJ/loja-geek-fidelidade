@@ -30,6 +30,21 @@ describe("Modo balcão (clerk) + auditoria", () => {
     });
     expect(okGet.statusCode).toBe(200);
 
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/api/admin/metrics",
+      headers: authHeaders(body.token),
+    });
+    expect(metrics.statusCode).toBe(200);
+
+    const vip = await app.inject({
+      method: "POST",
+      url: "/api/customers",
+      headers: authHeaders(body.token),
+      payload: { name: "VIP Equipe", consent: true, level: "bronze" },
+    });
+    expect(vip.statusCode).toBe(403);
+
     delete process.env.CLERK_PASSWORD;
     await app.close();
   });
@@ -49,7 +64,7 @@ describe("Modo balcão (clerk) + auditoria", () => {
       method: "POST",
       url: `/api/customers/${id}/time/sale`,
       headers: authHeaders(token),
-      payload: { amountReais: 10 },
+      payload: { amountReais: 10, paymentMethod: "cash" },
     });
     expect(sale.statusCode).toBe(200);
 

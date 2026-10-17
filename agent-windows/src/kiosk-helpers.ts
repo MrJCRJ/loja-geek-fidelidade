@@ -201,13 +201,16 @@ export const DEFAULT_PORTAL_URL = "https://loja-geek-portal.vercel.app";
 
 export function portalRegisterUrl(portalBase: string) {
   const base = (portalBase || DEFAULT_PORTAL_URL).replace(/\/$/, "");
-  return `${base}/register`;
+  return `${base}/login`;
 }
 
 export function sessionStartErrorMessage(err: unknown): { reason: string; status: string } {
   if (err instanceof ApiError) {
     if (err.code === "no_consent") {
-      return { reason: "no_consent", status: "Sem consentimento LGPD — cadastre de novo no portal" };
+      return { reason: "no_consent", status: "Sem consentimento LGPD — cadastre de novo neste PC" };
+    }
+    if (err.code === "already_in_use" || /outro PC/i.test(err.message)) {
+      return { reason: "already_in_use", status: err.message || "Esta conta já está em outro PC" };
     }
     if (err.code === "no_credit" || /cr[eé]dito|caixa/i.test(err.message)) {
       return { reason: "no_credit", status: err.message || "Sem crédito — passe no caixa" };

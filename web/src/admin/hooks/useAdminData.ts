@@ -8,7 +8,7 @@ import {
   type SessionStats,
   type Station,
 } from "../../api";
-import type { AdminSettings, LiveStationStatus, TimeLedgerRow, PointsLedgerRow } from "../types";
+import type { AdminSettings, LiveStationStatus, OpenHourRequest, TimeLedgerRow, PointsLedgerRow } from "../types";
 import { defaultAdminSettings, normalizeAdminSettings } from "../normalizeSettings";
 
 const defaultSettings: AdminSettings = defaultAdminSettings;
@@ -18,6 +18,7 @@ export function useAdminData(token: string | null) {
   const [stations, setStations] = useState<Station[]>([]);
   const [connected, setConnected] = useState<Array<{ stationId: string; stationName: string }>>([]);
   const [liveStatus, setLiveStatus] = useState<Record<string, LiveStationStatus>>({});
+  const [openRequests, setOpenRequests] = useState<OpenHourRequest[]>([]);
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [events, setEvents] = useState<RecognitionEvent[]>([]);
   const [sessions, setSessions] = useState<MachineSession[]>([]);
@@ -40,6 +41,7 @@ export function useAdminData(token: string | null) {
           stations: Station[];
           connected: Array<{ stationId: string; stationName: string }>;
           live?: Record<string, LiveStationStatus>;
+          openRequests?: OpenHourRequest[];
         }>("/api/stations"),
         api<Reward[]>("/api/rewards"),
         api<RecognitionEvent[]>("/api/events/recognition"),
@@ -51,6 +53,7 @@ export function useAdminData(token: string | null) {
       setStations(s.stations);
       setConnected(s.connected);
       if (s.live) setLiveStatus(s.live);
+      setOpenRequests(s.openRequests || []);
       setRewards(r);
       setEvents(ev);
       setSettings(normalizeAdminSettings(st));
@@ -89,6 +92,8 @@ export function useAdminData(token: string | null) {
     connected,
     liveStatus,
     setLiveStatus,
+    openRequests,
+    setOpenRequests,
     rewards,
     events,
     sessions,

@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>geeks — Fundo da loja (protótipo)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=Instrument+Serif:ital@0;1&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --void: #04070f;
+        --ink: #e6ebf4;
+        --mute: #8b97ad;
+        --amber: #f0a12b;
+        --font: "DM Sans", system-ui, sans-serif;
+        --display: "Instrument Serif", Georgia, serif;
+        --ease: cubic-bezier(0.22, 1, 0.36, 1);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        font-family: var(--font);
+        color: var(--ink);
+        background: var(--void);
+        color-scheme: dark;
+      }
+
+      /* ——— Camada de fundo (apresentação) ——— */
+      .bg-stage {
+        position: fixed;
+        inset: 0;
+        z-index: 0;
+        overflow: hidden;
+        background: #050910;
+      }
+
+      .bg-frame {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        transition: opacity 0.55s var(--ease);
+        will-change: opacity, transform;
+      }
+
+      .bg-frame.is-on {
+        opacity: 1;
+        z-index: 1;
+      }
+
+      .bg-frame.is-approach.is-on img {
+        animation: approach-push 0.55s linear forwards;
+      }
+
+      .bg-frame.is-gallery.is-on img {
+        animation: ken 9s linear forwards;
+      }
+
+      .bg-frame img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transform: scale(1.05);
+        filter: saturate(1.06) contrast(1.05);
+      }
+
+      @keyframes approach-push {
+        from {
+          transform: scale(1.02) translate3d(0, 0, 0);
+        }
+        to {
+          transform: scale(1.08) translate3d(-0.6%, 0.3%, 0);
+        }
+      }
+
+      @keyframes ken {
+        from {
+          transform: scale(1.06) translate3d(0, 0, 0);
+        }
+        to {
+          transform: scale(1.16) translate3d(-1.5%, -1%, 0);
+        }
+      }
+
+      .bg-shade {
+        position: absolute;
+        inset: 0;
+        z-index: 3;
+        pointer-events: none;
+        background:
+          linear-gradient(180deg, rgba(4, 7, 15, 0.55) 0%, rgba(4, 7, 15, 0.25) 40%, rgba(4, 7, 15, 0.82) 100%),
+          radial-gradient(ellipse 70% 45% at 50% 100%, rgba(240, 161, 43, 0.14), transparent 55%);
+      }
+
+      .bg-grain {
+        position: absolute;
+        inset: -20%;
+        z-index: 4;
+        pointer-events: none;
+        opacity: 0.08;
+        mix-blend-mode: overlay;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        background-size: 160px;
+        animation: grain 8s steps(6) infinite;
+      }
+
+      @keyframes grain {
+        0% {
+          transform: translate(0, 0);
+        }
+        50% {
+          transform: translate(-1.5%, 1%);
+        }
+        100% {
+          transform: translate(0, 0);
+        }
+      }
+
+      .bg-hud {
+        position: absolute;
+        z-index: 5;
+        left: 1rem;
+        bottom: 1rem;
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+        font-size: 0.72rem;
+        color: rgba(230, 235, 244, 0.55);
+        pointer-events: none;
+      }
+
+      .bg-hud b {
+        color: var(--amber);
+        font-weight: 600;
+      }
+
+      /* ——— Conteúdo por cima ——— */
+      .ui {
+        position: relative;
+        z-index: 10;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .nav {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.25rem;
+        padding-top: max(1rem, env(safe-area-inset-top));
+      }
+
+      .nav-brand {
+        display: flex;
+        align-items: center;
+        gap: 0.65rem;
+        color: #fff;
+        text-decoration: none;
+        font-family: var(--display);
+        font-style: italic;
+        font-size: 1.2rem;
+      }
+
+      .nav-brand img {
+        height: 34px;
+      }
+
+      .nav-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .nav-links a {
+        color: rgba(230, 235, 244, 0.85);
+        text-decoration: none;
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 0.45rem 0.7rem;
+        border-radius: 8px;
+      }
+
+      .nav-links a:hover {
+        color: #fff;
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      .hero {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-end;
+        padding: 1.5rem 1.25rem 2.5rem;
+        padding-bottom: max(2.5rem, calc(env(safe-area-inset-bottom) + 2rem));
+        max-width: 640px;
+      }
+
+      .hero h1 {
+        margin: 0;
+        font-family: var(--display);
+        font-weight: 400;
+        font-size: clamp(2.6rem, 8vw, 4.2rem);
+        line-height: 0.98;
+        letter-spacing: -0.02em;
+        color: #fff;
+        text-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+      }
+
+      .hero h1 em {
+        font-style: italic;
+        color: color-mix(in srgb, var(--amber) 92%, #fff);
+      }
+
+      .hero p {
+        margin: 1rem 0 0;
+        max-width: 32rem;
+        color: color-mix(in srgb, var(--mute) 55%, #fff);
+        font-size: 1.05rem;
+        line-height: 1.5;
+        text-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
+      }
+
+      .cta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.65rem;
+        margin-top: 1.4rem;
+      }
+
+      .btn {
+        appearance: none;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        padding: 0.8rem 1.25rem;
+        font: inherit;
+        font-weight: 600;
+        font-size: 0.95rem;
+        cursor: pointer;
+        text-decoration: none;
+        background: var(--amber);
+        color: #1a1004;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      }
+
+      .btn:hover {
+        background: #ffb94a;
+      }
+
+      .btn.ghost {
+        background: rgba(4, 7, 15, 0.45);
+        color: #fff;
+        border-color: rgba(255, 255, 255, 0.22);
+        backdrop-filter: blur(10px);
+      }
+
+      .note {
+        margin-top: 1.25rem;
+        font-size: 0.8rem;
+        color: rgba(230, 235, 244, 0.55);
+        max-width: 28rem;
+      }
+
+      .note code {
+        color: #c9d4ea;
+        font-size: 0.85em;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bg-frame img,
+        .bg-grain {
+          animation: none !important;
+        }
+        .bg-frame {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg-stage" id="bgStage" aria-hidden="true">
+      <div class="bg-shade"></div>
+      <div class="bg-grain"></div>
+      <div class="bg-hud"><b id="phaseLabel">aproximação</b> · fotos do Maps · você adiciona o resto</div>
+    </div>
+
+    <div class="ui">
+      <header class="nav">
+        <a class="nav-brand" href="./overview.html">
+          <img src="../public/brand/logo.png" alt="" />
+          geeks
+        </a>
+        <nav class="nav-links">
+          <a href="./overview.html">Design System</a>
+          <a href="./apresentacao.html">Slides</a>
+          <a href="https://loja-geek-portal.vercel.app/login">Entrar</a>
+        </nav>
+      </header>
+
+      <main class="hero">
+        <h1>Horas de PC <em>pelo celular</em></h1>
+        <p>
+          A apresentação da loja roda atrás — chegada pelo Street View e depois as fotos. O site
+          (saldo, Pix, GeekLock) fica por cima, legível.
+        </p>
+        <div class="cta">
+          <a class="btn" href="https://loja-geek-portal.vercel.app/register">Criar conta</a>
+          <a class="btn ghost" href="https://loja-geek-portal.vercel.app/como-funciona">Como funciona</a>
+        </div>
+        <p class="note">
+          Coloque fotos novas em
+          <code>design-system/assets/loja/extras/</code>
+          e liste no
+          <code>manifest.json</code>
+          → campo
+          <code>extras</code>.
+        </p>
+      </main>
+    </div>
+
+    <script>
+      (function () {
+        const stage = document.getElementById("bgStage");
+        const phaseLabel = document.getElementById("phaseLabel");
+        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const base = "./assets/loja/";
+
+        let approach = [];
+        let gallery = [];
+        let a = 0;
+        let g = 0;
+        let mode = "approach"; // approach | gallery
+        let timer = 0;
+        const frames = [];
+
+        function ensureFrame(i) {
+          while (frames.length <= i) {
+            const el = document.createElement("div");
+            el.className = "bg-frame";
+            const img = document.createElement("img");
+            img.alt = "";
+            img.decoding = "async";
+            el.appendChild(img);
+            stage.insertBefore(el, stage.firstChild);
+            frames.push(el);
+          }
+          return frames[i];
+        }
+
+        function show(src, kind) {
+          const el = ensureFrame(0);
+          const other = ensureFrame(1);
+          // ping-pong two layers
+          const on = frames.find((f) => f.classList.contains("is-on"));
+          const next = on === frames[0] ? frames[1] : frames[0];
+          const img = next.querySelector("img");
+          next.classList.remove("is-approach", "is-gallery", "is-on");
+          void next.offsetWidth;
+          img.src = base + src;
+          next.classList.add(kind === "approach" ? "is-approach" : "is-gallery");
+          requestAnimationFrame(() => {
+            if (on) on.classList.remove("is-on");
+            next.classList.add("is-on");
+          });
+        }
+
+        function tick() {
+          window.clearTimeout(timer);
+          if (reduce) {
+            if (gallery[0]) show(gallery[0], "gallery");
+            phaseLabel.textContent = "foto";
+            return;
+          }
+
+          if (mode === "approach" && approach.length) {
+            phaseLabel.textContent = "chegando na loja";
+            show(approach[a], "approach");
+            a += 1;
+            if (a >= approach.length) {
+              mode = "gallery";
+              g = 0;
+              timer = window.setTimeout(tick, 420);
+              return;
+            }
+            timer = window.setTimeout(tick, 380);
+            return;
+          }
+
+          phaseLabel.textContent = "loja · fotos";
+          if (!gallery.length) return;
+          show(gallery[g % gallery.length], "gallery");
+          g += 1;
+          // a cada ciclo completo da galeria, repete a aproximação
+          if (g % gallery.length === 0 && approach.length) {
+            timer = window.setTimeout(() => {
+              mode = "approach";
+              a = 0;
+              tick();
+            }, 7000);
+            return;
+          }
+          timer = window.setTimeout(tick, 7000);
+        }
+
+        fetch(base + "manifest.json", { cache: "no-store" })
+          .then((r) => r.json())
+          .then((m) => {
+            approach = m.approach || [];
+            gallery = [].concat(m.gallery || [], m.extras || []);
+            // preload a few
+            [...approach.slice(0, 4), ...gallery.slice(0, 3)].forEach((src) => {
+              const im = new Image();
+              im.src = base + src;
+            });
+            tick();
+          })
+          .catch(() => {
+            phaseLabel.textContent = "erro no manifest";
+          });
+      })();
+    </script>
+  </body>
+</html>

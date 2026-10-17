@@ -3,8 +3,9 @@ import type { Tab } from "../types";
 const ALL_TABS: Array<[Tab, string, string]> = [
   ["dashboard", "Dashboard", "Dash"],
   ["feed", "Feed VIP", "Feed"],
-  ["clientes", "Clientes", "VIPs"],
+  ["clientes", "Clientes", "Clientes"],
   ["caixa", "Caixa", "Caixa"],
+  ["consoles", "Consoles", "Consoles"],
   ["estacoes", "Estações", "PCs"],
   ["uso", "Uso", "Uso"],
   ["sessoes", "Sessões / Horas", "Horas"],
@@ -15,6 +16,8 @@ const ALL_TABS: Array<[Tab, string, string]> = [
   ["config", "Config", "Config"],
 ];
 
+export const CLERK_TABS: Tab[] = ["dashboard", "clientes", "caixa", "consoles", "estacoes"];
+
 type Props = {
   tab: Tab;
   onChange: (tab: Tab) => void;
@@ -22,9 +25,7 @@ type Props = {
 };
 
 export function AdminTabs({ tab, onChange, clerk }: Props) {
-  const TABS = clerk
-    ? ALL_TABS.filter(([id]) => id === "estacoes" || id === "caixa" || id === "clientes")
-    : ALL_TABS;
+  const TABS = clerk ? ALL_TABS.filter(([id]) => CLERK_TABS.includes(id)) : ALL_TABS;
   return (
     <div className="tabs" role="tablist" aria-label="GeekCentral">
       {TABS.map(([id, label, short]) => {

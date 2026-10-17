@@ -107,14 +107,9 @@ export function usePresenceLoop({
       absentSinceRef.current = null;
     };
 
-    const syncAbsentMark = (grace: boolean) => {
-      if (grace || vipPresent) {
-        absentSinceRef.current = null;
-        return;
-      }
-      if (absentSinceRef.current == null) {
-        absentSinceRef.current = Date.now();
-      }
+    const syncAbsentMark = () => {
+      // Não trava nem avisa ausência: o cliente joga olhando para o monitor, não para a webcam.
+      absentSinceRef.current = null;
     };
 
     const tick = async () => {
@@ -192,7 +187,7 @@ export function usePresenceLoop({
         }
       }
 
-      syncAbsentMark(grace);
+      syncAbsentMark();
 
       if (!cancelled) {
         presenceTimerRef.current = window.setTimeout(() => {

@@ -2,7 +2,7 @@ import { nanoid } from "nanoid";
 import { getCustomer, getSetting } from "./customers.js";
 import { getDb } from "./db.js";
 
-export type TimeLedgerReason = "sale" | "session_consume" | "adjust" | "subscription_bonus";
+export type TimeLedgerReason = "sale" | "session_consume" | "adjust" | "subscription_bonus" | "open_due";
 
 export function getHourPriceReais(): number {
   return Number(getSetting("hour_price_reais", "10")) || 10;
@@ -36,6 +36,82 @@ export function effectiveHourPrice(customerId: string): number {
   return Math.max(0.01, base * (1 - discount));
 }
 
+/** Anota a hora em aberto para cobrar depois. Não mexe no saldo da conta. */
+export function recordOpenHourDue(input: {
+  customerId: string;
+  openSeconds: number;
+  sessionId: string;
+  stationId?: string;
+}): { amountReais: number; hourPrice: number; openSeconds: number } {
+  const openSeconds = Math.max(0, Math.floor(input.openSeconds));
+  const hourPrice = effectiveHourPrice(input.customerId);
+  const amountReais = Math.round((openSeconds / 3600) * hourPrice * 100) / 100;
+  if (openSeconds > 0) {
+    writeLedger({
+      customerId: input.customerId,
+      deltaSeconds: 0,
+      amountReais,
+      reason: "open_due",
+      meta: {
+        sessionId: input.sessionId,
+        stationId: input.stationId || null,
+        openSeconds,
+        hourPrice,
+      },
+    });
+  }
+  return { amountReais, hourPrice, openSeconds };
+}
+
+export function listPendingOpenDues() {
+  return getDb()
+    .prepare(
+      `SELECT l.id, l.customer_id, c.name AS customer_name, l.amount_reais, l.meta, l.created_at
+       FROM time_ledger l
+       JOIN customers c ON c.id = l.customer_id
+       WHERE l.reason = 'open_due' AND l.paid_at IS NULL AND l.amount_reais > 0
+       ORDER BY l.created_at DESC`,
+    )
+    .all()
+    .map((row) => {
+      const item = row as {
+        id: string;
+        customer_id: string;
+        customer_name: string;
+        amount_reais: number;
+        meta: string | null;
+        created_at: string;
+      };
+      let openSeconds = 0;
+      try {
+        openSeconds = Number(JSON.parse(item.meta || "{}").openSeconds || 0);
+      } catch {
+        openSeconds = 0;
+      }
+      return {
+        id: item.id,
+        customerId: item.customer_id,
+        customerName: item.customer_name,
+        amountReais: item.amount_reais,
+        openSeconds,
+        createdAt: item.created_at,
+      };
+    });
+}
+
+export function confirmOpenDuePayment(ledgerId: string, paymentMethod: PaymentMethod) {
+  const row = getDb()
+    .prepare(`SELECT id, reason, paid_at, amount_reais FROM time_ledger WHERE id = ?`)
+    .get(ledgerId) as { id: string; reason: string; paid_at: string | null; amount_reais: number } | undefined;
+  if (!row || row.reason !== "open_due") throw new Error("Cobrança de hora em aberto não encontrada");
+  if (row.paid_at) throw new Error("Essa hora em aberto já foi confirmada");
+  const now = new Date().toISOString();
+  getDb()
+    .prepare(`UPDATE time_ledger SET payment_method = ?, paid_at = ? WHERE id = ?`)
+    .run(paymentMethod, now, ledgerId);
+  return { ok: true, id: ledgerId, amountReais: row.amount_reais, paymentMethod, paidAt: now };
+}
+
 export function getTimeBalance(customerId: string): number {
   const row = getDb()
     .prepare("SELECT time_balance_seconds FROM customers WHERE id = ?")
@@ -43,19 +119,24 @@ export function getTimeBalance(customerId: string): number {
   return Math.max(0, Number(row?.time_balance_seconds ?? 0));
 }
 
+export type PaymentMethod = "pix" | "card" | "cash";
+
 function writeLedger(input: {
   customerId: string;
   deltaSeconds: number;
   amountReais?: number;
   reason: TimeLedgerReason;
   meta?: Record<string, unknown>;
+  paymentMethod?: PaymentMethod | null;
+  paidAt?: string | null;
 }) {
   const id = nanoid();
   const now = new Date().toISOString();
   getDb()
     .prepare(
-      `INSERT INTO time_ledger (id, customer_id, delta_seconds, amount_reais, reason, meta, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO time_ledger
+        (id, customer_id, delta_seconds, amount_reais, reason, meta, created_at, payment_method, paid_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       id,
@@ -65,6 +146,8 @@ function writeLedger(input: {
       input.reason,
       input.meta ? JSON.stringify(input.meta) : null,
       now,
+      input.paymentMethod || null,
+      input.paidAt || null,
     );
   return id;
 }
@@ -73,6 +156,7 @@ export function sellTime(input: {
   customerId: string;
   hours?: number;
   amountReais?: number;
+  paymentMethod?: PaymentMethod;
 }): { customer: unknown; creditedSeconds: number; amountReais: number; hourPrice: number } {
   const customer = getCustomer(input.customerId);
   if (!customer) throw new Error("Cliente não encontrado");
@@ -105,6 +189,8 @@ export function sellTime(input: {
       amountReais,
       reason: "sale",
       meta: { hourPrice, hours: creditedSeconds / 3600 },
+      paymentMethod: input.paymentMethod || null,
+      paidAt: input.paymentMethod ? now : null,
     });
   });
   tx();

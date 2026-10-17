@@ -14,6 +14,9 @@ export type StationRow = {
   disk_total_gb: number | null;
   uptime_sec: number | null;
   ram_used_pct: number | null;
+  display_width: number | null;
+  display_height: number | null;
+  display_scale_pct: number | null;
   created_at: string;
 };
 
@@ -22,13 +25,17 @@ export type StationHealth = {
   diskTotalGb?: number | null;
   uptimeSec?: number | null;
   ramUsedPct?: number | null;
+  displayWidth?: number | null;
+  displayHeight?: number | null;
+  displayScalePct?: number | null;
 };
 
 export function listStations() {
   return getDb()
     .prepare(
       `SELECT id, name, last_seen_at, last_ip, online, lock_version,
-              disk_free_pct, disk_total_gb, uptime_sec, ram_used_pct, created_at
+              disk_free_pct, disk_total_gb, uptime_sec, ram_used_pct,
+              display_width, display_height, display_scale_pct, created_at
        FROM stations ORDER BY name COLLATE NOCASE`,
     )
     .all() as Omit<StationRow, "token">[];
@@ -93,6 +100,18 @@ export function heartbeatStationById(id: string, ip?: string, lockVersion?: stri
     health?.uptimeSec != null && Number.isFinite(health.uptimeSec) ? Math.round(Number(health.uptimeSec)) : null;
   const ramUsed =
     health?.ramUsedPct != null && Number.isFinite(health.ramUsedPct) ? Number(health.ramUsedPct) : null;
+  const displayWidth =
+    health?.displayWidth != null && Number.isFinite(health.displayWidth)
+      ? Math.round(Number(health.displayWidth))
+      : null;
+  const displayHeight =
+    health?.displayHeight != null && Number.isFinite(health.displayHeight)
+      ? Math.round(Number(health.displayHeight))
+      : null;
+  const displayScale =
+    health?.displayScalePct != null && Number.isFinite(health.displayScalePct)
+      ? Math.round(Number(health.displayScalePct) * 10) / 10
+      : null;
 
   if (ver) {
     getDb()
@@ -101,10 +120,25 @@ export function heartbeatStationById(id: string, ip?: string, lockVersion?: stri
          disk_free_pct = COALESCE(?, disk_free_pct),
          disk_total_gb = COALESCE(?, disk_total_gb),
          uptime_sec = COALESCE(?, uptime_sec),
-         ram_used_pct = COALESCE(?, ram_used_pct)
+         ram_used_pct = COALESCE(?, ram_used_pct),
+         display_width = COALESCE(?, display_width),
+         display_height = COALESCE(?, display_height),
+         display_scale_pct = COALESCE(?, display_scale_pct)
          WHERE id = ?`,
       )
-      .run(now, ip || station.last_ip, ver, diskFree, diskTotal, uptime, ramUsed, station.id);
+      .run(
+        now,
+        ip || station.last_ip,
+        ver,
+        diskFree,
+        diskTotal,
+        uptime,
+        ramUsed,
+        displayWidth,
+        displayHeight,
+        displayScale,
+        station.id,
+      );
   } else {
     getDb()
       .prepare(
@@ -112,10 +146,24 @@ export function heartbeatStationById(id: string, ip?: string, lockVersion?: stri
          disk_free_pct = COALESCE(?, disk_free_pct),
          disk_total_gb = COALESCE(?, disk_total_gb),
          uptime_sec = COALESCE(?, uptime_sec),
-         ram_used_pct = COALESCE(?, ram_used_pct)
+         ram_used_pct = COALESCE(?, ram_used_pct),
+         display_width = COALESCE(?, display_width),
+         display_height = COALESCE(?, display_height),
+         display_scale_pct = COALESCE(?, display_scale_pct)
          WHERE id = ?`,
       )
-      .run(now, ip || station.last_ip, diskFree, diskTotal, uptime, ramUsed, station.id);
+      .run(
+        now,
+        ip || station.last_ip,
+        diskFree,
+        diskTotal,
+        uptime,
+        ramUsed,
+        displayWidth,
+        displayHeight,
+        displayScale,
+        station.id,
+      );
   }
   return getStation(station.id);
 }

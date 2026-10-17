@@ -76,10 +76,6 @@ export function setStationStatus(stationId: string, status: HubMessage) {
   lastStationStatus.set(stationId, status);
 }
 
-export function getStationStatus(stationId: string) {
-  return lastStationStatus.get(stationId) || null;
-}
-
 export function getAllStationStatuses() {
   return Object.fromEntries(lastStationStatus.entries());
 }

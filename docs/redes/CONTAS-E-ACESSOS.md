@@ -1,7 +1,8 @@
 # Contas e acessos — Google, Meta, WhatsApp
 
-Atualizado em **2026-10-03**.  
-Objetivo: você (dono) ter as contas **Business** prontas para depois ligar API / eu ajudar com rascunhos oficiais.
+Atualizado em **2026-10-04**.  
+Objetivo: você (dono) ter as contas **Business** prontas para depois ligar API / eu ajudar com rascunhos oficiais.  
+MCP GBP (comunidade): preparação em [`SETUP-GBP-MCP.md`](./SETUP-GBP-MCP.md) — **não** instalar até cota API ≠ 0.
 
 Não compartilhe senha no chat. Quando precisar de token/API, use variável no `.env` ou painel — nunca commit.
 
@@ -25,12 +26,12 @@ Serve para: ficha no Maps, posts no perfil, **responder avaliações**, horário
 
 ### Por unidade
 
-1. No celular ou PC, abra [business.google.com](https://business.google.com) com o **Gmail da loja** (ideal: um e-mail Geeks, não só pessoal).  
-2. Confira se estas fichas aparecem como **Gerente** ou **Proprietário**:
-   - Loja GEEKS — R. Santo Antônio, 6  
-   - Game Box — Av. Getúlio Vargas  
-   - Lan House Geeks — R. Mal. Rondon  
-3. Se a ficha for de outra pessoa: peça **transferência** ou **adicione seu e-mail** como administrador.  
+1. No celular ou PC, abra [business.google.com](https://business.google.com) com **`mr.jociriju@gmail.com`** (conta gestora atual anotada 2026-10-04; ideal no médio prazo: e-mail Geeks dedicado).  
+2. Situação com `mr.jociriju@gmail.com` (2026-10-04):
+   - **Loja GEEKS** — R. Santo Antônio, 6 — **ok** (só esta aparece)  
+   - **Game Box** — Av. Getúlio Vargas — **sem acesso** neste e-mail  
+   - **Lan House Geeks** — R. Mal. Rondon — **sem acesso** neste e-mail  
+3. Nas que faltam: peça ao dono atual **transferência** ou **adicione `mr.jociriju@gmail.com`** como administrador.  
 4. Em cada perfil, complete: horário, telefone, site (`https://loja-geek-portal.vercel.app`), categoria, fotos.  
 5. Loja GEEKS — link de escrever avaliação (campanhas):  
    `https://search.google.com/local/writereview?placeid=ChIJrcvudQAxCQcRkpS8xkTbkg0`
@@ -42,16 +43,22 @@ Serve para: ficha no Maps, posts no perfil, **responder avaliações**, horário
 3. **Avaliações:** Notificações → responder.  
 4. Peça rascunho ao Cursor: “rascunho resposta avaliação 4 estrelas Lan” → salva em [`respostas/`](./respostas/).
 
-### API depois (opcional)
+### API / MCP depois (opcional)
 
-Google Business Profile API exige projeto no Google Cloud + verificação do perfil. Só vale quando quiser que o sistema **liste/responda reviews sozinho**. Até lá: rascunho + você cola.
+Google Business Profile API exige projeto no Google Cloud + **aprovação** da Google (formulário Basic API Access). Só vale quando quiser que o sistema **liste/responda reviews sozinho**. Até lá: rascunho + você cola.
 
-**Checklist Google**
+Passo a passo Cloud → aprovação → OAuth → MCP: [`SETUP-GBP-MCP.md`](./SETUP-GBP-MCP.md).
 
-- [ ] E-mail Geeks é gestor nas 3 fichas  
+**Checklist Google (conferir quando puder)**
+
+- [x] E-mail gestora: **`mr.jociriju@gmail.com`**  
+- [x] **Loja GEEKS** — acessível com esse e-mail (2026-10-04)  
+- [ ] **Game Box** — *não* aparece nesse e-mail; pedir transferência ou adicionar gestor  
+- [ ] **Lan House Geeks** — *não* aparece nesse e-mail; pedir transferência ou adicionar gestor  
 - [ ] Horário e WhatsApp corretos em cada uma  
 - [ ] Site do portal no perfil  
 - [ ] Testei criar 1 post e responder 1 avaliação  
+- [ ] (Depois) Projeto Cloud + pedido de API — ver SETUP-GBP-MCP  
 
 ---
 

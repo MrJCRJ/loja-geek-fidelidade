@@ -7,10 +7,15 @@ import {
   endSession,
   heartbeat,
   openUserCamera,
+  captureFrame,
+  lockLogin,
+  lockRegister,
+  lockRequestOpen,
   reportStaffUnlock,
   sessionHeartbeat,
   startSession,
 } from "./api";
+import { ApiError } from "../../shared/api-error";
 import { StationSocket, type StationCommand } from "./ws";
 import { SetupWizard } from "./SetupWizard";
 import { reportTelemetry } from "./telemetry";
@@ -40,12 +45,29 @@ export default function App() {
   const [billingPaused, setBillingPaused] = useState(false);
   const [error, setError] = useState("");
   const [camReady, setCamReady] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [registerFaceStep, setRegisterFaceStep] = useState(false);
+  const [accountCreated, setAccountCreated] = useState<{ username: string; nonce: number } | null>(null);
+  const openBillRef = useRef<{
+    active: boolean;
+    seconds: number;
+    reais: number;
+    syncedAt: number;
+    hourPrice: number;
+  }>({
+    active: false,
+    seconds: 0,
+    reais: 0,
+    syncedAt: 0,
+    hourPrice: 0,
+  });
   const [remoteBanner, setRemoteBanner] = useState<RemoteBanner | null>(null);
   const [lastFailure, setLastFailure] = useState<{ kind: string; message: string; at: string } | null>(
     null,
   );
   const [portalBaseUrl, setPortalBaseUrl] = useState(DEFAULT_PORTAL_URL);
   const [loginPrompt, setLoginPrompt] = useState<PendingLogin | null>(null);
+  const [gate, setGate] = useState<"password" | "face">("password");
   /** Bump após show() — remonta LockedScreen com a janela já visível. */
   const [lockPaintNonce, setLockPaintNonce] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -319,6 +341,7 @@ export default function App() {
         handoffStreakRef.current = null;
         handoffBusyRef.current = false;
         sessionStartedAtRef.current = null;
+        openBillRef.current = { active: false, seconds: 0, reais: 0, syncedAt: 0, hourPrice: 0 };
       });
 
       try {
@@ -416,6 +439,152 @@ export default function App() {
       }
     }
   }, [loginPrompt, config, unlockUi, syncBalance]);
+
+  const openFromAccount = useCallback(
+    async (raw: Customer & { time_balance_seconds?: number }, session: Session, balance?: number) => {
+      if (!config) return;
+      const customer: Customer = {
+        id: raw.id,
+        name: raw.name,
+        level: raw.level || "bronze",
+        points: Number(raw.points) || 0,
+        timeBalanceSeconds: balance ?? raw.timeBalanceSeconds ?? raw.time_balance_seconds,
+      };
+      setCustomer(customer);
+      setWelcomeCustomer(customer);
+      setSession(session);
+      const initialBal =
+        typeof balance === "number"
+          ? balance
+          : typeof session.time_balance_seconds === "number"
+            ? session.time_balance_seconds
+            : customer.timeBalanceSeconds;
+      if (initialBal != null) syncBalance(initialBal);
+      const startedAt = Date.parse(session.started_at);
+      sessionStartedAtRef.current = Number.isFinite(startedAt) ? startedAt : Date.now();
+      setElapsed(Math.max(0, Math.floor((Date.now() - sessionStartedAtRef.current) / 1000)));
+      absentSinceRef.current = null;
+      presenceMissStreakRef.current = 0;
+      handoffStreakRef.current = null;
+      playUnlockChime();
+      await new Promise<void>((r) => window.setTimeout(r, 900));
+      setWelcomeCustomer(null);
+      await unlockUi();
+    },
+    [config, syncBalance, unlockUi],
+  );
+
+  const finishRegister = useCallback((username: string) => {
+    setRegisterFaceStep(false);
+    setAccountCreated({ username, nonce: Date.now() });
+    setWelcomeCustomer(null);
+    setScanReason(undefined);
+    setScore(null);
+    setError("");
+    setStatus("Cadastro concluído. Entre com seu usuário e senha.");
+  }, []);
+
+  const submitAccount = useCallback(
+    async (
+      kind: "login" | "register",
+      input: { name?: string; username: string; password: string },
+      registerMode: "auto" | "capture" | "skip" = "auto",
+    ) => {
+      if (!config) return;
+      setAuthBusy(true);
+      setError("");
+      try {
+        let imageBase64: string | undefined;
+        if (
+          kind === "register" &&
+          registerMode !== "skip" &&
+          camReadyRef.current &&
+          videoRef.current?.srcObject
+        ) {
+          imageBase64 = captureFrame(videoRef.current);
+        }
+        const res =
+          kind === "login"
+            ? await lockLogin(config, input.username, input.password)
+            : await lockRegister(config, {
+                name: input.name || "",
+                username: input.username,
+                password: input.password,
+                imageBase64,
+              });
+        if (kind === "register") {
+          finishRegister(input.username);
+          return;
+        }
+        if (res.session && res.customer) {
+          await openFromAccount(
+            res.customer as Customer & { time_balance_seconds?: number },
+            res.session,
+            res.timeBalanceSeconds,
+          );
+          return;
+        }
+        setScanReason("no_credit");
+        setStatus("Sem crédito — passe no caixa para liberar o PC");
+          setWelcomeCustomer({
+            id: res.customer?.id || "",
+            name: res.customer?.name || input.name || input.username,
+            level: res.customer?.level || "bronze",
+            points: res.customer?.points || 0,
+            timeBalanceSeconds: res.timeBalanceSeconds ?? 0,
+          });
+      } catch (err) {
+        if (kind === "register" && err instanceof ApiError && err.code === "no_credit") {
+          finishRegister(input.username);
+          return;
+        }
+        const mapped = sessionStartErrorMessage(err);
+        if (
+          kind === "register" &&
+          registerMode !== "skip" &&
+          /rosto|qualidade da amostra|gravar a face/i.test(mapped.status)
+        ) {
+          setRegisterFaceStep(true);
+          setScanReason(mapped.reason);
+          setStatus("Olhe para a câmera e cadastre o rosto, ou pule esta parte.");
+          setError(mapped.status);
+          return;
+        }
+        if (kind === "register") setRegisterFaceStep(false);
+        if (err instanceof ApiError && err.code === "no_credit") {
+          setScanReason("no_credit");
+          setStatus(err.message);
+          setWelcomeCustomer({
+            id: err.customerId || "",
+            name: err.customerName || input.name || input.username,
+            level: "bronze",
+            points: 0,
+            timeBalanceSeconds: err.timeBalanceSeconds ?? 0,
+          });
+          return;
+        }
+        setScanReason(mapped.reason);
+        setStatus(mapped.status);
+        setError(mapped.status);
+      } finally {
+        setAuthBusy(false);
+      }
+    },
+    [config, finishRegister, openFromAccount],
+  );
+
+  const dismissNoCredit = useCallback(() => {
+    const id = welcomeCustomer?.id;
+    if (id) {
+      declinedLoginRef.current = { id, until: Date.now() + 60_000 };
+    }
+    setWelcomeCustomer(null);
+    setCustomer(null);
+    setScore(null);
+    setScanReason(undefined);
+    setStatus("Digite outro usuário e senha");
+    setError("");
+  }, [welcomeCustomer]);
 
   const cancelLogin = useCallback(() => {
     if (loginPrompt) {
@@ -807,9 +976,9 @@ export default function App() {
       } else {
         softLockArmedRef.current = false;
       }
-      if (left <= 0 && !endingSessionRef.current) {
-        playSoftLockBeep("final");
-        void doEndSession("absent");
+      if (left <= 0) {
+        setAbsentLeft(null);
+        absentSinceRef.current = null;
       }
     };
     tick();
@@ -844,6 +1013,13 @@ export default function App() {
         since != null ? Math.max(0, absentSec - Math.floor((Date.now() - since) / 1000)) : null;
       const present = since == null;
       const staffDisplay = openUnlock ? openElapsed : staffLeft;
+      const openLive = openBillRef.current.active
+        ? openBillRef.current.seconds +
+          Math.max(0, Math.floor((Date.now() - openBillRef.current.syncedAt) / 1000))
+        : 0;
+      const openReais = openBillRef.current.active
+        ? Math.round((openLive / 3600) * (openBillRef.current.hourPrice || 0) * 100) / 100
+        : null;
       sock.sendStatus({
         phase: phaseNow,
         customerName: customerRef.current?.name || null,
@@ -856,16 +1032,28 @@ export default function App() {
               : phaseNow === "offline"
                 ? "offline"
                 : "locked",
-        elapsed: isStaffOrGuest ? staffDisplay : liveBal ?? elapsed,
         present,
         absentLeft: isStaffOrGuest ? null : absentLeftNow,
-        // Hora livre: sem saldo regressivo — Central/HUD usam elapsed crescente.
-        balanceSeconds: isStaffOrGuest ? (openUnlock ? null : staffLeft) : liveBal,
+        balanceSeconds: openBillRef.current.active
+          ? null
+          : isStaffOrGuest
+            ? openUnlock
+              ? null
+              : staffLeft
+            : liveBal,
+        openReais,
+        occupantKind: openBillRef.current.active
+          ? "open_hour"
+          : meta?.kind || (custId === "staff" ? "staff_timed" : null),
+        elapsed: openBillRef.current.active
+          ? openLive
+          : isStaffOrGuest
+            ? staffDisplay
+            : liveBal ?? elapsed,
         lowBalanceWarn: isStaffOrGuest
           ? !openUnlock && staffLeft <= STAFF_UNLOCK_WARN_SEC
           : lowBalanceWarn,
         billingPaused: false,
-        occupantKind: meta?.kind || (custId === "staff" ? "staff_timed" : null),
       });
     };
     push();
@@ -1168,7 +1356,7 @@ export default function App() {
     videoRef,
     configRef,
     faceGraceUntilRef,
-    scanPaused: loginPrompt != null,
+    scanPaused: gate !== "face" || loginPrompt != null,
     declinedLoginRef,
     onMatchConfirmed: handleMatchConfirmed,
     setScanning,
@@ -1221,7 +1409,7 @@ export default function App() {
       const sess = sessionRef.current;
       if (!cfg || !sess || cancelled) return;
       try {
-        const pauseBilling = absentSinceRef.current != null && !deskLiberarRef.current;
+        const pauseBilling = false;
         const hb = await sessionHeartbeat(cfg, sess.id, { pauseBilling });
         if (cancelled) return;
         if (sessionRef.current) {
@@ -1240,7 +1428,20 @@ export default function App() {
           warnedLow = true;
           showLowBalanceBanner(bal);
         }
-        if (hb.timeDepleted || hb.session?.time_depleted) {
+        if (hb.openMode || hb.switchedToOpen) {
+          openBillRef.current = {
+            active: true,
+            seconds: hb.openSeconds || 0,
+            reais: hb.openAmountReais || 0,
+            syncedAt: Date.now(),
+            hourPrice: hb.hourPriceReais || openBillRef.current.hourPrice,
+          };
+          syncBalance(0);
+          if (hb.switchedToOpen) {
+            setStatus("Saldo acabou. A hora em aberto começou.");
+          }
+        }
+        if ((hb.timeDepleted || hb.session?.time_depleted) && !hb.openMode) {
           await doEndSession("no_credit");
         }
       } catch {
@@ -1428,6 +1629,59 @@ export default function App() {
         confirmLogin().catch(() => undefined);
       }}
       onCancelLogin={cancelLogin}
+      onDismissNoCredit={dismissNoCredit}
+      authBusy={authBusy}
+      registerFaceStep={registerFaceStep}
+      accountCreated={accountCreated}
+      onDismissRegisterFace={() => setRegisterFaceStep(false)}
+      onAccountLogin={(username, password) => {
+        submitAccount("login", { username, password }).catch(() => undefined);
+      }}
+      onAccountRegister={(input, mode) => {
+        submitAccount("register", input, mode).catch(() => undefined);
+      }}
+      gate={gate}
+      onUseFace={() => {
+        setGate("face");
+        setError("");
+        setLoginPrompt(null);
+        setWelcomeCustomer(null);
+        setStatus("Olhe para a câmera");
+        startCam().catch((err) => {
+          setError(err instanceof Error ? err.message : "Falha na câmera");
+        });
+      }}
+      onUsePassword={() => {
+        setGate("password");
+        setLoginPrompt(null);
+        setWelcomeCustomer(null);
+        setScanning(false);
+        setScanReason(undefined);
+        setScore(null);
+        setStatus("Digite usuário e senha");
+      }}
+      onRequestOpen={(username, password) => {
+        if (!config) return Promise.resolve(false);
+        setAuthBusy(true);
+        setError("");
+        return lockRequestOpen(config, username, password)
+          .then((res) => {
+            const saldo =
+              res.timeBalanceSeconds > 0
+                ? " O saldo da conta acaba primeiro."
+                : "";
+            setStatus(`Pedido enviado para a equipe.${saldo} Este PC continua travado.`);
+            setScanReason(undefined);
+            return true;
+          })
+          .catch((err) => {
+            const mapped = sessionStartErrorMessage(err);
+            setStatus(mapped.status);
+            setError(mapped.status);
+            return false;
+          })
+          .finally(() => setAuthBusy(false));
+      }}
     />
   );
 }

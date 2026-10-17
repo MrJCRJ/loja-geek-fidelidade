@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
+import { OpenDueList, PayMethodPicker } from "../components/OpenDueList";
+import { VendaHora } from "../components/VendaHora";
 import { api, type Customer } from "../../api";
 import { formatHours } from "../format";
+import { sellCustomerTime, type PayMethod } from "../sellTime";
 import type { AdminSettings, TimeLedgerRow } from "../types";
 
 type Props = {
@@ -13,11 +16,14 @@ type Props = {
   loadTimeForCustomer: (id: string) => Promise<void>;
   onError: (msg: string) => void;
   onToast: (msg: string, kind?: "ok" | "error" | "info") => void;
+  askConfirm: (opts: {
+    title: string;
+    message: string;
+    danger?: boolean;
+    confirmLabel?: string;
+  }) => Promise<boolean>;
   remoteReadOnly?: boolean;
 };
-
-const QUICK_REAIS = [10, 20, 50];
-const QUICK_HOURS = [1, 2, 5];
 
 export function CaixaTab({
   customers,
@@ -29,10 +35,11 @@ export function CaixaTab({
   loadTimeForCustomer,
   onError,
   onToast,
+  askConfirm,
   remoteReadOnly,
 }: Props) {
-  const [saleReais, setSaleReais] = useState("10");
-  const [saleHours, setSaleHours] = useState("1");
+  const [removeHours, setRemoveHours] = useState("1");
+  const [payMethod, setPayMethod] = useState<PayMethod>("");
   const [subMonths, setSubMonths] = useState("1");
   const [subPrice, setSubPrice] = useState("49.90");
   const [caixaMsg, setCaixaMsg] = useState("");
@@ -43,59 +50,41 @@ export function CaixaTab({
     const q = filter.trim().toLowerCase();
     if (!q) return customers;
     return customers.filter((c) => {
-      const hay = `${c.name} ${c.phone || ""} ${c.email || ""}`.toLowerCase();
+      const hay = `${c.name} ${c.phone || ""} ${c.email || ""} ${c.username || ""}`.toLowerCase();
       return hay.includes(q);
     });
   }, [customers, filter]);
 
-  const sellReais = (amountReais: number) => {
+  const vender = async (input: { amountReais?: number; hours?: number }) => {
     if (!selected) return;
-    if (!amountReais || amountReais <= 0) {
-      onError("Informe um valor em reais");
-      return;
-    }
     setBusy(true);
-    api<{ customer?: Customer; creditedSeconds?: number }>(`/api/customers/${selected.id}/time/sale`, {
-      method: "POST",
-      body: JSON.stringify({ amountReais }),
-    })
-      .then((res) => {
-        if (res.customer) setSelected(res.customer);
-        const msg = `Creditado ${formatHours(res.creditedSeconds || 0)} (R$ ${amountReais.toFixed(2)})`;
-        setCaixaMsg(msg);
-        onToast(msg, "ok");
-        refresh().catch(() => undefined);
-        loadTimeForCustomer(selected.id).catch(() => undefined);
-      })
-      .catch((e) => onError(e.message))
-      .finally(() => setBusy(false));
-  };
-
-  const sellHours = (hours: number) => {
-    if (!selected) return;
-    if (!hours || hours <= 0) {
-      onError("Informe horas");
-      return;
+    try {
+      const res = await sellCustomerTime({
+        customer: selected,
+        payMethod,
+        input,
+        askConfirm,
+        onError,
+        amountError: "Informe um valor em reais",
+      });
+      if (!res) return;
+      if (res.customer) setSelected(res.customer);
+      const msg = `Creditou ${formatHours(res.creditedSeconds || 0)}`;
+      setCaixaMsg(msg);
+      onToast(msg, "ok");
+      refresh().catch(() => undefined);
+      loadTimeForCustomer(selected.id).catch(() => undefined);
+    } catch (e) {
+      onError(e instanceof Error ? e.message : "Falha ao vender");
+    } finally {
+      setBusy(false);
     }
-    setBusy(true);
-    api<{ customer?: Customer; amountReais?: number }>(`/api/customers/${selected.id}/time/sale`, {
-      method: "POST",
-      body: JSON.stringify({ hours }),
-    })
-      .then((res) => {
-        if (res.customer) setSelected(res.customer);
-        const msg = `Creditado ${hours}h (R$ ${(res.amountReais || 0).toFixed(2)})`;
-        setCaixaMsg(msg);
-        onToast(msg, "ok");
-        refresh().catch(() => undefined);
-        loadTimeForCustomer(selected.id).catch(() => undefined);
-      })
-      .catch((e) => onError(e.message))
-      .finally(() => setBusy(false));
   };
 
   return (
-    <div className="grid-2" role="tabpanel" id="panel-caixa" aria-labelledby="tab-caixa">
+    <div role="tabpanel" id="panel-caixa" aria-labelledby="tab-caixa">
+    <OpenDueList onError={onError} onToast={onToast} remoteReadOnly={remoteReadOnly} />
+    <div className="grid-2">
       <section className="panel">
         <h2>Caixa — PDV rápido</h2>
         <p className="muted">
@@ -146,87 +135,58 @@ export function CaixaTab({
             {!remoteReadOnly && (
             <>
             <p className="muted" style={{ marginBottom: "0.35rem", fontSize: "0.85rem" }}>
-              Atalhos R$
+              Como foi pago
             </p>
-            <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: "0.75rem" }}>
-              {QUICK_REAIS.map((v) => (
-                <button
-                  key={v}
-                  className="btn"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setSaleReais(String(v));
-                    sellReais(v);
-                  }}
-                >
-                  R$ {v}
-                </button>
-              ))}
-              {(settings.hourPacks || []).map((p) =>
-                QUICK_REAIS.includes(p.amountReais) ? null : (
-                  <button
-                    key={`pack-${p.amountReais}`}
-                    className="btn ghost"
-                    type="button"
-                    disabled={busy}
-                    onClick={() => {
-                      setSaleReais(String(p.amountReais));
-                      sellReais(p.amountReais);
-                    }}
-                  >
-                    {p.label}
-                  </button>
-                ),
-              )}
-            </div>
-
-            <p className="muted" style={{ marginBottom: "0.35rem", fontSize: "0.85rem" }}>
-              Atalhos horas
-            </p>
-            <div className="row" style={{ flexWrap: "wrap", gap: 8, marginBottom: "0.75rem" }}>
-              {QUICK_HOURS.map((h) => (
-                <button
-                  key={h}
-                  className="btn ghost"
-                  type="button"
-                  disabled={busy}
-                  onClick={() => {
-                    setSaleHours(String(h));
-                    sellHours(h);
-                  }}
-                >
-                  {h}h
-                </button>
-              ))}
-            </div>
-
-            <div className="row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 8 }}>
+            <PayMethodPicker value={payMethod} onChange={setPayMethod} />
+            <VendaHora
+              hourPrice={settings.hourPriceReais || 10}
+              subscriber={selected.subscription_status === "active"}
+              packs={settings.hourPacks}
+              busy={busy}
+              onSellHours={(hours) => void vender({ hours })}
+              onSellReais={(amountReais) => void vender({ amountReais })}
+            />
+            <div className="row" style={{ alignItems: "flex-end", flexWrap: "wrap", gap: 8, marginTop: "0.75rem" }}>
               <div className="field">
-                <label>Vender (R$)</label>
-                <input value={saleReais} onChange={(e) => setSaleReais(e.target.value)} />
-              </div>
-              <button
-                className="btn"
-                type="button"
-                disabled={busy}
-                onClick={() => sellReais(Number(saleReais))}
-              >
-                Vender por R$
-              </button>
-              <div className="field">
-                <label>Vender (horas)</label>
-                <input value={saleHours} onChange={(e) => setSaleHours(e.target.value)} />
+                <label>Tirar horas a mais</label>
+                <input value={removeHours} onChange={(e) => setRemoveHours(e.target.value)} />
               </div>
               <button
                 className="btn ghost"
                 type="button"
                 disabled={busy}
-                onClick={() => sellHours(Number(saleHours))}
+                onClick={() => {
+                  const hours = Number(removeHours);
+                  if (!hours || hours <= 0) {
+                    onError("Informe as horas a tirar");
+                    return;
+                  }
+                  setBusy(true);
+                  api<{ customer?: Customer }>(`/api/customers/${selected.id}/time/adjust`, {
+                    method: "POST",
+                    body: JSON.stringify({
+                      deltaSeconds: -Math.round(hours * 3600),
+                      note: "Caixa: horas lançadas a mais",
+                    }),
+                  })
+                    .then((res) => {
+                      if (res.customer) setSelected(res.customer);
+                      const msg = `Tirou ${hours}h. Esse tempo não volta como crédito.`;
+                      setCaixaMsg(msg);
+                      onToast(msg, "ok");
+                      refresh().catch(() => undefined);
+                      loadTimeForCustomer(selected.id).catch(() => undefined);
+                    })
+                    .catch((e) => onError(e.message))
+                    .finally(() => setBusy(false));
+                }}
               >
-                Vender horas
+                Tirar horas
               </button>
             </div>
+            <p className="muted" style={{ marginTop: "0.35rem" }}>
+              O que sai daqui não volta para a conta.
+            </p>
             {caixaMsg && <p>{caixaMsg}</p>}
             </>
             )}
@@ -362,6 +322,7 @@ export function CaixaTab({
           </>
         )}
       </section>
+    </div>
     </div>
   );
 }

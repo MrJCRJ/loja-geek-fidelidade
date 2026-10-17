@@ -2,7 +2,6 @@ import { type ReactNode } from "react";
 import { Navigate, Outlet, Route, Routes, useLocation } from "react-router-dom";
 import { getToken } from "./api";
 import LandingPage from "./pages/LandingPage";
-import RegisterPage from "./pages/RegisterPage";
 import LoginPage from "./pages/LoginPage";
 import ForgotPage from "./pages/ForgotPage";
 import ResetPage from "./pages/ResetPage";
@@ -34,7 +33,7 @@ export default function App() {
     <Routes>
       <Route element={<PageTransition />}>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/register" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/forgot" element={<ForgotPage />} />
         <Route path="/reset" element={<ResetPage />} />
