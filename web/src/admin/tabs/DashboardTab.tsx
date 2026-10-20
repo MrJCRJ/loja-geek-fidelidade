@@ -11,6 +11,9 @@ type Metrics = {
     secondsUsed: number;
     uniqueVips: number;
     activeSessions: number;
+    staleSessions?: number;
+    staleSweepClosedToday?: number;
+    staleAfterSeconds?: number;
     recognitionMatches: number;
     recognitionOther: number;
     salesReais: number;
@@ -96,6 +99,9 @@ type Metrics = {
     remaining_seconds: number | null;
     status: string;
     started_at: string;
+    last_seen_at?: string | null;
+    signal_age_seconds?: number | null;
+    stale?: boolean;
   }>;
 };
 
@@ -231,7 +237,15 @@ export function DashboardTab({ onError, team }: Props) {
             <article className="metric-card">
               <p className="metric-label">Sessões hoje</p>
               <p className="metric-value">{metrics.today.sessions}</p>
-              <p className="muted">{metrics.today.uniqueVips} VIPs · {metrics.today.activeSessions} ativas</p>
+              <p className="muted">
+                {metrics.today.uniqueVips} VIPs · {metrics.today.activeSessions} ativas
+                {(metrics.today.staleSessions ?? 0) > 0
+                  ? ` · ${metrics.today.staleSessions} sem sinal`
+                  : ""}
+                {(metrics.today.staleSweepClosedToday ?? 0) > 0
+                  ? ` · ${metrics.today.staleSweepClosedToday} fantasmas fechados hoje`
+                  : ""}
+              </p>
             </article>
             <article className="metric-card">
               <p className="metric-label">Horas usadas hoje</p>
@@ -417,6 +431,7 @@ export function DashboardTab({ onError, team }: Props) {
                         <th>Cliente</th>
                         <th>Onde</th>
                         <th>Tempo</th>
+                        <th>Sinal</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -433,11 +448,23 @@ export function DashboardTab({ onError, team }: Props) {
                               : s.kind === "console"
                                 ? clock(left || 0)
                                 : formatDuration(s.seconds_total);
+                        const age = s.signal_age_seconds;
+                        const signalLabel =
+                          s.kind !== "pc"
+                            ? "—"
+                            : s.stale || s.status === "stale"
+                              ? age != null
+                                ? `Sem sinal ${Math.floor(age / 60)}m`
+                                : "Sem sinal"
+                              : age != null && age >= 45
+                                ? `Fraco ${age}s`
+                                : "OK";
                         return (
                           <tr key={s.id}>
                             <td>{s.customer_name}</td>
                             <td>{s.place_name}</td>
                             <td>{timeLabel}</td>
+                            <td className={s.stale || s.status === "stale" ? "warn" : undefined}>{signalLabel}</td>
                           </tr>
                         );
                       })}

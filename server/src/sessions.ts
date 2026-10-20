@@ -7,7 +7,42 @@ import { getLowBalanceWarnSeconds } from "./session-safety.js";
 /** O PC avisa cerca de 1 vez por minuto. Até 90s cobra o tempo real; um buraco maior não desconta tudo de uma vez. */
 const BILLING_GAP_CAP_SEC = 90;
 /** Sem heartbeat de sessão nesse prazo, o outro PC já fechou ou caiu. */
-const STALE_OTHER_SESSION_MS = 2 * 60 * 1000;
+export const STALE_SESSION_MS = 2 * 60 * 1000;
+
+export type EndSessionOpts = {
+  /** Não cobra o gap desde last_seen (fantasma / Encerrar com Lock morto). */
+  skipBilling?: boolean;
+};
+
+/** Contador do dia para o Dashboard (faxina stale_sweep). */
+let staleSweepDay = "";
+let staleSweepClosedToday = 0;
+
+function bumpStaleSweepStats(closed: number, nowMs = Date.now()) {
+  if (closed <= 0) return;
+  const day = new Date(nowMs).toISOString().slice(0, 10);
+  if (staleSweepDay !== day) {
+    staleSweepDay = day;
+    staleSweepClosedToday = 0;
+  }
+  staleSweepClosedToday += closed;
+}
+
+export function getStaleSweepStats(nowMs = Date.now()) {
+  const day = new Date(nowMs).toISOString().slice(0, 10);
+  if (staleSweepDay !== day) return { day, closedToday: 0 };
+  return { day: staleSweepDay, closedToday: staleSweepClosedToday };
+}
+
+export function sessionSignalAgeMs(lastSeenAt: string, nowMs = Date.now()) {
+  const seen = Date.parse(lastSeenAt);
+  if (!Number.isFinite(seen)) return Number.POSITIVE_INFINITY;
+  return Math.max(0, nowMs - seen);
+}
+
+export function sessionIsStale(lastSeenAt: string, nowMs = Date.now()) {
+  return sessionSignalAgeMs(lastSeenAt, nowMs) >= STALE_SESSION_MS;
+}
 
 function billableDeltaSeconds(lastSeenIso: string, nowMs: number): number {
   const lastMs = Date.parse(lastSeenIso);
@@ -66,12 +101,6 @@ export function getSession(id: string) {
   return getDb().prepare("SELECT * FROM machine_sessions WHERE id = ?").get(id) as SessionRow | undefined;
 }
 
-function sessionIsStale(lastSeenAt: string, nowMs = Date.now()) {
-  const seen = Date.parse(lastSeenAt);
-  if (!Number.isFinite(seen)) return true;
-  return nowMs - seen >= STALE_OTHER_SESSION_MS;
-}
-
 /**
  * Fecha sessões desta conta que pararam de mandar sinal.
  * Se outra estação ainda está ativa, impede o login.
@@ -93,12 +122,30 @@ export function releaseStaleCustomerSessions(
     const here = row.station_id === stationId;
     if (here && !opts?.includeThisStation) continue;
     if (sessionIsStale(row.last_seen_at)) {
-      endSession(row.id, "stale_other_pc");
+      endSession(row.id, "stale_other_pc", { skipBilling: true });
       continue;
     }
     liveElsewhere = true;
   }
   if (liveElsewhere) throw new Error("Esta conta já está em outro PC");
+}
+
+/**
+ * Fecha sessões active sem heartbeat há ≥ STALE_SESSION_MS, sem cobrar o gap.
+ * Usado pela faxina periódica (e limpeza manual).
+ */
+export function sweepStaleSessions(nowMs = Date.now()) {
+  const rows = getDb()
+    .prepare(`SELECT id, last_seen_at FROM machine_sessions WHERE status = 'active'`)
+    .all() as Array<{ id: string; last_seen_at: string }>;
+
+  const closed: ReturnType<typeof enrich>[] = [];
+  for (const row of rows) {
+    if (!sessionIsStale(row.last_seen_at, nowMs)) continue;
+    closed.push(endSession(row.id, "stale_sweep", { skipBilling: true }));
+  }
+  bumpStaleSweepStats(closed.length, nowMs);
+  return closed;
 }
 
 export function startSession(customerId: string, stationId: string) {
@@ -261,15 +308,17 @@ export function startOpenSession(customerId: string, stationId: string) {
   return enrich(getSession(id)!);
 }
 
-export function endSession(sessionId: string, _reason = "end") {
+export function endSession(sessionId: string, _reason = "end", opts?: EndSessionOpts) {
   const db = getDb();
   const session = getSession(sessionId);
   if (!session) throw new Error("Sessão não encontrada");
   if (session.status === "closed") return enrich(session);
 
   const now = Date.now();
-  const deltaSec = billableDeltaSeconds(session.last_seen_at, now);
-  const iso = new Date(now).toISOString();
+  const skipBilling = Boolean(opts?.skipBilling);
+  const deltaSec = skipBilling ? 0 : billableDeltaSeconds(session.last_seen_at, now);
+  // Fantasma: encerra no último sinal (sem gap). Sessão viva: encerra em agora.
+  const iso = skipBilling ? session.last_seen_at : new Date(now).toISOString();
 
   if (session.open_started_at) {
     const openSeconds = Math.max(0, Number(session.open_seconds || 0)) + deltaSec;
@@ -305,10 +354,18 @@ export function endSession(sessionId: string, _reason = "end") {
   return enrich(getSession(sessionId)!);
 }
 
-export function endActiveSessionForStation(stationId: string) {
+export function endActiveSessionForStation(stationId: string, opts?: EndSessionOpts & { reason?: string }) {
   const active = getActiveSessionForStation(stationId);
   if (!active) return null;
-  return endSession(active.id, "station_end");
+  return endSession(active.id, opts?.reason || "station_end", opts);
+}
+
+/** Encerrar/Travar no Central: fecha no banco mesmo com Lock morto. */
+export function endActiveSessionsAllStations(opts?: EndSessionOpts & { reason?: string }) {
+  const rows = getDb()
+    .prepare(`SELECT id FROM machine_sessions WHERE status = 'active'`)
+    .all() as Array<{ id: string }>;
+  return rows.map((row) => endSession(row.id, opts?.reason || "admin_end_all", opts));
 }
 
 export function listSessions(limit = 100) {

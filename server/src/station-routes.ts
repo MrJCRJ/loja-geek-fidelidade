@@ -33,7 +33,13 @@ import {
   sessionSafetySettingsPayload,
   startStaffUnlockWindow,
 } from "./session-safety.js";
-import { endSession, getActiveSessionForStation, startSession } from "./sessions.js";
+import {
+  endActiveSessionForStation,
+  endActiveSessionsAllStations,
+  endSession,
+  getActiveSessionForStation,
+  startSession,
+} from "./sessions.js";
 import { approveOpenRequest, listPendingOpenRequests, rejectOpenRequest } from "./open-hour.js";
 import { logEvent } from "./telemetry.js";
 import { isLanPairAllowed } from "./store-network.js";
@@ -170,6 +176,20 @@ export async function registerStationRoutes(app: FastifyInstance) {
     let occupantKind = body.occupantKind;
     if (body.command === "lock_screen" || body.command === "end_session") {
       clearStaffUnlockWindow(id);
+      // Fecha no banco mesmo se o Lock estiver morto (sessão fantasma).
+      const ended = endActiveSessionForStation(id, {
+        skipBilling: true,
+        reason: body.command === "end_session" ? "admin_end" : "admin_lock",
+      });
+      if (ended) {
+        broadcastAdmins({
+          type: "session_ended",
+          session: ended,
+          station: { id, name: ended.station_name },
+          reason: body.command === "end_session" ? "admin_end" : "admin_lock",
+          at: new Date().toISOString(),
+        });
+      }
     }
     if (body.command === "unlock_screen") {
       occupantKind = occupantKind || "staff_timed";
@@ -261,6 +281,19 @@ export async function registerStationRoutes(app: FastifyInstance) {
         }
       }
     } else {
+      if (body.command === "lock_screen" || body.command === "end_session") {
+        const reason = body.command === "end_session" ? "admin_end_all" : "admin_lock_all";
+        const ended = endActiveSessionsAllStations({ skipBilling: true, reason });
+        for (const session of ended) {
+          broadcastAdmins({
+            type: "session_ended",
+            session,
+            station: { id: session.station_id, name: session.station_name },
+            reason,
+            at: new Date().toISOString(),
+          });
+        }
+      }
       sendCommandToAllStations(body.command, {
         text: body.text || "",
         title: body.title || "",

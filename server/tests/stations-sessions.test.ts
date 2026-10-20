@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { getTimeBalance } from "../src/billing.js";
 import { getDb } from "../src/db.js";
+import { getStaleSweepStats, sweepStaleSessions } from "../src/sessions.js";
 import {
   adminToken,
   authHeaders,
@@ -360,6 +362,108 @@ describe("Sessões de máquina", () => {
     const body = res.json() as { sessions: unknown[]; stats: { since: string } };
     expect(Array.isArray(body.sessions)).toBe(true);
     expect(body.stats.since).toBeTruthy();
+    await app.close();
+  });
+
+  it("faxina fecha sessão morta sem cobrar gap", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const station = await claimStation(app, "PC-Stale");
+    await creditHours(app, admin, customer.id);
+
+    const start = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(station.token),
+      payload: { customerId: customer.id },
+    });
+    const { session } = start.json() as { session: { id: string } };
+    const balanceBefore = getTimeBalance(customer.id);
+    const stale = new Date(Date.now() - 2 * 60_000 - 2000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(stale, session.id);
+
+    const closed = sweepStaleSessions();
+    expect(closed).toHaveLength(1);
+    expect(closed[0]?.id).toBe(session.id);
+    expect(closed[0]?.status).toBe("closed");
+    expect(getTimeBalance(customer.id)).toBe(balanceBefore);
+    expect(getStaleSweepStats().closedToday).toBeGreaterThanOrEqual(1);
+
+    const row = getDb().prepare("SELECT status FROM machine_sessions WHERE id = ?").get(session.id) as {
+      status: string;
+    };
+    expect(row.status).toBe("closed");
+    await app.close();
+  });
+
+  it("Encerrar no Central fecha sessão no banco sem Lock", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const station = await claimStation(app, "PC-Ghost");
+    await creditHours(app, admin, customer.id);
+
+    const start = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(station.token),
+      payload: { customerId: customer.id },
+    });
+    const { session } = start.json() as { session: { id: string } };
+    const balanceBefore = getTimeBalance(customer.id);
+    const old = new Date(Date.now() - 10 * 60_000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(old, session.id);
+
+    const cmd = await app.inject({
+      method: "POST",
+      url: `/api/stations/${station.id}/command`,
+      headers: authHeaders(admin),
+      payload: { command: "end_session" },
+    });
+    expect(cmd.statusCode).toBe(200);
+
+    const row = getDb().prepare("SELECT status FROM machine_sessions WHERE id = ?").get(session.id) as {
+      status: string;
+    };
+    expect(row.status).toBe("closed");
+    expect(getTimeBalance(customer.id)).toBe(balanceBefore);
+    await app.close();
+  });
+
+  it("métricas marcam sessão PC sem sinal como stale", async () => {
+    const app = await createTestApp();
+    const admin = await adminToken(app);
+    const customer = await createCustomer(app, admin);
+    const station = await claimStation(app, "PC-Monitor");
+    await creditHours(app, admin, customer.id);
+
+    const start = await app.inject({
+      method: "POST",
+      url: "/api/sessions/start",
+      headers: stationHeaders(station.token),
+      payload: { customerId: customer.id },
+    });
+    const { session } = start.json() as { session: { id: string } };
+    const stale = new Date(Date.now() - 3 * 60_000).toISOString();
+    getDb().prepare("UPDATE machine_sessions SET last_seen_at = ? WHERE id = ?").run(stale, session.id);
+
+    const metrics = await app.inject({
+      method: "GET",
+      url: "/api/admin/metrics",
+      headers: authHeaders(admin),
+    });
+    expect(metrics.statusCode).toBe(200);
+    const body = metrics.json() as {
+      today: { staleSessions: number; staleAfterSeconds: number };
+      activeNow: Array<{ id: string; stale?: boolean; status: string; kind: string }>;
+    };
+    expect(body.today.staleAfterSeconds).toBe(120);
+    const pc = body.activeNow.find((s) => s.id === session.id);
+    expect(pc?.kind).toBe("pc");
+    expect(pc?.stale).toBe(true);
+    expect(pc?.status).toBe("stale");
+    expect(body.today.staleSessions).toBeGreaterThanOrEqual(1);
     await app.close();
   });
 });

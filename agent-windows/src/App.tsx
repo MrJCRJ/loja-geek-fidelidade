@@ -1444,8 +1444,15 @@ export default function App() {
         if ((hb.timeDepleted || hb.session?.time_depleted) && !hb.openMode) {
           await doEndSession("no_credit");
         }
-      } catch {
-        /* próxima tentativa */
+      } catch (err) {
+        // Faxina / Encerrar no Central: sessão já morta no servidor → trava o PC.
+        const code = err && typeof err === "object" && "code" in err ? String((err as { code?: string }).code) : "";
+        const msg = err instanceof Error ? err.message : "";
+        if (code === "session_closed" || /inv[aá]lida|encerrada/i.test(msg)) {
+          await doEndSession("remote_closed");
+          return;
+        }
+        /* rede: próxima tentativa */
       }
     };
     void tick();

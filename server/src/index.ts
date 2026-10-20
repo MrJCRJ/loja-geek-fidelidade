@@ -15,6 +15,8 @@ import { isStaffUiHost, requestHost } from "./request-scope.js";
 import { startConsoleExpiryLoop } from "./consoles.js";
 import { startStorePublicIpProbe } from "./store-network.js";
 import { purgeCustomersWithoutCredential } from "./lock-account.js";
+import { sweepStaleSessions } from "./sessions.js";
+import { broadcastAdmins } from "./hub.js";
 
 async function main() {
   await initSentry();
@@ -54,6 +56,27 @@ async function main() {
   }
 
   setInterval(() => markStaleStationsOffline(25_000), 10_000);
+  setInterval(() => {
+    const closed = sweepStaleSessions();
+    if (!closed.length) return;
+    app.log.info(
+      {
+        count: closed.length,
+        ids: closed.map((s) => s.id),
+        stations: closed.map((s) => s.station_id),
+      },
+      "stale_sweep",
+    );
+    for (const session of closed) {
+      broadcastAdmins({
+        type: "session_ended",
+        session,
+        station: { id: session.station_id, name: session.station_name },
+        reason: "stale_sweep",
+        at: new Date().toISOString(),
+      });
+    }
+  }, 60_000);
   startTelemetryProbe(60_000);
   startBackupScheduler(15 * 60_000);
 

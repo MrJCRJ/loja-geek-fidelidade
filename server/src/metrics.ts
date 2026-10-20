@@ -4,7 +4,13 @@ import { ensureConsoles } from "./consoles.js";
 import { getDb } from "./db.js";
 import { listConnectedStations } from "./hub.js";
 import { listStations } from "./stations.js";
-import { sessionStatsToday } from "./sessions.js";
+import {
+  getStaleSweepStats,
+  sessionIsStale,
+  sessionSignalAgeMs,
+  sessionStatsToday,
+  STALE_SESSION_MS,
+} from "./sessions.js";
 
 type CountRow = { c: number };
 type SumRow = { s: number | null };
@@ -361,6 +367,7 @@ export function buildBusinessMetrics() {
     };
   });
 
+  const staleSweep = getStaleSweepStats(nowMs);
   const activeNow = [
     ...((sessionStats.active || []) as Array<{
       id: string;
@@ -368,16 +375,24 @@ export function buildBusinessMetrics() {
       station_name: string;
       seconds_total: number;
       started_at: string;
-    }>).map((s) => ({
-      id: s.id,
-      customer_name: s.customer_name,
-      place_name: s.station_name,
-      kind: "pc" as const,
-      seconds_total: Number(s.seconds_total) || 0,
-      remaining_seconds: null as number | null,
-      status: "active",
-      started_at: s.started_at,
-    })),
+      last_seen_at: string;
+    }>).map((s) => {
+      const ageMs = sessionSignalAgeMs(s.last_seen_at, nowMs);
+      const stale = sessionIsStale(s.last_seen_at, nowMs);
+      return {
+        id: s.id,
+        customer_name: s.customer_name,
+        place_name: s.station_name,
+        kind: "pc" as const,
+        seconds_total: Number(s.seconds_total) || 0,
+        remaining_seconds: null as number | null,
+        status: stale ? "stale" : "active",
+        started_at: s.started_at,
+        last_seen_at: s.last_seen_at,
+        signal_age_seconds: Number.isFinite(ageMs) ? Math.floor(ageMs / 1000) : null,
+        stale,
+      };
+    }),
     ...openConsoles.map((s) => ({
       id: s.id,
       customer_name: s.customer_name,
@@ -387,8 +402,12 @@ export function buildBusinessMetrics() {
       remaining_seconds: s.mode === "open" ? null : consoleRemainingSeconds(s, nowMs),
       status: s.status,
       started_at: s.started_at,
+      last_seen_at: null as string | null,
+      signal_age_seconds: null as number | null,
+      stale: false,
     })),
   ];
+  const pcStaleNow = activeNow.filter((s) => s.kind === "pc" && s.stale).length;
 
   return {
     generatedAt: new Date().toISOString(),
@@ -400,6 +419,9 @@ export function buildBusinessMetrics() {
       hoursUsed: Math.round((secondsTodayAll / 3600) * 100) / 100,
       uniqueVips: pcCustomerIds.size,
       activeSessions: (sessionStats.active?.length ?? 0) + openConsoles.length,
+      staleSessions: pcStaleNow,
+      staleSweepClosedToday: staleSweep.closedToday,
+      staleAfterSeconds: Math.floor(STALE_SESSION_MS / 1000),
       recognitionMatches: matchesToday,
       recognitionOther: unknownToday,
       salesReais: Math.round(salesReaisToday * 100) / 100,

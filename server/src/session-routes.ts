@@ -118,7 +118,12 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         hourPriceReais: session.hour_price_reais,
       };
     } catch (err) {
-      return reply.code(400).send({ error: err instanceof Error ? err.message : "Erro" });
+      const message = err instanceof Error ? err.message : "Erro";
+      const closed = /inv[aá]lida|encerrada/i.test(message);
+      return reply.code(400).send({
+        error: message,
+        code: closed ? "session_closed" : "session_error",
+      });
     }
   });
 
@@ -140,7 +145,9 @@ export async function registerSessionRoutes(app: FastifyInstance) {
         if (station && current.station_id !== station.id) {
           return reply.code(403).send({ error: "Sessão de outra estação" });
         }
-        session = endSession(body.sessionId, body.reason || "end");
+        const reason = body.reason || "end";
+        const skipBilling = /stale|admin_end|admin_lock|fantasma|cleanup/i.test(reason);
+        session = endSession(body.sessionId, reason, { skipBilling });
       } else if (station) {
         session = endActiveSessionForStation(station.id);
         if (!session) return { ok: true, session: null };
