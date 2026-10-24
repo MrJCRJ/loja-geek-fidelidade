@@ -1,7 +1,7 @@
 # Pendências — Loja Geek (ops)
 
-Atualizado em **2026-10-03** (negócio alinhado em [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md)).  
-Locks na loja: ver [`geeklock-handoff.md`](./geeklock-handoff.md) (alvo **1.1.14** / pacote VPS). Central release **1.1.7**.  
+Atualizado em **2026-10-24** (versões conferidas no GitHub; PCs da loja não foram religados nesta leitura). Negócio: [`NEGOCIO-GEEK.md`](./NEGOCIO-GEEK.md).  
+Código em `main`: GeekLock **1.1.23**, GeekCentral **1.1.8**. Releases: Lock **lock-v1.1.15** (05/10), Central **central-v1.1.8** (05/10, Latest). Detalhe em [`geeklock-handoff.md`](./geeklock-handoff.md).  
 
 **Foco 30 dias (produto):** (1) Pix portal ponta a ponta · (2) avaliações Google/WhatsApp · (3) estabilidade Central/Lock (IP `.70`, WS, updates).  
 **Ops imediatas:** reserva DHCP `.70`, alinhar túnel na UI do Central, validar WS, webhook/teste Pix live. URL fixa **já escolhida** — não reabrir.  
@@ -17,8 +17,8 @@ Locks na loja: ver [`geeklock-handoff.md`](./geeklock-handoff.md) (alvo **1.1.14
 **Incidente loja 2026-09-30 (tarde):** GeekLock “não responde” — Central DHCP foi para `.116`; Wi‑Fi refixada em `.70` — [`INCIDENTE-GEEKLOCK-IP-2026-09-30.md`](./INCIDENTE-GEEKLOCK-IP-2026-09-30.md)  
 **Pareamento:** [`PAIRING-CODIGO-CURTO.md`](./PAIRING-CODIGO-CURTO.md) — na LAN o Lock acha o Central; só o nome do PC  
 **UI tela pequena (mesmo build):** [`UI-TELA-PEQUENA.md`](./UI-TELA-PEQUENA.md) — responsivo + modo compacto  
-**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — loja em **`central-v1.1.7`** (Latest); feito 2026-09-30 ~19:33  
-**Atualizar Lock:** GitHub **`lock-v1.1.8`** — **feito nas 5 estações** (PC-01…05, conferido no admin 2026-10-01)  
+**Atualizar Central:** [`UPDATE-GEEKCENTRAL.md`](./UPDATE-GEEKCENTRAL.md) — Latest no GitHub é **`central-v1.1.8`** (05/10). A loja foi instalada em **1.1.7** em 2026-09-30 ~19:33; não reconfirmei se o PC já subiu para 1.1.8.  
+**Atualizar Lock:** última release GitHub **`lock-v1.1.15`** (05/10). Código em `main` é **1.1.23**, sem ZIP novo. Em 2026-10-01 as 5 estações (PC-01…05) estavam em **1.1.8**.  
 **Melhorias priorizadas:** ver tabela em [`ESTADO-SISTEMA-2026-09-30.md`](./ESTADO-SISTEMA-2026-09-30.md) § Melhorias  
 
 **Central ↔ Lock (próximas melhorias):** [`CENTRAL-LOCK-MELHORIAS.md`](./CENTRAL-LOCK-MELHORIAS.md) — estabilidade WS + celular no código; na loja validar + CNAME `admin`  
@@ -36,8 +36,8 @@ Legenda: `[ ]` falta · `[~]` parcial · `[x]` feito
 | Área | Situação |
 |------|----------|
 | Código (API, portal, GeekLock) | `[x]` GitHub `main` puxado na loja; motor = release (não a pasta git) |
-| Release GeekCentral | `[x]` loja em **1.1.7** (`central-v1.1.7` = Latest) — instalado 2026-09-30 ~19:33 |
-| Release GeekLock | `[x]` **1.1.8** nas 5 estações (PC-01…05) — conferido admin 2026-10-01 |
+| Release GeekCentral | `[~]` GitHub Latest **1.1.8** (05/10). Loja instalada em **1.1.7** (2026-09-30); PC não reconfirmado em 24/10 |
+| Release GeekLock | `[~]` GitHub **1.1.15** (05/10). Código **1.1.23** sem release. Estações em **1.1.8** no admin de 2026-10-01 |
 | Domínio | `[x]` `geekloja.com.br` ativo (Registro.br, expira 2027-09-21) |
 | Cloudflare zona | `[x]` NS `nora`/`terry` — zona Active (SOA AA) |
 | Túnel (público) | `[x]` `https://api.geekloja.com.br/api/health` OK (keepalive / processo fora da UI) |

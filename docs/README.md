@@ -1,6 +1,6 @@
 # Documentação — Loja Geek
 
-Atualizado em **2026-10-03**.  
+Atualizado em **2026-10-24**. Versões vivas: [`geeklock-handoff.md`](./geeklock-handoff.md) (código Lock **1.1.23**, release GitHub **lock-v1.1.15**; Central **1.1.8** = Latest).  
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade
 
 **Não commitar:** `.env`, token de estação, `cert.pem`, JSON do túnel, senhas.  

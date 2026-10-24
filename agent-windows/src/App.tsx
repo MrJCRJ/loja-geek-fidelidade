@@ -16,7 +16,7 @@ import {
   startSession,
 } from "./api";
 import { ApiError } from "../../shared/api-error";
-import { StationSocket, type StationCommand } from "./ws";
+import { StationSocket, type StationCommand, type StationCommandPayload } from "./ws";
 import { SetupWizard } from "./SetupWizard";
 import { reportTelemetry } from "./telemetry";
 import { LockedScreen } from "./LockedScreen";
@@ -784,17 +784,7 @@ export default function App() {
   useEffect(() => {
     if (!config?.stationToken) return;
 
-    const handleCommand = (
-      command: StationCommand,
-      payload?: {
-        text?: string;
-        title?: string;
-        level?: string;
-        durationSec?: number;
-        occupantKind?: string;
-        guestLabel?: string;
-      },
-    ) => {
+    const handleCommand = (command: StationCommand, payload?: StationCommandPayload) => {
       if (command === "reload") {
         reportTelemetry(config.serverUrl, config.stationToken, {
           kind: "command.reload",

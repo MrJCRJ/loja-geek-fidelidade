@@ -1,4 +1,4 @@
-# GeekLock — handoff (2026-09-30)
+# GeekLock — handoff (2026-10-24)
 
 Repo: https://github.com/MrJCRJ/loja-geek-fidelidade · pasta: `/home/treegunn/loja-geek-fidelidade`
 
@@ -11,14 +11,27 @@ Repo: https://github.com/MrJCRJ/loja-geek-fidelidade · pasta: `/home/treegunn/l
 - **Uso/energia:** aba Uso no Central; coletor 15s no Lock (sem keylog).
 - **IP LAN:** `192.168.3.70:8787`
 
-## Versões
+## Versões (conferido no GitHub em 2026-10-24)
 
-- Lock publicado: **1.1.22** (16/10, tela só de entrar; criar conta é um passo menor e avisa que não abre o PC; hora em aberto fica 2 min em “pedido enviado”). Os PCs puxam ao ligar. A versão instalada neles não foi reconfirmada neste dia.
-- Central na nuvem (`api.geekloja.com.br`) recebeu o painel e a limpeza de 16/10. API recriada nesse dia; health ok. O GeekLock publicado continua **1.1.21** — os PCs não foram religados nem receberam pacote novo.
+`main` = `origin/main`, commit `c2b1631` (20/10). Não há commit local fora do GitHub.
+
+| Peça | Código em `main` | Release de binário no GitHub |
+|------|------------------|------------------------------|
+| GeekLock | **1.1.23** (`agent-windows/package.json`, desde 17/10) | **lock-v1.1.15** (05/10) — `GeekLock-win-x64.zip` |
+| GeekCentral | **1.1.8** | **central-v1.1.8** (05/10) = **Latest** |
+
+Não existe tag `lock-v1.1.16` … `lock-v1.1.23`. O handoff anterior misturava “publicado 1.1.22” e “publicado 1.1.21”; isso não está nas Releases. A versão instalada nos PCs não foi relida hoje (em 01/10 as cinco estações estavam em 1.1.8).
+
+O que entrou no código depois da release 1.1.15, e ainda não virou ZIP no GitHub:
+
+- 17/10 (`aa97468`): cadastro no Lock, Caixa curta, venda de hora, consoles, energia remota, sessão que não prende o cliente em outro PC. A versão no `package.json` saltou de 1.1.15 para 1.1.23.
+- 20/10 (`c2b1631`): faxina de sessão fantasma na API (deploy na VPS nesse dia) e o Lock trata `session_closed`. O pacote Lock com esse comportamento ainda não foi publicado.
+
+CI em 20/10: o job do GeekLock falhava no `tsc` porque o payload do comando em `App.tsx` não tinha `customerId` / `sessionId`. O tipo certo já estava em `StationCommandPayload` (`ws.ts`).
+
 - Liberar no Central: na aba Estações, cliente já cadastrado com saldo. Venda de hora fica no Caixa, por horário ou por dinheiro, sem escolher PC. Consoles têm aba própria.
-- Central **1.1.8** · tag `central-v*` = **latest** do GitHub
 - Diagnóstico trava/desliga: `docs/DIAGNOSTICO-TRAVAR-DESLIGAR.md`
-- Energia remota (código local): comandos `shutdown` / `hibernate` no Central (confirmação); Lock precisa update.
+- Energia remota: comandos `shutdown` / `hibernate` no Central (confirmação). O Lock em `main` já tem esses comandos; o ZIP do GitHub (1.1.15) não.
 ## Atualizar estações
 
 - **Dono** em Config → **Atualizar Locks** (API `ownerWriteGuard`; clerk não vê Config).
