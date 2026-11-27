@@ -18,7 +18,7 @@ Repo: https://github.com/MrJCRJ/loja-geek-fidelidade · pasta: `/home/treegunn/l
 | Peça | Código em `main` | Release de binário no GitHub |
 |------|------------------|------------------------------|
 | GeekLock | **1.1.23** (`agent-windows/package.json`, desde 17/10) | **lock-v1.1.15** (05/10) — `GeekLock-win-x64.zip` |
-| GeekCentral | **1.1.8** | **central-v1.1.8** (05/10) = **Latest** |
+| GeekCentral | **1.1.9** | release **central-v1.1.9** (Dashboard insight/histórico); anterior Latest **1.1.8** (05/10) |
 
 Não existe tag `lock-v1.1.16` … `lock-v1.1.23`. O handoff anterior misturava “publicado 1.1.22” e “publicado 1.1.21”; isso não está nas Releases. A versão instalada nos PCs não foi relida hoje (em 01/10 as cinco estações estavam em 1.1.8).
 

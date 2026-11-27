@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, formatDuration } from "../../api";
+import { api, formatDuration, type Station } from "../../api";
+import {
+  buildDashboardInsights,
+  buildStationCards,
+  eventFeedLabel,
+  eventTone,
+  filterDashboardEvents,
+  type TelemetryEvent,
+} from "../dashboardInsights";
 import { formatHours } from "../format";
+import type { LiveStationStatus } from "../types";
 
 type Metrics = {
   generatedAt: string;
@@ -137,6 +146,10 @@ function clock(total: number) {
 
 export function DashboardTab({ onError, team }: Props) {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
+  const [connected, setConnected] = useState<Array<{ stationId: string; stationName: string }>>([]);
+  const [live, setLive] = useState<Record<string, LiveStationStatus>>({});
+  const [events, setEvents] = useState<TelemetryEvent[]>([]);
   const [usage, setUsage] = useState<{
     kwh: number;
     costReais: number;
@@ -148,21 +161,33 @@ export function DashboardTab({ onError, team }: Props) {
   const load = useCallback(async () => {
     setBusy(true);
     try {
-      const m = await api<Metrics>("/api/admin/metrics");
+      const [m, st, tel] = await Promise.all([
+        api<Metrics>("/api/admin/metrics"),
+        api<{
+          stations: Station[];
+          connected: Array<{ stationId: string; stationName: string }>;
+          live?: Record<string, LiveStationStatus>;
+        }>("/api/stations"),
+        api<{ events: TelemetryEvent[] }>("/api/admin/telemetry?limit=120").catch(() => ({ events: [] })),
+      ]);
       setMetrics(m);
+      setStations(st.stations || []);
+      setConnected(st.connected || []);
+      setLive(st.live || {});
+      setEvents(tel.events || []);
       if (team) {
         setUsage(null);
       } else {
-      try {
-        const u = await api<{
-          kwh: number;
-          costReais: number;
-          topApps: Array<{ process: string; minutes: number }>;
-        }>("/api/admin/usage?hours=24");
-        setUsage({ kwh: u.kwh, costReais: u.costReais, topApps: u.topApps || [] });
-      } catch {
-        setUsage(null);
-      }
+        try {
+          const u = await api<{
+            kwh: number;
+            costReais: number;
+            topApps: Array<{ process: string; minutes: number }>;
+          }>("/api/admin/usage?hours=24");
+          setUsage({ kwh: u.kwh, costReais: u.costReais, topApps: u.topApps || [] });
+        } catch {
+          setUsage(null);
+        }
       }
     } catch (e) {
       onError(e instanceof Error ? e.message : "Falha ao carregar métricas");
@@ -181,9 +206,49 @@ export function DashboardTab({ onError, team }: Props) {
     };
   }, [load]);
 
-  const maxWeekSessions = useMemo(() => {
-    if (!metrics?.week.days.length) return 1;
-    return Math.max(1, ...metrics.week.days.map((d) => d.sessions));
+  const connectedIds = useMemo(() => new Set(connected.map((c) => c.stationId)), [connected]);
+
+  const feed = useMemo(() => filterDashboardEvents(events, 20), [events]);
+
+  const insights = useMemo(() => {
+    if (!metrics) return [];
+    return buildDashboardInsights({
+      metrics,
+      stations: stations.map((s) => ({
+        id: s.id,
+        name: s.name,
+        online: s.online ?? 0,
+        last_seen_at: s.last_seen_at ?? null,
+      })),
+      connectedIds,
+      live,
+      events,
+      nowMs: now,
+    });
+  }, [metrics, stations, connectedIds, live, events, now]);
+
+  const stationCards = useMemo(() => {
+    if (!metrics) return [];
+    return buildStationCards({
+      stations: stations.map((s) => ({
+        id: s.id,
+        name: s.name,
+        online: s.online ?? 0,
+        last_seen_at: s.last_seen_at ?? null,
+      })),
+      connectedIds,
+      live,
+      activePlaceNames: new Set(metrics.activeNow.filter((a) => a.kind === "pc").map((a) => a.place_name)),
+      nowMs: now,
+    });
+  }, [metrics, stations, connectedIds, live, now]);
+
+  const weekScale = useMemo(() => {
+    if (!metrics?.week.days.length) return { maxHours: 1, maxSales: 1 };
+    return {
+      maxHours: Math.max(1, ...metrics.week.days.map((d) => d.seconds / 3600)),
+      maxSales: Math.max(1, ...metrics.week.days.map((d) => d.salesReais || 0)),
+    };
   }, [metrics]);
 
   return (
@@ -193,8 +258,8 @@ export function DashboardTab({ onError, team }: Props) {
           <h2 style={{ margin: 0 }}>Dashboard</h2>
           <p className="muted" style={{ margin: "0.25rem 0 0" }}>
             {metrics
-              ? `${metrics.unit.unitName} · atualizado ${new Date(metrics.generatedAt).toLocaleTimeString("pt-BR")}`
-              : "Métricas do dia e da semana"}
+              ? `${metrics.unit.unitName} · atualizado ${new Date(metrics.generatedAt).toLocaleTimeString("pt-BR")} · use e estabilidade`
+              : "Insight, semana e histórico"}
           </p>
         </div>
         <button className="btn ghost" type="button" disabled={busy} onClick={() => void load()}>
@@ -206,32 +271,59 @@ export function DashboardTab({ onError, team }: Props) {
         <p className="muted">Carregando…</p>
       ) : (
         <>
-          <div className="console-strip">
-            {(metrics.consoles || []).map((c) => {
-              const left =
-                c.endsAt && c.status === "active"
-                  ? Math.max(0, Math.floor((Date.parse(c.endsAt) - now) / 1000))
-                  : c.remainingSeconds;
-              const expired = c.status === "expired" || (c.status === "active" && c.mode !== "open" && left <= 0);
-              const label = !c.customerName
-                ? "Livre"
-                : c.status === "open"
-                  ? "Aberto"
-                  : expired
-                    ? "Tempo acabou"
-                    : clock(left);
-              return (
-                <article
-                  key={c.id}
-                  className={`console-card${c.customerName ? " is-busy" : ""}${expired ? " is-expired" : ""}`}
-                >
-                  <strong>{c.name}</strong>
-                  <p className="console-clock" style={{ fontSize: "1.35rem" }}>{label}</p>
-                  <p className="muted" style={{ margin: 0 }}>{c.customerName || "Ninguém"}</p>
+          <section className="dash-insights" aria-label="O que fazer agora">
+            {insights.map((item) => (
+              <article key={item.id} className={`dash-insight dash-insight--${item.tone}`}>
+                <h3>{item.title}</h3>
+                <p>{item.detail}</p>
+              </article>
+            ))}
+          </section>
+
+          {stationCards.length > 0 && (
+            <section className="dash-stations" aria-label="PCs">
+              {stationCards.map((card) => (
+                <article key={card.id} className={`dash-station dash-station--${card.state}`}>
+                  <strong>{card.name}</strong>
+                  <span>{card.subtitle}</span>
                 </article>
-              );
-            })}
-          </div>
+              ))}
+            </section>
+          )}
+
+          {(metrics.consoles || []).length > 0 && (
+            <div className="console-strip">
+              {(metrics.consoles || []).map((c) => {
+                const left =
+                  c.endsAt && c.status === "active"
+                    ? Math.max(0, Math.floor((Date.parse(c.endsAt) - now) / 1000))
+                    : c.remainingSeconds;
+                const expired =
+                  c.status === "expired" || (c.status === "active" && c.mode !== "open" && left <= 0);
+                const label = !c.customerName
+                  ? "Livre"
+                  : c.status === "open"
+                    ? "Aberto"
+                    : expired
+                      ? "Tempo acabou"
+                      : clock(left);
+                return (
+                  <article
+                    key={c.id}
+                    className={`console-card${c.customerName ? " is-busy" : ""}${expired ? " is-expired" : ""}`}
+                  >
+                    <strong>{c.name}</strong>
+                    <p className="console-clock" style={{ fontSize: "1.35rem" }}>
+                      {label}
+                    </p>
+                    <p className="muted" style={{ margin: 0 }}>
+                      {c.customerName || "Ninguém"}
+                    </p>
+                  </article>
+                );
+              })}
+            </div>
+          )}
 
           <div className="metrics-grid">
             <article className="metric-card">
@@ -398,22 +490,73 @@ export function DashboardTab({ onError, team }: Props) {
             )}
           </section>
 
-          <section className="panel" style={{ marginTop: "1rem" }}>
-            <h3 style={{ marginTop: 0 }}>Sessões — últimos 7 dias</h3>
-            <div className="spark-bars" role="img" aria-label="Sessões por dia">
-              {metrics.week.days.map((d) => (
-                <div key={d.day} className="spark-col">
-                  <div
-                    className="spark-bar"
-                    style={{ height: `${Math.max(6, (d.sessions / maxWeekSessions) * 100)}%` }}
-                    title={`${d.day}: ${d.sessions} sessões`}
-                  />
-                  <span className="spark-label">{dayLabel(d.day)}</span>
-                  <span className="spark-n muted">{d.sessions}</span>
+          <div className="dash-history grid-2" style={{ marginTop: "1rem" }}>
+            <section className="panel">
+              <h3 style={{ marginTop: 0 }}>Semana — horas e caixa</h3>
+              <p className="muted dash-legend">
+                <span className="dash-legend-hours">Horas</span>
+                <span className="dash-legend-sales">Caixa</span>
+                · {metrics.week.hoursUsed.toFixed(1)}h · {money(metrics.week.salesReais)}
+              </p>
+              <div className="spark-bars spark-bars--dual" role="img" aria-label="Horas e faturamento por dia">
+                {metrics.week.days.map((d) => {
+                  const hours = d.seconds / 3600;
+                  const sales = d.salesReais || 0;
+                  return (
+                    <div key={d.day} className="spark-col spark-col--dual">
+                      <div className="spark-pair">
+                        <div
+                          className="spark-bar spark-bar--hours"
+                          style={{
+                            height: `${Math.max(6, (hours / weekScale.maxHours) * 100)}%`,
+                          }}
+                          title={`${d.day}: ${hours.toFixed(1)}h`}
+                        />
+                        <div
+                          className="spark-bar spark-bar--sales"
+                          style={{
+                            height: `${Math.max(4, (sales / weekScale.maxSales) * 100)}%`,
+                          }}
+                          title={`${d.day}: ${money(sales)}`}
+                        />
+                      </div>
+                      <span className="spark-label">{dayLabel(d.day)}</span>
+                      <span className="spark-n muted">{hours.toFixed(1)}h</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="panel">
+              <h3 style={{ marginTop: 0 }}>Histórico recente</h3>
+              {feed.length === 0 ? (
+                <div className="empty-state">
+                  <strong>Sem eventos ainda</strong>
+                  <p>Quedas, comandos e vendas da semana aparecem aqui.</p>
                 </div>
-              ))}
-            </div>
-          </section>
+              ) : (
+                <ul className="dash-feed">
+                  {feed.map((e) => (
+                    <li key={e.id} className={`dash-feed-item dash-feed-item--${eventTone(e.kind)}`}>
+                      <div className="dash-feed-meta">
+                        <span className="dash-feed-kind">{eventFeedLabel(e.kind)}</span>
+                        <time dateTime={e.created_at}>
+                          {new Date(e.created_at).toLocaleString("pt-BR", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </time>
+                      </div>
+                      <p>{e.message}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          </div>
 
           <div className="grid-2" style={{ marginTop: "1rem" }}>
             <section className="panel">
